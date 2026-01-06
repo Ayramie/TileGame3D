@@ -6,20 +6,17 @@ export class ThirdPersonCamera {
         this.target = target;
 
         // Camera orbit parameters
-        this.distance = 10;
-        this.minDistance = 3;
-        this.maxDistance = 25;
+        this.distance = 12;
+        this.minDistance = 5;
+        this.maxDistance = 30;
 
-        this.yaw = 0; // Horizontal rotation (around player)
-        this.pitch = 0.3; // Vertical rotation (radians)
-        this.minPitch = -0.5;
-        this.maxPitch = Math.PI / 2.2;
-
-        // Character rotation (separate from camera when using left-click)
-        this.characterYaw = 0;
+        this.yaw = 0; // Horizontal rotation (around player) - 360° allowed
+        this.targetYaw = 0; // For smooth rotation
+        this.pitch = Math.PI / 5; // Fixed diagonal angle (~36°) - LOCKED
 
         // Smoothing
         this.positionSmoothing = 10;
+        this.rotationSmoothing = 8;
 
         // Target offset (look at point above player's feet)
         this.targetOffset = new THREE.Vector3(0, 1.5, 0);
@@ -31,6 +28,10 @@ export class ThirdPersonCamera {
         // Mouse sensitivity
         this.mouseSensitivity = 0.005;
         this.scrollSensitivity = 1.5;
+
+        // Mouse drag state
+        this.isDragging = false;
+        this.lastMouseX = 0;
 
         // Initialize position
         this.updateIdealPosition();
@@ -51,25 +52,38 @@ export class ThirdPersonCamera {
         this.idealLookAt = targetPos;
     }
 
-    // Right-click drag: rotate character AND camera together
-    rotateCharacter(deltaX, deltaY) {
-        this.yaw -= deltaX * this.mouseSensitivity;
-        this.pitch += deltaY * this.mouseSensitivity;
-        this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
-
-        // Character faces forward (away from camera) - same direction as camera yaw
-        this.characterYaw = this.yaw;
-        this.target.rotation = this.yaw + Math.PI;
+    // Start right-click drag for rotation
+    startDrag(mouseX) {
+        this.isDragging = true;
+        this.lastMouseX = mouseX;
     }
 
-    // Left-click drag: rotate camera AND character faces camera direction
-    rotateCamera(deltaX, deltaY) {
-        this.yaw -= deltaX * this.mouseSensitivity;
-        this.pitch += deltaY * this.mouseSensitivity;
-        this.pitch = Math.max(this.minPitch, Math.min(this.maxPitch, this.pitch));
+    // Update rotation during drag (horizontal only - pitch is locked)
+    updateDrag(mouseX) {
+        if (!this.isDragging) return;
 
-        // Character faces where camera is looking
-        this.target.rotation = this.yaw + Math.PI;
+        const deltaX = mouseX - this.lastMouseX;
+        this.targetYaw -= deltaX * this.mouseSensitivity;
+
+        // Normalize yaw to 0-2PI range
+        while (this.targetYaw < 0) this.targetYaw += Math.PI * 2;
+        while (this.targetYaw >= Math.PI * 2) this.targetYaw -= Math.PI * 2;
+
+        this.lastMouseX = mouseX;
+    }
+
+    // End drag
+    endDrag() {
+        this.isDragging = false;
+    }
+
+    // Legacy methods for compatibility
+    rotateCharacter(deltaX, deltaY) {
+        this.targetYaw -= deltaX * this.mouseSensitivity;
+    }
+
+    rotateCamera(deltaX, deltaY) {
+        this.targetYaw -= deltaX * this.mouseSensitivity;
     }
 
     handleScroll(delta) {
@@ -78,22 +92,18 @@ export class ThirdPersonCamera {
     }
 
     update(deltaTime, input) {
-        // Only auto-follow when moving forward/back, not when strafing
-        const isMovingForward = input.keys.w || input.keys.s;
-        if (isMovingForward && !input.leftMouseDown) {
-            // Smoothly align camera to be behind character
-            // Since target.rotation = yaw + PI, we get yaw = target.rotation - PI
-            const targetYaw = this.target.rotation - Math.PI;
-            const yawDiff = targetYaw - this.yaw;
+        // Smooth yaw rotation - handle wraparound
+        let yawDiff = this.targetYaw - this.yaw;
+        // Take shortest path around circle
+        if (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+        if (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
 
-            // Normalize angle difference
-            let normalizedDiff = yawDiff;
-            while (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
-            while (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
+        const rotLerp = 1 - Math.exp(-this.rotationSmoothing * deltaTime);
+        this.yaw += yawDiff * rotLerp;
 
-            // Smooth camera follow when moving forward/back
-            this.yaw += normalizedDiff * deltaTime * 3;
-        }
+        // Normalize yaw
+        while (this.yaw < 0) this.yaw += Math.PI * 2;
+        while (this.yaw >= Math.PI * 2) this.yaw -= Math.PI * 2;
 
         // Update ideal position
         this.updateIdealPosition();
@@ -110,6 +120,11 @@ export class ThirdPersonCamera {
 
     // Get the camera's forward direction for movement
     getForwardYaw() {
+        return this.yaw;
+    }
+
+    // Alias for compatibility
+    getYaw() {
         return this.yaw;
     }
 }

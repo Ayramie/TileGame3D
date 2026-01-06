@@ -131,62 +131,44 @@ export class InputManager {
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
 
-        if (e.button === 0) { // Left click
+        if (e.button === 0) { // Left click - attack
             this.leftMouseDown = true;
-            // Request pointer lock for smooth camera orbit
-            this.canvas.requestPointerLock();
-        } else if (e.button === 2) { // Right click
+        } else if (e.button === 2) { // Right click - camera rotation
             this.rightMouseDown = true;
-            // Request pointer lock for unlimited turning
-            this.canvas.requestPointerLock();
+            this.game.cameraController.startDrag(e.clientX);
         }
     }
 
     onMouseUp(e) {
         if (e.button === 0) {
-            // If it was a quick click (not drag), do a free swing attack
+            // Left click attack
             if (this.leftMouseDown && !this.wasDragging) {
                 this.game.player.performAutoAttack();
             }
             this.leftMouseDown = false;
         } else if (e.button === 2) {
             this.rightMouseDown = false;
+            this.game.cameraController.endDrag();
         }
         this.wasDragging = false;
-
-        // Release pointer lock when no mouse buttons held
-        if (!this.leftMouseDown && !this.rightMouseDown) {
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
-        }
     }
 
     onMouseMove(e) {
-        // Use movementX/Y when pointer locked, otherwise calculate delta
-        let deltaX, deltaY;
-        if (document.pointerLockElement) {
-            deltaX = e.movementX;
-            deltaY = e.movementY;
-        } else {
-            deltaX = e.clientX - this.lastMouseX;
-            deltaY = e.clientY - this.lastMouseY;
-            this.lastMouseX = e.clientX;
-            this.lastMouseY = e.clientY;
-        }
+        const deltaX = e.clientX - this.lastMouseX;
+        const deltaY = e.clientY - this.lastMouseY;
 
         // Track if we're dragging
         if ((this.leftMouseDown || this.rightMouseDown) && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
             this.wasDragging = true;
         }
 
+        // Right click drag: rotate camera horizontally (pitch is locked)
         if (this.rightMouseDown) {
-            // Right click drag: rotate character AND camera
-            this.game.cameraController.rotateCharacter(deltaX, deltaY);
-        } else if (this.leftMouseDown) {
-            // Left click drag: rotate camera only (orbit)
-            this.game.cameraController.rotateCamera(deltaX, deltaY);
+            this.game.cameraController.updateDrag(e.clientX);
         }
+
+        this.lastMouseX = e.clientX;
+        this.lastMouseY = e.clientY;
     }
 
     onWheel(e) {
