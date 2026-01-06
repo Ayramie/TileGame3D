@@ -664,16 +664,17 @@ export class SlimeBoss extends Enemy {
     createTelegraph(attackName, player) {
         this.clearTelegraphs();
 
-        // Red warning indicator material - depthWrite false prevents z-fighting with ground
+        // Red warning indicator material - render on top of ground
         const telegraphMaterial = new THREE.MeshBasicMaterial({
             color: 0xff2222,
             transparent: true,
             opacity: 0.25,
             side: THREE.DoubleSide,
             depthWrite: false,
+            depthTest: true,
             polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1
+            polygonOffsetFactor: -4,
+            polygonOffsetUnits: -4
         });
 
         // Red edge/border material
@@ -683,9 +684,10 @@ export class SlimeBoss extends Enemy {
             opacity: 0.6,
             side: THREE.DoubleSide,
             depthWrite: false,
+            depthTest: true,
             polygonOffset: true,
-            polygonOffsetFactor: -2,
-            polygonOffsetUnits: -2
+            polygonOffsetFactor: -5,
+            polygonOffsetUnits: -5
         });
 
         // Store direction to player for wave attack
@@ -702,7 +704,7 @@ export class SlimeBoss extends Enemy {
                 const circle = new THREE.Mesh(circleGeometry, telegraphMaterial);
                 circle.rotation.x = -Math.PI / 2;
                 circle.position.copy(this.position);
-                circle.position.y = 0.15;
+                circle.position.y = 0.3;
 
                 this.scene.add(circle);
                 this.telegraphMeshes.push(circle);
@@ -712,7 +714,7 @@ export class SlimeBoss extends Enemy {
                 const ring = new THREE.Mesh(ringGeometry, borderMaterial);
                 ring.rotation.x = -Math.PI / 2;
                 ring.position.copy(this.position);
-                ring.position.y = 0.16;
+                ring.position.y = 0.35;
 
                 this.scene.add(ring);
                 this.telegraphMeshes.push(ring);
@@ -725,7 +727,7 @@ export class SlimeBoss extends Enemy {
                 const circle = new THREE.Mesh(circleGeometry, telegraphMaterial);
                 circle.rotation.x = -Math.PI / 2;
                 circle.position.copy(player.position);
-                circle.position.y = 0.15;
+                circle.position.y = 0.3;
 
                 this.scene.add(circle);
                 this.telegraphMeshes.push(circle);
@@ -735,7 +737,7 @@ export class SlimeBoss extends Enemy {
                 const ring = new THREE.Mesh(ringGeometry, borderMaterial);
                 ring.rotation.x = -Math.PI / 2;
                 ring.position.copy(player.position);
-                ring.position.y = 0.16;
+                ring.position.y = 0.35;
 
                 this.scene.add(ring);
                 this.telegraphMeshes.push(ring);
@@ -748,7 +750,7 @@ export class SlimeBoss extends Enemy {
                 const ring = new THREE.Mesh(ringGeometry, telegraphMaterial);
                 ring.rotation.x = -Math.PI / 2;
                 ring.position.copy(this.position);
-                ring.position.y = 0.15;
+                ring.position.y = 0.3;
 
                 this.scene.add(ring);
                 this.telegraphMeshes.push(ring);
@@ -758,7 +760,7 @@ export class SlimeBoss extends Enemy {
                 const outer = new THREE.Mesh(outerBorder, borderMaterial);
                 outer.rotation.x = -Math.PI / 2;
                 outer.position.copy(this.position);
-                outer.position.y = 0.16;
+                outer.position.y = 0.35;
 
                 this.scene.add(outer);
                 this.telegraphMeshes.push(outer);
@@ -768,7 +770,7 @@ export class SlimeBoss extends Enemy {
                 const inner = new THREE.Mesh(innerBorder, borderMaterial);
                 inner.rotation.x = -Math.PI / 2;
                 inner.position.copy(this.position);
-                inner.position.y = 0.16;
+                inner.position.y = 0.35;
 
                 this.scene.add(inner);
                 this.telegraphMeshes.push(inner);
@@ -800,9 +802,10 @@ export class SlimeBoss extends Enemy {
             opacity: 0.25,
             side: THREE.DoubleSide,
             depthWrite: false,
+            depthTest: true,
             polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1
+            polygonOffsetFactor: -4,
+            polygonOffsetUnits: -4
         });
 
         const borderMaterial = new THREE.MeshBasicMaterial({
@@ -811,9 +814,10 @@ export class SlimeBoss extends Enemy {
             opacity: 0.6,
             side: THREE.DoubleSide,
             depthWrite: false,
+            depthTest: true,
             polygonOffset: true,
-            polygonOffsetFactor: -2,
-            polygonOffsetUnits: -2
+            polygonOffsetFactor: -5,
+            polygonOffsetUnits: -5
         });
 
         for (let i = 0; i < this.bouncePositions.length; i++) {
@@ -824,7 +828,7 @@ export class SlimeBoss extends Enemy {
             const circle = new THREE.Mesh(circleGeometry, telegraphMaterial);
             circle.rotation.x = -Math.PI / 2;
             circle.position.copy(pos);
-            circle.position.y = 0.15;
+            circle.position.y = 0.3;
 
             this.scene.add(circle);
             this.telegraphMeshes.push(circle);
@@ -834,7 +838,7 @@ export class SlimeBoss extends Enemy {
             const ring = new THREE.Mesh(ringGeometry, borderMaterial);
             ring.rotation.x = -Math.PI / 2;
             ring.position.copy(pos);
-            ring.position.y = 0.16;
+            ring.position.y = 0.35;
 
             this.scene.add(ring);
             this.telegraphMeshes.push(ring);
@@ -859,7 +863,7 @@ export class SlimeBoss extends Enemy {
                 const wave = new THREE.Mesh(waveGeometry, effectMaterial);
                 wave.rotation.x = -Math.PI / 2;
                 wave.position.copy(this.position);
-                wave.position.y = 0.15;
+                wave.position.y = 0.4;
 
                 this.scene.add(wave);
                 effectMeshes.push({ mesh: wave, type: 'expand', maxScale: 6, speed: 20 });
@@ -1190,7 +1194,7 @@ export class SlimeBoss extends Enemy {
         const fire = new THREE.Mesh(fireGeometry, fireMaterial);
         fire.rotation.x = -Math.PI / 2;
         fire.position.copy(position);
-        fire.position.y = 0.12;
+        fire.position.y = 0.25;
 
         this.scene.add(fire);
 
@@ -1225,7 +1229,7 @@ export class SlimeBoss extends Enemy {
         const poison = new THREE.Mesh(poisonGeometry, poisonMaterial);
         poison.rotation.x = -Math.PI / 2;
         poison.position.copy(position);
-        poison.position.y = 0.12;
+        poison.position.y = 0.25;
 
         this.scene.add(poison);
 
