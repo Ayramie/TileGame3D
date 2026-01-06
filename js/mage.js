@@ -77,11 +77,95 @@ export class Mage {
         this.useAnimatedCharacter = false;
         this.characterLoading = false;
 
+        // Ability indicators
+        this.blizzardIndicator = null;
+        this.flameWaveIndicator = null;
+        this.createAbilityIndicators();
+
         // Visual representation (fallback)
         this.createMesh();
 
         // Try to load animated character
         this.loadCharacter();
+    }
+
+    createAbilityIndicators() {
+        // Blizzard circle indicator
+        const blizzardGeometry = new THREE.RingGeometry(0.1, this.abilities.blizzard.radius, 32);
+        const blizzardMaterial = new THREE.MeshBasicMaterial({
+            color: 0x44aaff,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.blizzardIndicator = new THREE.Mesh(blizzardGeometry, blizzardMaterial);
+        this.blizzardIndicator.rotation.x = -Math.PI / 2;
+        this.blizzardIndicator.position.y = 0.1;
+        this.blizzardIndicator.visible = false;
+        this.scene.add(this.blizzardIndicator);
+
+        // Flame Wave cone indicator
+        const coneAngle = this.abilities.flameWave.angle;
+        const coneRange = this.abilities.flameWave.range;
+        const segments = 32;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        for (let i = 0; i <= segments; i++) {
+            const angle = -coneAngle / 2 + (coneAngle * i / segments);
+            const x = Math.sin(angle) * coneRange;
+            const y = Math.cos(angle) * coneRange;
+            shape.lineTo(x, y);
+        }
+        shape.lineTo(0, 0);
+
+        const flameGeometry = new THREE.ShapeGeometry(shape);
+        const flameMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        this.flameWaveIndicator = new THREE.Mesh(flameGeometry, flameMaterial);
+        this.flameWaveIndicator.rotation.x = -Math.PI / 2;
+        this.flameWaveIndicator.position.y = 0.1;
+        this.flameWaveIndicator.visible = false;
+        this.scene.add(this.flameWaveIndicator);
+    }
+
+    showBlizzardIndicator(show) {
+        if (this.blizzardIndicator) {
+            this.blizzardIndicator.visible = show;
+        }
+    }
+
+    updateBlizzardIndicator(mouseWorldPos) {
+        if (!this.blizzardIndicator || !this.blizzardIndicator.visible) return;
+        this.blizzardIndicator.position.x = mouseWorldPos.x;
+        this.blizzardIndicator.position.z = mouseWorldPos.z;
+    }
+
+    showFlameWaveIndicator(show) {
+        if (this.flameWaveIndicator) {
+            this.flameWaveIndicator.visible = show;
+        }
+    }
+
+    updateFlameWaveIndicator(mouseWorldPos) {
+        if (!this.flameWaveIndicator || !this.flameWaveIndicator.visible) return;
+
+        // Position at player
+        this.flameWaveIndicator.position.x = this.position.x;
+        this.flameWaveIndicator.position.z = this.position.z;
+
+        // Point toward mouse
+        const dx = mouseWorldPos.x - this.position.x;
+        const dz = mouseWorldPos.z - this.position.z;
+        const angle = Math.atan2(dx, dz);
+        this.flameWaveIndicator.rotation.z = -angle;
     }
 
     async loadCharacter() {
@@ -245,12 +329,8 @@ export class Mage {
             this.position.x += moveDir.x * this.moveSpeed * deltaTime;
             this.position.z += moveDir.z * this.moveSpeed * deltaTime;
 
-            if (forwardBack.z < 0 && !isMouseTurning) {
-                const forwardDir = new THREE.Vector3(-forwardBack.z * sin, 0, forwardBack.z * cos);
-                if (forwardDir.length() > 0) {
-                    this.rotation = Math.atan2(forwardDir.x, forwardDir.z);
-                }
-            }
+            // Character faces the direction they're moving
+            this.rotation = Math.atan2(moveDir.x, moveDir.z);
         }
 
         // Jumping
@@ -535,12 +615,26 @@ export class Mage {
         }
     }
 
-    // W - Flame Wave: Cone fire attack
-    useFlameWave(enemies) {
+    // W - Flame Wave: Cone fire attack toward direction
+    useFlameWave(enemies, direction = null) {
         const ability = this.abilities.flameWave;
         if (ability.cooldownRemaining > 0) return false;
 
         ability.cooldownRemaining = ability.cooldown;
+
+        // Use provided direction or default to player facing
+        let forward;
+        if (direction) {
+            forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            // Face the flame wave direction
+            this.rotation = Math.atan2(forward.x, forward.z);
+        } else {
+            forward = new THREE.Vector3(
+                Math.sin(this.rotation),
+                0,
+                Math.cos(this.rotation)
+            );
+        }
 
         // Play cast animation
         if (this.useAnimatedCharacter) {
@@ -554,11 +648,6 @@ export class Mage {
 
         // Particle effect
         if (this.game && this.game.particles) {
-            const forward = new THREE.Vector3(
-                Math.sin(this.rotation),
-                0,
-                Math.cos(this.rotation)
-            );
             this.game.particles.flameWave(this.position, forward, ability.range);
         }
 
@@ -574,12 +663,6 @@ export class Mage {
             if (dist > ability.range) continue;
 
             const toEnemy = new THREE.Vector3(dx, 0, dz).normalize();
-            const forward = new THREE.Vector3(
-                Math.sin(this.rotation),
-                0,
-                Math.cos(this.rotation)
-            );
-
             const dot = forward.dot(toEnemy);
             const angleToEnemy = Math.acos(Math.min(1, Math.max(-1, dot)));
 

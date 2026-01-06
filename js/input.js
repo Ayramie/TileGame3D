@@ -27,6 +27,14 @@ export class InputManager {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
 
+        // Mouse world position (for ability aiming)
+        this.mouseWorldPos = new THREE.Vector3();
+        this.raycaster = new THREE.Raycaster();
+        this.mouseNDC = new THREE.Vector2();
+
+        // Ability aiming state
+        this.aimingAbility = null; // 'q', 'f', etc.
+
         this.setupEventListeners();
     }
 
@@ -65,31 +73,30 @@ export class InputManager {
                 break;
 
             case 'q':
-                // Q ability - Cleave (Warrior) / Blizzard (Mage)
+                // Q ability - Cleave (Warrior) / Blizzard (Mage) - hold to aim
                 if (this.game.selectedClass === 'mage') {
-                    // Blizzard targets the targeted enemy's position, or in front of player
-                    let targetPos;
-                    if (this.game.player.targetEnemy && this.game.player.targetEnemy.isAlive) {
-                        targetPos = this.game.player.targetEnemy.position.clone();
-                    } else {
-                        // Default to in front of player
-                        const forward = new THREE.Vector3(
-                            Math.sin(this.game.player.rotation),
-                            0,
-                            Math.cos(this.game.player.rotation)
-                        );
-                        targetPos = this.game.player.position.clone().add(forward.multiplyScalar(8));
+                    // Start aiming blizzard
+                    this.aimingAbility = 'q';
+                    if (this.game.player.showBlizzardIndicator) {
+                        this.game.player.showBlizzardIndicator(true);
                     }
-                    this.game.player.useBlizzard(targetPos);
                 } else {
-                    this.game.player.useCleave(this.game.enemies);
+                    // Start aiming cleave
+                    this.aimingAbility = 'q';
+                    if (this.game.player.showCleaveIndicator) {
+                        this.game.player.showCleaveIndicator(true);
+                    }
                 }
                 break;
 
             case 'f':
                 // F ability - Bladestorm (Warrior) / Flame Wave (Mage)
                 if (this.game.selectedClass === 'mage') {
-                    this.game.player.useFlameWave(this.game.enemies);
+                    // Start aiming flame wave
+                    this.aimingAbility = 'f';
+                    if (this.game.player.showFlameWaveIndicator) {
+                        this.game.player.showFlameWaveIndicator(true);
+                    }
                 } else {
                     this.game.player.useBladestorm();
                 }
@@ -124,6 +131,50 @@ export class InputManager {
 
         if (key in this.keys) {
             this.keys[key] = false;
+        }
+
+        // Fire aimed abilities on key release
+        if (this.aimingAbility === key) {
+            this.fireAimedAbility(key);
+            this.aimingAbility = null;
+        }
+    }
+
+    fireAimedAbility(key) {
+        if (!this.game.player) return;
+
+        // Calculate direction from player to mouse
+        const direction = {
+            x: this.mouseWorldPos.x - this.game.player.position.x,
+            z: this.mouseWorldPos.z - this.game.player.position.z
+        };
+
+        switch (key) {
+            case 'q':
+                if (this.game.selectedClass === 'mage') {
+                    // Fire blizzard at mouse position
+                    if (this.game.player.showBlizzardIndicator) {
+                        this.game.player.showBlizzardIndicator(false);
+                    }
+                    this.game.player.useBlizzard(this.mouseWorldPos.clone());
+                } else {
+                    // Fire cleave toward mouse
+                    if (this.game.player.showCleaveIndicator) {
+                        this.game.player.showCleaveIndicator(false);
+                    }
+                    this.game.player.useCleave(this.game.enemies, direction);
+                }
+                break;
+
+            case 'f':
+                if (this.game.selectedClass === 'mage') {
+                    // Fire flame wave toward mouse
+                    if (this.game.player.showFlameWaveIndicator) {
+                        this.game.player.showFlameWaveIndicator(false);
+                    }
+                    this.game.player.useFlameWave(this.game.enemies, direction);
+                }
+                break;
         }
     }
 
@@ -169,6 +220,42 @@ export class InputManager {
 
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
+
+        // Update mouse world position for ability aiming
+        this.updateMouseWorldPosition(e);
+
+        // Update ability indicators while aiming
+        if (this.aimingAbility && this.game.player) {
+            if (this.aimingAbility === 'q') {
+                if (this.game.selectedClass === 'mage') {
+                    if (this.game.player.updateBlizzardIndicator) {
+                        this.game.player.updateBlizzardIndicator(this.mouseWorldPos);
+                    }
+                } else {
+                    if (this.game.player.updateCleaveIndicator) {
+                        this.game.player.updateCleaveIndicator(this.mouseWorldPos);
+                    }
+                }
+            } else if (this.aimingAbility === 'f') {
+                if (this.game.player.updateFlameWaveIndicator) {
+                    this.game.player.updateFlameWaveIndicator(this.mouseWorldPos);
+                }
+            }
+        }
+    }
+
+    updateMouseWorldPosition(e) {
+        if (!this.game.camera) return;
+
+        // Convert mouse to NDC
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Raycast to ground plane (y = 0)
+        this.raycaster.setFromCamera(this.mouseNDC, this.game.camera);
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        this.raycaster.ray.intersectPlane(groundPlane, this.mouseWorldPos);
     }
 
     onWheel(e) {

@@ -73,11 +73,67 @@ export class Player {
         this.useAnimatedCharacter = false;
         this.characterLoading = false;
 
+        // Ability indicators
+        this.cleaveIndicator = null;
+        this.createAbilityIndicators();
+
         // Visual representation (fallback)
         this.createMesh();
 
         // Try to load animated character
         this.loadCharacter();
+    }
+
+    createAbilityIndicators() {
+        // Cleave cone indicator
+        const coneAngle = this.abilities.cleave.angle;
+        const coneRange = this.abilities.cleave.range;
+        const segments = 32;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        for (let i = 0; i <= segments; i++) {
+            const angle = -coneAngle / 2 + (coneAngle * i / segments);
+            const x = Math.sin(angle) * coneRange;
+            const y = Math.cos(angle) * coneRange;
+            shape.lineTo(x, y);
+        }
+        shape.lineTo(0, 0);
+
+        const geometry = new THREE.ShapeGeometry(shape);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        this.cleaveIndicator = new THREE.Mesh(geometry, material);
+        this.cleaveIndicator.rotation.x = -Math.PI / 2;
+        this.cleaveIndicator.position.y = 0.1;
+        this.cleaveIndicator.visible = false;
+        this.scene.add(this.cleaveIndicator);
+    }
+
+    showCleaveIndicator(show) {
+        if (this.cleaveIndicator) {
+            this.cleaveIndicator.visible = show;
+        }
+    }
+
+    updateCleaveIndicator(mouseWorldPos) {
+        if (!this.cleaveIndicator || !this.cleaveIndicator.visible) return;
+
+        // Position at player
+        this.cleaveIndicator.position.x = this.position.x;
+        this.cleaveIndicator.position.z = this.position.z;
+
+        // Point toward mouse
+        const dx = mouseWorldPos.x - this.position.x;
+        const dz = mouseWorldPos.z - this.position.z;
+        const angle = Math.atan2(dx, dz);
+        this.cleaveIndicator.rotation.z = -angle;
     }
 
     async loadCharacter() {
@@ -419,15 +475,8 @@ export class Player {
             this.position.x += moveDir.x * this.moveSpeed * deltaTime;
             this.position.z += moveDir.z * this.moveSpeed * deltaTime;
 
-            // Only turn character when moving forward (W), not backward or strafing
-            // Also don't override rotation when mouse turning (right-click held)
-            if (forwardBack.z < 0 && !isMouseTurning) {
-                // Only when pressing W (forward), update facing direction
-                const forwardDir = new THREE.Vector3(-forwardBack.z * sin, 0, forwardBack.z * cos);
-                if (forwardDir.length() > 0) {
-                    this.rotation = Math.atan2(forwardDir.x, forwardDir.z);
-                }
-            }
+            // Character faces the direction they're moving
+            this.rotation = Math.atan2(moveDir.x, moveDir.z);
         }
 
         // Jumping (spacebar is ' ' key)
@@ -537,16 +586,30 @@ export class Player {
         return true;
     }
 
-    // Ability: Cleave
-    useCleave(enemies) {
+    // Ability: Cleave - fires toward specified direction
+    useCleave(enemies, direction = null) {
         const ability = this.abilities.cleave;
         if (ability.cooldownRemaining > 0) return false;
 
         ability.cooldownRemaining = ability.cooldown;
 
+        // Use provided direction or default to player facing
+        let forward;
+        if (direction) {
+            forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            // Face the cleave direction
+            this.rotation = Math.atan2(forward.x, forward.z);
+        } else {
+            forward = new THREE.Vector3(
+                Math.sin(this.rotation),
+                0,
+                Math.cos(this.rotation)
+            );
+        }
+
         // Play attack animation for cleave
         if (this.useAnimatedCharacter) {
-            this.character.playAttack(2); // Use a different attack for cleave
+            this.character.playAttack(2);
         }
 
         // Visual effect
@@ -556,40 +619,27 @@ export class Player {
 
         // Particle effect - cleave wave
         if (this.game && this.game.particles) {
-            const forward = new THREE.Vector3(
-                Math.sin(this.rotation),
-                0,
-                Math.cos(this.rotation)
-            );
             this.game.particles.cleaveWave(this.position, forward, ability.range);
         }
 
-        // Hit enemies in front cone - uses horizontal distance so jumping doesn't miss
+        // Hit enemies in front cone
         let hitCount = 0;
         for (const enemy of enemies) {
             if (!enemy.isAlive) continue;
 
-            // Horizontal distance only (ignore Y so attacks work while jumping)
             const dx = enemy.position.x - this.position.x;
             const dz = enemy.position.z - this.position.z;
             const horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
             if (horizontalDist > ability.range) continue;
 
-            // Check if in cone (horizontal only)
+            // Check if in cone
             const toEnemy = new THREE.Vector3(dx, 0, dz).normalize();
-            const forward = new THREE.Vector3(
-                Math.sin(this.rotation),
-                0,
-                Math.cos(this.rotation)
-            );
-
             const dot = forward.dot(toEnemy);
             const angleToEnemy = Math.acos(Math.min(1, Math.max(-1, dot)));
 
             if (angleToEnemy <= ability.angle / 2) {
                 enemy.takeDamage(ability.damage, this);
-                // Damage number for each hit
                 if (this.game && this.game.effects) {
                     this.game.effects.createDamageNumber(enemy.position, ability.damage);
                 }
