@@ -1,0 +1,265 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a15;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Crosshair styles removed - using visible cursor */
+#gameCanvas {
+    cursor: default;
+}
+
+#ui {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: none;
+}
+
+#health-bar {
+    width: 300px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #4a4a6a;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    position: relative;
+    overflow: hidden;
+}
+
+#health-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #44aa44, #66dd66);
+    border-radius: 10px;
+    transition: width 0.2s ease-out;
+}
+
+#health-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#controls-hint {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #888;
+}
+
+#controls-hint span {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #3a3a5a;
+}
+
+#ability-bar {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.ability {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
+    border: 2px solid #4a4a6a;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.ability .key {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.ability .name {
+    font-size: 10px;
+    color: #aaa;
+}
+
+.ability .cooldown-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background: rgba(0, 0, 0, 0.7);
+    transition: height 0.1s linear;
+}
+
+.ability.on-cooldown .cooldown-overlay {
+    height: 100%;
+}
+
+.ability.charging {
+    border-color: #4488ff;
+    box-shadow: 0 0 15px rgba(68, 136, 255, 0.6);
+    animation: pulse-glow 0.5s infinite alternate;
+}
+
+.ability.active {
+    border-color: #44ff88;
+    box-shadow: 0 0 15px rgba(68, 255, 136, 0.6);
+}
+
+@keyframes pulse-glow {
+    from { box-shadow: 0 0 10px rgba(68, 136, 255, 0.4); }
+    to { box-shadow: 0 0 20px rgba(68, 136, 255, 0.8); }
+}
+
+/* Target indicator */
+#target-frame {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #aa4444;
+    border-radius: 8px;
+    padding: 10px 20px;
+    display: none;
+    z-index: 100;
+}
+
+#target-name {
+    color: #ff6666;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+#target-health-bar {
+    width: 200px;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #4a4a6a;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#target-health-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #aa4444, #dd6666);
+    border-radius: 6px;
+    transition: width 0.2s ease-out;
+}
+
+/* Main Menu */
+#main-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#main-menu.hidden {
+    display: none;
+}
+
+#main-menu h1 {
+    font-size: 72px;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(100, 200, 255, 0.5),
+                 0 4px 8px rgba(0, 0, 0, 0.5);
+    margin-bottom: 60px;
+    letter-spacing: 4px;
+}
+
+.menu-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.menu-btn {
+    width: 280px;
+    padding: 20px 40px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
+    border: 3px solid #4a4a6a;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.menu-btn:hover {
+    background: linear-gradient(145deg, #3a3a5a, #2a2a4a);
+    border-color: #6a6a8a;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(100, 150, 255, 0.4);
+}
+
+.menu-btn:active {
+    transform: scale(0.98);
+}
+
+/* Return to menu button */
+#return-menu-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #aaa;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #4a4a6a;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 100;
+    display: none;
+}
+
+#return-menu-btn:hover {
+    color: #fff;
+    border-color: #6a6a8a;
+    background: rgba(0, 0, 0, 0.7);
+}

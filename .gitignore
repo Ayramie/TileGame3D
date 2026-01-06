@@ -1,0 +1,9 @@
+# Large model files - download separately
+models/
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TileGame 3D</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu">
+        <h1>TileGame 3D</h1>
+        <div class="menu-options">
+            <button class="menu-btn" data-mode="mobbing">Mobbing</button>
+            <button class="menu-btn" data-mode="boss">Slime Boss</button>
+        </div>
+    </div>
+
+    <div id="ui">
+        <div id="health-bar">
+            <div id="health-fill"></div>
+            <span id="health-text">100 / 100</span>
+        </div>
+        <div id="controls-hint">
+            <span>WASD: Move</span>
+            <span>Space: Jump</span>
+            <span>RMB Hold: Turn</span>
+            <span>LMB Hold: Orbit</span>
+            <span>Tab: Target</span>
+        </div>
+        <div id="ability-bar">
+            <div class="ability" id="ability-q">
+                <span class="key">Q</span>
+                <span class="name">Cleave</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+            <div class="ability" id="ability-f">
+                <span class="key">F</span>
+                <span class="name">Bladestorm</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+            <div class="ability" id="ability-e">
+                <span class="key">E</span>
+                <span class="name">Parry</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+            <div class="ability" id="ability-r">
+                <span class="key">R</span>
+                <span class="name">Charge</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+            <div class="ability" id="ability-1">
+                <span class="key">1</span>
+                <span class="name">Potion</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crosshair removed - using visible cursor now -->
+
+    <div id="target-frame">
+        <div id="target-name">Slime</div>
+        <div id="target-health-bar">
+            <div id="target-health-fill"></div>
+        </div>
+    </div>
+
+    <button id="return-menu-btn">Menu</button>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
