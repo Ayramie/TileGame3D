@@ -3,7 +3,6 @@ import { Player } from './player.js';
 import { Mage } from './mage.js';
 import { ThirdPersonCamera } from './camera.js';
 import { InputManager } from './input.js';
-import { Enemy, SlimeEnemy, GreaterSlimeEnemy, SlimeBoss } from './enemy.js';
 import { SkeletonEnemy, createSkeletonEnemy } from './skeletonEnemy.js';
 import { EffectsManager } from './effects.js';
 import { ParticleSystem } from './particles.js';
@@ -28,7 +27,7 @@ export class Game {
 
         // Game state
         this.gameState = 'menu'; // 'menu' or 'playing'
-        this.gameMode = null; // 'mobbing', 'boss', 'dungeon', or 'skeletons'
+        this.gameMode = null; // 'horde', 'dungeon', or 'boss'
         this.selectedClass = 'warrior'; // 'warrior' or 'mage'
         this.enemies = [];
         this.projectiles = [];
@@ -128,10 +127,9 @@ export class Game {
                 </div>
             </div>
             <div class="menu-options">
-                <button class="menu-btn" data-mode="mobbing">Slime Mobbing</button>
-                <button class="menu-btn" data-mode="boss">Slime Boss</button>
-                <button class="menu-btn" data-mode="skeletons">Skeleton Horde</button>
+                <button class="menu-btn" data-mode="horde">Skeleton Horde</button>
                 <button class="menu-btn" data-mode="dungeon">Dungeon</button>
+                <button class="menu-btn" data-mode="boss">Skeleton Boss</button>
             </div>
         `;
         document.getElementById('ui').style.display = 'block';
@@ -199,152 +197,59 @@ export class Game {
     }
 
     async setupScene() {
-        if (this.gameMode === 'dungeon') {
-            // Dungeon mode - use dungeon builder
-            this.scene.background = new THREE.Color(0x221122);
-            this.scene.fog = new THREE.FogExp2(0x221122, 0.03);
+        // Dungeon environment for all modes
+        this.scene.background = new THREE.Color(0x1a1a2e);
+        this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.025);
 
-            // Create dungeon builder and build test dungeon
-            this.dungeonBuilder = new DungeonBuilder(this.scene);
-            await this.dungeonBuilder.preloadAssets();
-            await this.dungeonBuilder.buildTestDungeon();
+        // Create dungeon builder and build dungeon
+        this.dungeonBuilder = new DungeonBuilder(this.scene);
+        await this.dungeonBuilder.preloadAssets();
+
+        if (this.gameMode === 'boss') {
+            // Boss arena - larger room
+            await this.dungeonBuilder.buildRoom(0, 0, 12, 12);
+            await this.dungeonBuilder.addTorches(0, 0, 12, 12, 4);
         } else {
-            // Outdoor arena mode
-            // Ground plane with procedural grass-like texture
-            const groundGeometry = new THREE.PlaneGeometry(200, 200, 100, 100);
-
-            // Add some vertex displacement for natural look
-            const positions = groundGeometry.attributes.position;
-            for (let i = 0; i < positions.count; i++) {
-                const x = positions.getX(i);
-                const z = positions.getY(i);
-                // Subtle wave pattern
-                const height = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.2;
-                positions.setZ(i, height);
-            }
-            groundGeometry.computeVertexNormals();
-
-            const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x4a9f4a,
-                roughness: 0.85,
-                metalness: 0.0,
-                flatShading: false
-            });
-            this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            this.ground.rotation.x = -Math.PI / 2;
-            this.ground.receiveShadow = true;
-            this.scene.add(this.ground);
-
-            // Subtle grid for arena feel
-            const gridHelper = new THREE.GridHelper(200, 40, 0x3d7d3d, 0x3d7d3d);
-            gridHelper.position.y = 0.02;
-            gridHelper.material.opacity = 0.15;
-            gridHelper.material.transparent = true;
-            this.scene.add(gridHelper);
-
-            // Add arena circle marker
-            const arenaCircle = new THREE.RingGeometry(25, 25.3, 64);
-            const arenaMaterial = new THREE.MeshBasicMaterial({
-                color: 0x5588aa,
-                transparent: true,
-                opacity: 0.3,
-                side: THREE.DoubleSide
-            });
-            const arena = new THREE.Mesh(arenaCircle, arenaMaterial);
-            arena.rotation.x = -Math.PI / 2;
-            arena.position.y = 0.03;
-            this.scene.add(arena);
-
-            // Add some decorative elements
-            this.addScenery();
+            // Standard dungeon room
+            await this.dungeonBuilder.buildTestDungeon();
         }
-    }
-
-    addScenery() {
-        // Simple trees as cylinders with sphere tops
-        const treePositions = [
-            [-15, 10], [-20, -5], [25, 15], [30, -20], [-25, -25],
-            [18, -12], [-10, 25], [35, 5], [-30, 15], [5, -30]
-        ];
-
-        for (const [x, z] of treePositions) {
-            this.addTree(x, z);
-        }
-
-        // Rocks
-        const rockPositions = [
-            [-8, 5], [12, -8], [-5, -15], [20, 10], [-18, -10]
-        ];
-
-        for (const [x, z] of rockPositions) {
-            this.addRock(x, z);
-        }
-    }
-
-    addTree(x, z) {
-        const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
-        const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.set(x, 1.5, z);
-        trunk.castShadow = true;
-        this.scene.add(trunk);
-
-        const foliageGeometry = new THREE.SphereGeometry(2, 8, 6);
-        const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-        foliage.position.set(x, 4, z);
-        foliage.castShadow = true;
-        this.scene.add(foliage);
-    }
-
-    addRock(x, z) {
-        const rockGeometry = new THREE.DodecahedronGeometry(0.8, 0);
-        const rockMaterial = new THREE.MeshStandardMaterial({
-            color: 0x666666,
-            roughness: 0.9
-        });
-        const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-        rock.position.set(x, 0.4, z);
-        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-        rock.scale.set(1, 0.6, 1);
-        rock.castShadow = true;
-        this.scene.add(rock);
     }
 
     setupLighting() {
-        // Ambient light - warmer tone
-        const ambient = new THREE.AmbientLight(0xffeedd, 0.35);
+        // Dungeon ambient light - dim and moody
+        const ambient = new THREE.AmbientLight(0x332244, 0.4);
         this.scene.add(ambient);
 
-        // Main directional light (sun) - golden hour feel
-        const sun = new THREE.DirectionalLight(0xfff4e5, 1.2);
-        sun.position.set(50, 80, 30);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 2048;
-        sun.shadow.mapSize.height = 2048;
-        sun.shadow.camera.near = 0.5;
-        sun.shadow.camera.far = 250;
-        sun.shadow.camera.left = -60;
-        sun.shadow.camera.right = 60;
-        sun.shadow.camera.top = 60;
-        sun.shadow.camera.bottom = -60;
-        sun.shadow.bias = -0.0001;
-        sun.shadow.normalBias = 0.02;
-        this.scene.add(sun);
+        // Main light from above - dim moonlight through cracks
+        const mainLight = new THREE.DirectionalLight(0x6688aa, 0.6);
+        mainLight.position.set(10, 30, 10);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.near = 0.5;
+        mainLight.shadow.camera.far = 100;
+        mainLight.shadow.camera.left = -30;
+        mainLight.shadow.camera.right = 30;
+        mainLight.shadow.camera.top = 30;
+        mainLight.shadow.camera.bottom = -30;
+        mainLight.shadow.bias = -0.0001;
+        mainLight.shadow.normalBias = 0.02;
+        this.scene.add(mainLight);
 
-        // Fill light from opposite side - cool blue tint
-        const fillLight = new THREE.DirectionalLight(0x88aaff, 0.3);
-        fillLight.position.set(-30, 40, -20);
-        this.scene.add(fillLight);
+        // Warm fill from torches
+        const torchFill = new THREE.DirectionalLight(0xff6622, 0.3);
+        torchFill.position.set(-10, 10, -10);
+        this.scene.add(torchFill);
 
-        // Hemisphere light for sky/ground color blending
-        const hemi = new THREE.HemisphereLight(0x88ccff, 0x446633, 0.4);
+        // Hemisphere light for dungeon feel
+        const hemi = new THREE.HemisphereLight(0x444466, 0x222211, 0.3);
         this.scene.add(hemi);
 
-        // Rim light for character highlighting
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.2);
-        rimLight.position.set(0, 20, -50);
-        this.scene.add(rimLight);
+        // Central torch light for player area
+        const playerLight = new THREE.PointLight(0xff8844, 0.8, 15);
+        playerLight.position.set(0, 3, 0);
+        this.scene.add(playerLight);
+        this.playerLight = playerLight;
     }
 
     setupPlayer() {
@@ -373,35 +278,38 @@ export class Game {
 
     spawnEnemies() {
         if (this.gameMode === 'boss') {
-            // Spawn the Slime Boss
-            const boss = new SlimeBoss(this.scene, this, 0, 15);
-            boss.name = 'Slime Boss';
+            // Skeleton Boss fight - elite warrior with minion guards
+            const boss = createSkeletonEnemy(this.scene, 0, 10, 'warrior');
+            boss.name = 'Skeleton Champion';
+            boss.maxHealth = 500;
+            boss.health = boss.maxHealth;
+            boss.attackDamage = 25;
             this.enemies.push(boss);
-        } else if (this.gameMode === 'skeletons') {
-            // Skeleton mode - spawn KayKit skeleton enemies
-            const skeletonTypes = ['warrior', 'mage', 'rogue', 'minion'];
-            const positions = [
-                { x: 8, z: 5, type: 'warrior' },
-                { x: -8, z: 5, type: 'mage' },
-                { x: 0, z: 12, type: 'rogue' },
-                { x: 10, z: -8, type: 'minion' },
-                { x: -10, z: -8, type: 'minion' },
-                { x: 15, z: 10, type: 'warrior' },
-                { x: -15, z: 10, type: 'rogue' }
-            ];
 
-            for (const pos of positions) {
-                const skeleton = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);
-                this.enemies.push(skeleton);
+            // Guard minions
+            const guardPositions = [
+                { x: -5, z: 8, type: 'minion' },
+                { x: 5, z: 8, type: 'minion' },
+                { x: -3, z: 12, type: 'rogue' },
+                { x: 3, z: 12, type: 'rogue' }
+            ];
+            for (const pos of guardPositions) {
+                const guard = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);
+                this.enemies.push(guard);
             }
-        } else if (this.gameMode === 'dungeon') {
-            // Dungeon mode - spawn skeletons in dungeon setting
+        } else if (this.gameMode === 'horde') {
+            // Skeleton horde - many enemies
             const positions = [
-                { x: 5, z: 5, type: 'warrior' },
-                { x: -5, z: 5, type: 'warrior' },
+                { x: 6, z: 4, type: 'warrior' },
+                { x: -6, z: 4, type: 'warrior' },
                 { x: 0, z: 8, type: 'mage' },
-                { x: 3, z: -3, type: 'minion' },
-                { x: -3, z: -3, type: 'minion' }
+                { x: 8, z: -4, type: 'rogue' },
+                { x: -8, z: -4, type: 'rogue' },
+                { x: 4, z: -6, type: 'minion' },
+                { x: -4, z: -6, type: 'minion' },
+                { x: 0, z: -8, type: 'minion' },
+                { x: 10, z: 6, type: 'minion' },
+                { x: -10, z: 6, type: 'minion' }
             ];
 
             for (const pos of positions) {
@@ -409,21 +317,20 @@ export class Game {
                 this.enemies.push(skeleton);
             }
         } else {
-            // Mobbing mode - spawn slimes around the arena
-            const slimePositions = [
-                [8, 0, 5], [10, 0, -8], [-12, 0, 6], [-8, 0, -10],
-                [15, 0, 12], [-15, 0, -15], [20, 0, 0], [-5, 0, 20]
+            // Dungeon mode - balanced skeleton group
+            const positions = [
+                { x: 5, z: 5, type: 'warrior' },
+                { x: -5, z: 5, type: 'warrior' },
+                { x: 0, z: 8, type: 'mage' },
+                { x: 3, z: -3, type: 'minion' },
+                { x: -3, z: -3, type: 'minion' },
+                { x: 6, z: -2, type: 'rogue' }
             ];
 
-            for (const [x, y, z] of slimePositions) {
-                const slime = new SlimeEnemy(this.scene, x, z);
-                this.enemies.push(slime);
+            for (const pos of positions) {
+                const skeleton = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);
+                this.enemies.push(skeleton);
             }
-
-            // Spawn a Greater Slime
-            const boss = new GreaterSlimeEnemy(this.scene, 0, 20);
-            boss.name = 'Greater Slime';
-            this.enemies.push(boss);
         }
     }
 
@@ -544,44 +451,47 @@ export class Game {
         // Update camera
         this.cameraController.update(deltaTime, this.input);
 
+        // Update player light position to follow player
+        if (this.playerLight) {
+            this.playerLight.position.x = this.player.position.x;
+            this.playerLight.position.z = this.player.position.z;
+        }
+
         // Update enemies
         for (const enemy of this.enemies) {
             if (enemy.isAlive) {
                 enemy.update(deltaTime, this.player, this.camera);
             }
 
-            // Check for hit particles
+            // Check for hit particles - skeleton bone particles
             if (enemy.lastHitPosition && this.particles) {
-                const isBoss = enemy.constructor.name === 'SlimeBoss';
-                const isGreater = enemy.constructor.name === 'GreaterSlimeEnemy';
+                const isBoss = enemy.name === 'Skeleton Champion';
 
-                if (isBoss || isGreater) {
-                    this.particles.purpleSlimeHit(enemy.lastHitPosition, enemy.lastHitAmount / 20);
+                if (isBoss) {
+                    // Boss hit - more intense
+                    this.particles.deathExplosion(enemy.lastHitPosition, 0xddddaa, 0.3);
+                    this.addScreenShake(Math.min(enemy.lastHitAmount / 20, 0.8));
                 } else {
-                    this.particles.slimeHit(enemy.lastHitPosition, enemy.lastHitAmount / 15);
+                    // Regular skeleton hit - bone dust
+                    this.particles.deathExplosion(enemy.lastHitPosition, 0xccccaa, 0.15);
+                    this.addScreenShake(Math.min(enemy.lastHitAmount / 40, 0.3));
                 }
-
-                // Screen shake based on damage
-                this.addScreenShake(Math.min(enemy.lastHitAmount / 30, 0.5));
 
                 enemy.lastHitPosition = null;
                 enemy.lastHitAmount = null;
             }
 
-            // Check for death particles
+            // Check for death particles - skeleton collapse
             if (enemy.justDied && this.particles) {
-                const isBoss = enemy.constructor.name === 'SlimeBoss';
-                const isGreater = enemy.constructor.name === 'GreaterSlimeEnemy';
+                const isBoss = enemy.name === 'Skeleton Champion';
 
                 if (isBoss) {
-                    this.particles.deathExplosion(enemy.deathPosition, 0x8844aa, 3);
-                    this.addScreenShake(2);
-                } else if (isGreater) {
-                    this.particles.deathExplosion(enemy.deathPosition, 0x8844aa, 1.5);
-                    this.addScreenShake(1);
+                    this.particles.deathExplosion(enemy.deathPosition, 0xffddaa, 2.5);
+                    this.addScreenShake(1.5);
                 } else {
-                    this.particles.deathExplosion(enemy.deathPosition, 0x44dd44, 1);
-                    this.addScreenShake(0.5);
+                    // Skeleton crumbles to dust
+                    this.particles.deathExplosion(enemy.deathPosition, 0xddddcc, 1);
+                    this.addScreenShake(0.4);
                 }
 
                 enemy.justDied = false;
@@ -703,11 +613,8 @@ export class Game {
         for (const enemy of this.enemies) {
             if (!enemy.isAlive) continue;
 
-            // Skip boss - boss only uses telegraphed special attacks
-            if (enemy instanceof SlimeBoss) continue;
-
             const dist = this.player.position.distanceTo(enemy.position);
-            if (dist < 1.5) {
+            if (dist < enemy.attackRange || dist < 1.5) {
                 enemy.tryAttack(this.player);
             }
         }
@@ -725,7 +632,7 @@ export class Game {
         if (this.player.targetEnemy && this.player.targetEnemy.isAlive) {
             targetFrame.style.display = 'block';
             document.getElementById('target-name').textContent =
-                this.player.targetEnemy.name || 'Slime';
+                this.player.targetEnemy.name || 'Skeleton';
             const targetHealthPercent =
                 (this.player.targetEnemy.health / this.player.targetEnemy.maxHealth) * 100;
             document.getElementById('target-health-fill').style.width = `${targetHealthPercent}%`;

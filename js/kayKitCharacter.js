@@ -30,27 +30,66 @@ export class KayKitCharacter {
         };
 
         // Animation clip name mappings (KayKit clip names to our names)
+        // KayKit uses various naming conventions
         this.animationMappings = {
-            // Movement
+            // Movement - various KayKit naming styles
             'Idle': 'idle',
+            'Idle_A': 'idle',
+            'Idle_B': 'idle',
+            '1H_Melee_Idle': 'idle',
+            '2H_Melee_Idle': 'idle',
+            'Unarmed_Idle': 'idle',
             'Walk': 'walk',
+            'Walk_A': 'walk',
+            'Walking_A': 'walk',
+            'Walking_B': 'walk',
+            '1H_Melee_Walk': 'walk',
             'Run': 'run',
+            'Run_A': 'run',
+            'Running_A': 'run',
+            'Running_B': 'run',
+            '1H_Melee_Run': 'run',
             'Run_Fast': 'runFast',
-            // Combat Melee
+            // Combat Melee - KayKit styles
             'Attack_Slash': 'attack1',
-            'Attack_Slash_Horizontal': 'attack2',
-            'Attack_Stab': 'attack3',
-            'Attack_Swing': 'attack4',
+            '1H_Melee_Attack_Slice_Diagonal': 'attack1',
+            '1H_Melee_Attack_Slice_Horizontal': 'attack2',
+            '1H_Melee_Attack_Stab': 'attack3',
+            '1H_Melee_Attack_Chop': 'attack4',
+            '2H_Melee_Attack_Slice': 'attack1',
+            '2H_Melee_Attack_Spin': 'attack2',
+            'Unarmed_Melee_Attack_Punch_A': 'attack1',
+            'Unarmed_Melee_Attack_Punch_B': 'attack2',
+            'Unarmed_Melee_Attack_Kick': 'attack3',
             'Block': 'block',
             'Block_Idle': 'blockIdle',
+            'Blocking_Idle': 'blockIdle',
+            '1H_Melee_Block_Idle': 'blockIdle',
             // General
             'Death': 'death',
+            'Death_A': 'death',
+            'Death_A_Pose': 'death',
+            'Death_B': 'death',
+            'Death_B_Pose': 'death',
             'Hit': 'impact',
+            'Hit_A': 'impact',
+            'Hit_B': 'impact',
+            'Interact': 'interact',
             'Jump': 'jump',
+            'Jump_Full_Long': 'jump',
+            'Jump_Full_Short': 'jump',
+            'Jump_Start': 'jumpStart',
+            'Jump_Idle': 'jumpIdle',
+            'Jump_Land': 'jumpLand',
             'Roll': 'dodge',
+            'Dodge_Right': 'dodge',
+            'Dodge_Left': 'dodge',
+            'Dodge_Backward': 'dodge',
             // Strafe
             'Strafe_Left': 'strafeLeft',
-            'Strafe_Right': 'strafeRight'
+            'Strafe_Right': 'strafeRight',
+            'Running_Strafe_Left': 'strafeLeft',
+            'Running_Strafe_Right': 'strafeRight'
         };
     }
 
@@ -163,11 +202,17 @@ export class KayKitCharacter {
             return;
         }
 
+        console.log(`Loading ${Object.keys(animFiles).length} animation packs for ${rigKey}...`);
+
         // Load each animation file
         const loadPromises = Object.entries(animFiles).map(async ([name, path]) => {
             try {
-                console.log(`Loading animation pack: ${name}`);
                 const gltf = await this.loadGLTF(loader, path);
+                console.log(`  Pack "${name}": ${gltf.animations.length} clips found`);
+                // Log all clip names for debugging
+                gltf.animations.forEach(clip => {
+                    console.log(`    - ${clip.name}`);
+                });
                 return { name, clips: gltf.animations };
             } catch (error) {
                 console.warn(`Could not load animation pack ${name}:`, error.message);
@@ -178,12 +223,34 @@ export class KayKitCharacter {
         const results = await Promise.all(loadPromises);
 
         // Process all loaded clips
+        let loadedCount = 0;
         for (const { name: packName, clips } of results) {
             for (const clip of clips) {
                 // Map KayKit clip name to our animation name
-                const mappedName = this.animationMappings[clip.name] || clip.name.toLowerCase();
+                let mappedName = this.animationMappings[clip.name];
 
-                // Create action if not already exists
+                // If no direct mapping, try fuzzy matching
+                if (!mappedName) {
+                    const lowerName = clip.name.toLowerCase();
+                    // Try to infer animation type from name
+                    if (lowerName.includes('idle')) mappedName = 'idle';
+                    else if (lowerName.includes('walk')) mappedName = 'walk';
+                    else if (lowerName.includes('run')) mappedName = 'run';
+                    else if (lowerName.includes('attack') || lowerName.includes('slice') || lowerName.includes('chop')) {
+                        if (!this.animations.attack1) mappedName = 'attack1';
+                        else if (!this.animations.attack2) mappedName = 'attack2';
+                        else if (!this.animations.attack3) mappedName = 'attack3';
+                        else mappedName = 'attack4';
+                    }
+                    else if (lowerName.includes('death')) mappedName = 'death';
+                    else if (lowerName.includes('hit') || lowerName.includes('damage')) mappedName = 'impact';
+                    else if (lowerName.includes('block')) mappedName = 'block';
+                    else if (lowerName.includes('jump')) mappedName = 'jump';
+                    else if (lowerName.includes('roll') || lowerName.includes('dodge')) mappedName = 'dodge';
+                    else mappedName = lowerName.replace(/[^a-z0-9]/g, '_');
+                }
+
+                // Create action if not already exists for this mapped name
                 if (!this.animations[mappedName]) {
                     const action = this.mixer.clipAction(clip);
 
@@ -196,10 +263,12 @@ export class KayKitCharacter {
                     }
 
                     this.animations[mappedName] = action;
-                    console.log(`  Loaded animation: ${mappedName} (from ${clip.name})`);
+                    loadedCount++;
                 }
             }
         }
+
+        console.log(`Loaded ${loadedCount} unique animations. Available: ${Object.keys(this.animations).join(', ')}`);
 
         // Setup animation finished callback
         this.mixer.addEventListener('finished', (e) => {
