@@ -1,0 +1,404 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AssetManifest, getCharacterPath, getAnimationPath } from './assetManifest.js';
+
+// KayKit character controller - supports GLB models with separate animation files
+export class KayKitCharacter {
+    constructor(scene) {
+        this.scene = scene;
+        this.model = null;
+        this.mixer = null;
+        this.animations = {};
+        this.currentAction = null;
+        this.isLoaded = false;
+        this.loadProgress = 0;
+
+        // Animation state
+        this.animationState = 'idle';
+        this.isAttacking = false;
+        this.attackQueue = [];
+
+        // Model scale (KayKit models are properly scaled)
+        this.scale = 1.0;
+
+        // Bone references for attachments
+        this.bones = {
+            handR: null,
+            handL: null,
+            head: null,
+            spine: null
+        };
+
+        // Animation clip name mappings (KayKit clip names to our names)
+        this.animationMappings = {
+            // Movement
+            'Idle': 'idle',
+            'Walk': 'walk',
+            'Run': 'run',
+            'Run_Fast': 'runFast',
+            // Combat Melee
+            'Attack_Slash': 'attack1',
+            'Attack_Slash_Horizontal': 'attack2',
+            'Attack_Stab': 'attack3',
+            'Attack_Swing': 'attack4',
+            'Block': 'block',
+            'Block_Idle': 'blockIdle',
+            // General
+            'Death': 'death',
+            'Hit': 'impact',
+            'Jump': 'jump',
+            'Roll': 'dodge',
+            // Strafe
+            'Strafe_Left': 'strafeLeft',
+            'Strafe_Right': 'strafeRight'
+        };
+    }
+
+    async load(characterType = 'adventurers', characterName = 'knight') {
+        const loader = new GLTFLoader();
+
+        try {
+            // Get character path from manifest
+            const charPath = getCharacterPath(characterType, characterName);
+            if (!charPath) {
+                throw new Error(`Character not found: ${characterType}/${characterName}`);
+            }
+
+            // Load character model
+            console.log(`Loading character: ${charPath}`);
+            const gltf = await this.loadGLTF(loader, charPath);
+            this.model = gltf.scene;
+            this.model.scale.setScalar(this.scale);
+
+            // Setup materials and shadows
+            this.model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    this.fixMaterial(child.material);
+                }
+                // Find bones for attachments
+                if (child.isBone) {
+                    this.findBone(child);
+                }
+            });
+
+            // Create animation mixer
+            this.mixer = new THREE.AnimationMixer(this.model);
+
+            // Load animations from rig files
+            await this.loadAnimations(loader, characterType);
+
+            this.scene.add(this.model);
+            this.isLoaded = true;
+
+            // Start with idle animation
+            this.playAnimation('idle', true);
+
+            console.log('KayKit character loaded successfully');
+            return true;
+        } catch (error) {
+            console.error('Failed to load KayKit character:', error);
+            return false;
+        }
+    }
+
+    findBone(bone) {
+        const name = bone.name.toLowerCase();
+        if (name.includes('hand') && name.includes('r')) {
+            this.bones.handR = bone;
+        } else if (name.includes('hand') && name.includes('l')) {
+            this.bones.handL = bone;
+        } else if (name.includes('head')) {
+            this.bones.head = bone;
+        } else if (name.includes('spine')) {
+            this.bones.spine = bone;
+        }
+    }
+
+    fixMaterial(material) {
+        if (!material) return;
+
+        if (Array.isArray(material)) {
+            material.forEach(m => this.fixMaterial(m));
+            return;
+        }
+
+        // Ensure proper rendering
+        material.transparent = false;
+        material.opacity = 1.0;
+        material.side = THREE.FrontSide;
+
+        if (material.isMeshStandardMaterial) {
+            material.roughness = Math.max(0.4, material.roughness || 0.5);
+            material.metalness = Math.min(0.3, material.metalness || 0.0);
+        }
+    }
+
+    loadGLTF(loader, path) {
+        return new Promise((resolve, reject) => {
+            loader.load(
+                path,
+                (gltf) => resolve(gltf),
+                (xhr) => {
+                    if (xhr.lengthComputable) {
+                        this.loadProgress = (xhr.loaded / xhr.total) * 100;
+                    }
+                },
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadAnimations(loader, characterType) {
+        // Determine rig type from character
+        const charInfo = AssetManifest.characters[characterType];
+        const rigType = charInfo?.knight?.rig || 'medium';
+        const rigKey = rigType === 'large' ? 'rigLarge' : 'rigMedium';
+
+        // Animation files to load
+        const animFiles = AssetManifest.animations[rigKey];
+        if (!animFiles) {
+            console.warn(`No animations found for rig type: ${rigKey}`);
+            return;
+        }
+
+        // Load each animation file
+        const loadPromises = Object.entries(animFiles).map(async ([name, path]) => {
+            try {
+                console.log(`Loading animation pack: ${name}`);
+                const gltf = await this.loadGLTF(loader, path);
+                return { name, clips: gltf.animations };
+            } catch (error) {
+                console.warn(`Could not load animation pack ${name}:`, error.message);
+                return { name, clips: [] };
+            }
+        });
+
+        const results = await Promise.all(loadPromises);
+
+        // Process all loaded clips
+        for (const { name: packName, clips } of results) {
+            for (const clip of clips) {
+                // Map KayKit clip name to our animation name
+                const mappedName = this.animationMappings[clip.name] || clip.name.toLowerCase();
+
+                // Create action if not already exists
+                if (!this.animations[mappedName]) {
+                    const action = this.mixer.clipAction(clip);
+
+                    // Configure animation properties
+                    if (this.isLoopingAnimation(mappedName)) {
+                        action.setLoop(THREE.LoopRepeat);
+                    } else {
+                        action.setLoop(THREE.LoopOnce);
+                        action.clampWhenFinished = true;
+                    }
+
+                    this.animations[mappedName] = action;
+                    console.log(`  Loaded animation: ${mappedName} (from ${clip.name})`);
+                }
+            }
+        }
+
+        // Setup animation finished callback
+        this.mixer.addEventListener('finished', (e) => {
+            this.onAnimationFinished(e.action);
+        });
+    }
+
+    isLoopingAnimation(name) {
+        return ['idle', 'run', 'walk', 'runfast', 'blockidle', 'strafeleft', 'straferight'].includes(name.toLowerCase());
+    }
+
+    onAnimationFinished(action) {
+        const animName = action.getClip().name.toLowerCase();
+
+        if (animName.includes('attack') || animName === 'impact' || animName === 'hit') {
+            this.isAttacking = false;
+            this.attackStartTime = null;
+
+            // Check if there's a queued attack
+            if (this.attackQueue.length > 0) {
+                const nextAttack = this.attackQueue.shift();
+                this.playAttack(nextAttack);
+            } else {
+                this.returnToDefaultAnimation();
+            }
+        } else if (['jump', 'block', 'roll', 'dodge'].includes(animName)) {
+            this.returnToDefaultAnimation();
+        }
+    }
+
+    returnToDefaultAnimation() {
+        this.isAttacking = false;
+        this.attackStartTime = null;
+        if (['run', 'walk', 'strafeleft', 'straferight'].includes(this.animationState)) {
+            this.playAnimation(this.animationState, true);
+        } else {
+            this.playAnimation('idle', true);
+        }
+    }
+
+    cancelAnimation() {
+        this.isAttacking = false;
+        this.attackStartTime = null;
+        this.attackQueue = [];
+        this.returnToDefaultAnimation();
+    }
+
+    playAnimation(name, loop = false, crossfadeDuration = 0.2) {
+        if (!this.animations[name]) {
+            // Try lowercase version
+            const lowerName = name.toLowerCase();
+            if (!this.animations[lowerName]) {
+                console.warn(`Animation ${name} not found`);
+                return;
+            }
+            name = lowerName;
+        }
+
+        const newAction = this.animations[name];
+
+        if (this.currentAction === newAction) {
+            return; // Already playing
+        }
+
+        if (this.currentAction) {
+            newAction.reset();
+            newAction.setEffectiveTimeScale(1);
+            newAction.setEffectiveWeight(1);
+            newAction.crossFadeFrom(this.currentAction, crossfadeDuration, true);
+            newAction.play();
+        } else {
+            newAction.reset();
+            newAction.play();
+        }
+
+        this.currentAction = newAction;
+
+        if (!name.includes('attack') && name !== 'impact' && name !== 'death' && name !== 'hit') {
+            this.animationState = name;
+        }
+    }
+
+    playAttack(attackNum = 1) {
+        if (this.isAttacking) {
+            if (this.attackQueue.length < 2) {
+                this.attackQueue.push(attackNum);
+            }
+            return;
+        }
+
+        this.isAttacking = true;
+        this.attackStartTime = Date.now();
+
+        const attackName = `attack${attackNum}`;
+        if (this.animations[attackName]) {
+            this.playAnimation(attackName, false, 0.1);
+        } else if (this.animations.attack1) {
+            this.playAnimation('attack1', false, 0.1);
+        }
+    }
+
+    playBlock() {
+        if (!this.isAttacking) {
+            this.playAnimation('block', false, 0.1);
+        }
+    }
+
+    playImpact() {
+        const impactAnim = this.animations.impact || this.animations.hit;
+        if (impactAnim && !this.isAttacking) {
+            this.playAnimation(impactAnim === this.animations.impact ? 'impact' : 'hit', false, 0.05);
+            this.isAttacking = true;
+        }
+    }
+
+    playDeath() {
+        this.playAnimation('death', false, 0.2);
+    }
+
+    playJump() {
+        if (this.animations.jump) {
+            this.playAnimation('jump', false, 0.1);
+        }
+    }
+
+    playDodge() {
+        const dodgeAnim = this.animations.dodge || this.animations.roll;
+        if (dodgeAnim) {
+            this.playAnimation(dodgeAnim === this.animations.dodge ? 'dodge' : 'roll', false, 0.1);
+        }
+    }
+
+    update(deltaTime, isMoving, isRunning = true, isGrounded = true) {
+        if (!this.isLoaded) return;
+
+        // Update animation mixer
+        if (this.mixer) {
+            this.mixer.update(deltaTime);
+        }
+
+        // Don't change animation if dead
+        if (this.currentAction === this.animations.death) return;
+
+        // Clear stuck attacking state after timeout
+        if (this.isAttacking && this.attackStartTime) {
+            if (Date.now() - this.attackStartTime > 2000) {
+                this.isAttacking = false;
+                this.attackStartTime = null;
+            }
+        }
+
+        // Handle movement animations
+        if (isMoving && !this.isAttacking) {
+            if (isRunning && this.animations.run) {
+                this.playAnimation('run', true);
+            } else if (this.animations.walk) {
+                this.playAnimation('walk', true);
+            }
+        } else if (!isMoving && !this.isAttacking) {
+            this.playAnimation('idle', true);
+        }
+    }
+
+    setPosition(x, y, z) {
+        if (this.model) {
+            this.model.position.set(x, y, z);
+        }
+    }
+
+    setRotation(yRotation) {
+        if (this.model) {
+            this.model.rotation.y = yRotation;
+        }
+    }
+
+    getPosition() {
+        return this.model ? this.model.position : new THREE.Vector3();
+    }
+
+    getBone(boneName) {
+        return this.bones[boneName] || null;
+    }
+
+    dispose() {
+        if (this.mixer) {
+            this.mixer.stopAllAction();
+        }
+        if (this.model) {
+            this.scene.remove(this.model);
+            this.model.traverse((child) => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
+        }
+    }
+}

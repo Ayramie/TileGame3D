@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CharacterController } from './character.js';
+import { KayKitCharacter } from './kayKitCharacter.js';
 
 export class Player {
     constructor(scene, game) {
@@ -68,8 +68,8 @@ export class Player {
             }
         };
 
-        // Character controller for animated model
-        this.character = new CharacterController(scene);
+        // KayKit character controller for animated model
+        this.character = new KayKitCharacter(scene);
         this.useAnimatedCharacter = false;
         this.characterLoading = false;
 
@@ -142,16 +142,17 @@ export class Player {
         this.group.visible = false;
 
         try {
-            const success = await this.character.load();
+            // Load KayKit Knight character
+            const success = await this.character.load('adventurers', 'knight');
             if (success) {
                 this.useAnimatedCharacter = true;
-                console.log('Using animated character model');
+                console.log('Using KayKit Knight character model');
             } else {
                 // Show fallback if loading failed
                 this.group.visible = true;
             }
         } catch (error) {
-            console.warn('Failed to load animated character, using fallback:', error);
+            console.warn('Failed to load KayKit character, using fallback:', error);
             this.group.visible = true;
         }
         this.characterLoading = false;

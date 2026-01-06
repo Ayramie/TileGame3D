@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CharacterController } from './character.js';
+import { KayKitCharacter } from './kayKitCharacter.js';
 
 export class Mage {
     constructor(scene, game) {
@@ -72,8 +72,8 @@ export class Mage {
         // Active ground effects (blizzard zones)
         this.groundEffects = [];
 
-        // Character controller for animated model
-        this.character = new CharacterController(scene);
+        // KayKit character controller for animated model
+        this.character = new KayKitCharacter(scene);
         this.useAnimatedCharacter = false;
         this.characterLoading = false;
 
@@ -173,15 +173,16 @@ export class Mage {
         this.group.visible = false;
 
         try {
-            const success = await this.character.load();
+            // Load KayKit Mage character
+            const success = await this.character.load('adventurers', 'mage');
             if (success) {
                 this.useAnimatedCharacter = true;
-                console.log('Mage: Using animated character model');
+                console.log('Using KayKit Mage character model');
             } else {
                 this.group.visible = true;
             }
         } catch (error) {
-            console.warn('Failed to load mage character, using fallback:', error);
+            console.warn('Failed to load KayKit mage character, using fallback:', error);
             this.group.visible = true;
         }
         this.characterLoading = false;
