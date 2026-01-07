@@ -210,7 +210,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.arrowWaveIndicator.rotation.z = angle;
+        this.arrowWaveIndicator.rotation.z = angle + Math.PI;
     }
 
     showShotgunIndicator(show) {
@@ -228,7 +228,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.shotgunIndicator.rotation.z = angle;
+        this.shotgunIndicator.rotation.z = angle + Math.PI;
     }
 
     showGiantArrowIndicator(show) {
@@ -246,7 +246,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.giantArrowIndicator.rotation.z = angle;
+        this.giantArrowIndicator.rotation.z = angle + Math.PI;
     }
 
     async loadCharacter() {
