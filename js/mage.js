@@ -500,7 +500,7 @@ export class Mage {
         });
 
         // Cast particles
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.magicCast) {
             this.game.particles.magicCast(startPos);
         }
     }
@@ -539,7 +539,7 @@ export class Mage {
                 }
 
                 // Impact particles
-                if (this.game && this.game.particles) {
+                if (this.game && this.game.particles && this.game.particles.magicImpact) {
                     this.game.particles.magicImpact(proj.mesh.position);
                 }
 
@@ -616,7 +616,7 @@ export class Mage {
         });
 
         // Initial burst particles
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.blizzardBurst) {
             this.game.particles.blizzardBurst(position);
         }
     }
@@ -668,7 +668,7 @@ export class Mage {
                 }
 
                 // Spawn ice particles
-                if (this.game && this.game.particles) {
+                if (this.game && this.game.particles && this.game.particles.blizzardTick) {
                     this.game.particles.blizzardTick(effect.position);
                 }
             }
@@ -713,7 +713,7 @@ export class Mage {
         }
 
         // Particle effect
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.flameWave) {
             this.game.particles.flameWave(this.position, forward, ability.range);
         }
 
@@ -1198,7 +1198,7 @@ export class Mage {
         }
 
         // Trail effect
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.backstepTrail) {
             this.game.particles.backstepTrail(startPos, this.position);
         }
 
@@ -1223,7 +1223,7 @@ export class Mage {
             this.game.effects.createDamageNumber(this.position, ability.healAmount, true);
         }
 
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.healEffect) {
             this.game.particles.healEffect(this.position);
         }
 
@@ -1237,8 +1237,10 @@ export class Mage {
             this.character.playImpact();
         }
 
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.playerHit) {
             this.game.particles.playerHit(this.position);
+        }
+        if (this.game) {
             this.game.addScreenShake(Math.min(amount / 20, 0.5));
         }
 

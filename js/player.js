@@ -1053,7 +1053,7 @@ export class Player {
         // Damage all enemies in range
         if (this.game && this.game.enemies) {
             for (const enemy of this.game.enemies) {
-                if (!enemy.isDead) {
+                if (enemy.isAlive) {
                     const dx = enemy.position.x - this.position.x;
                     const dz = enemy.position.z - this.position.z;
                     const dist = Math.sqrt(dx * dx + dz * dz);

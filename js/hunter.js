@@ -589,49 +589,6 @@ export class Hunter {
         });
     }
 
-    updateProjectiles(deltaTime) {
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            const proj = this.projectiles[i];
-
-            if (!proj.target || !proj.target.isAlive) {
-                this.scene.remove(proj.mesh);
-                proj.mesh.geometry.dispose();
-                proj.mesh.material.dispose();
-                this.projectiles.splice(i, 1);
-                continue;
-            }
-
-            const targetPos = proj.target.position.clone();
-            targetPos.y += 1;
-
-            const dir = new THREE.Vector3().subVectors(targetPos, proj.mesh.position);
-            const dist = dir.length();
-            dir.normalize();
-
-            proj.mesh.position.addScaledVector(dir, proj.speed * deltaTime);
-
-            // Point bolt toward target
-            proj.mesh.lookAt(targetPos);
-            proj.mesh.rotation.x += Math.PI / 2;
-
-            if (dist < 0.5) {
-                proj.target.takeDamage(proj.damage, this);
-
-                if (this.game && this.game.effects) {
-                    this.game.effects.createDamageNumber(proj.target.position, proj.damage);
-                }
-
-                // Small impact spark
-                this.createArrowHitSpark(proj.mesh.position.clone());
-
-                this.scene.remove(proj.mesh);
-                proj.mesh.geometry.dispose();
-                proj.mesh.material.dispose();
-                this.projectiles.splice(i, 1);
-            }
-        }
-    }
-
     // Q - Arrow Wave: Fan of arrows in a cone
     useArrowWave(direction = null) {
         const ability = this.abilities.arrowWave;
@@ -1502,6 +1459,9 @@ export class Hunter {
                     if (this.game && this.game.effects) {
                         this.game.effects.createDamageNumber(proj.target.position, proj.damage);
                     }
+
+                    // Impact spark
+                    this.createArrowHitSpark(proj.mesh.position.clone());
 
                     this.scene.remove(proj.mesh);
                     proj.mesh.geometry.dispose();
