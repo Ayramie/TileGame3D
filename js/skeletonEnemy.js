@@ -147,7 +147,7 @@ export class SkeletonEnemy extends Enemy {
             this.playAnimation('idle');
 
             // Load weapon if applicable
-            await this.loadWeapon(loader);
+            await this.loadWeapon(loaderInstance);
 
             this.scene.add(this.mesh);
             this.modelLoaded = true;

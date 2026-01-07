@@ -6,9 +6,9 @@ export class ThirdPersonCamera {
         this.target = target;
 
         // Camera orbit parameters
-        this.distance = 20; // More zoomed out by default
-        this.minDistance = 8;
-        this.maxDistance = 40;
+        this.distance = 30; // More zoomed out by default
+        this.minDistance = 10;
+        this.maxDistance = 60;
 
         this.yaw = 0; // Horizontal rotation (around player) - 360° allowed
         this.targetYaw = 0; // For smooth rotation

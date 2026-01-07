@@ -441,6 +441,69 @@ export class EffectsManager {
         });
     }
 
+    // Spin attack AoE effect - expanding ring around player
+    createSpinAttackEffect(position, radius) {
+        const group = new THREE.Group();
+
+        // Expanding ring
+        const ringGeometry = new THREE.RingGeometry(0.5, 1.5, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff8844,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2; // Lay flat
+        ring.position.copy(position);
+        ring.position.y = 0.2;
+        group.add(ring);
+
+        // Arc slashes around the player
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const slashGeometry = new THREE.PlaneGeometry(radius * 0.7, 0.4);
+            const slashMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa44,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            const slash = new THREE.Mesh(slashGeometry, slashMaterial);
+            slash.position.set(
+                position.x + Math.cos(angle) * (radius * 0.5),
+                1,
+                position.z + Math.sin(angle) * (radius * 0.5)
+            );
+            slash.rotation.y = angle;
+            slash.rotation.x = Math.PI / 4;
+            group.add(slash);
+        }
+
+        this.scene.add(group);
+
+        const startRadius = radius;
+        this.effects.push({
+            group: group,
+            life: 0.4,
+            update: (dt, eff) => {
+                // Expand ring outward
+                const progress = 1 - eff.life / 0.4;
+                const currentRadius = 0.5 + progress * startRadius;
+                ring.scale.set(currentRadius, currentRadius, 1);
+                ring.material.opacity = eff.life * 2;
+
+                // Fade slashes
+                group.children.forEach((child, idx) => {
+                    if (idx > 0) { // Skip ring
+                        child.material.opacity = eff.life * 2;
+                        child.rotation.y += dt * 15; // Spin effect
+                    }
+                });
+            }
+        });
+    }
+
     // Charge dash trail effect
     createChargeEffect(startPosition, endPosition) {
         const group = new THREE.Group();

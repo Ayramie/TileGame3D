@@ -204,33 +204,76 @@ export class Game {
 
     async setupScene() {
         if (this.gameMode === 'horde') {
-            // Open outdoor arena for horde mode
-            this.scene.background = new THREE.Color(0x87ceeb); // Sky blue
-            this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
+            // Wide hallway horde mode
+            this.scene.background = new THREE.Color(0x1a1a2e); // Dark dungeon
+            this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.008);
 
-            // Create large grass ground plane
-            const groundGeometry = new THREE.PlaneGeometry(100, 100);
-            const groundMaterial = new THREE.MeshLambertMaterial({
-                color: 0x3d5c3d // Dark grass green
+            // Hallway dimensions
+            const hallwayLength = 120;
+            const hallwayWidth = 30;
+
+            // Create stone floor
+            const floorGeometry = new THREE.PlaneGeometry(hallwayWidth, hallwayLength);
+            const floorMaterial = new THREE.MeshLambertMaterial({
+                color: 0x4a4a5a // Stone gray
             });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = 0;
-            ground.receiveShadow = true;
-            this.scene.add(ground);
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.position.z = hallwayLength / 2 - 10; // Offset so spawn is at z=0
+            floor.receiveShadow = true;
+            this.scene.add(floor);
 
-            // Add some variation with a dirt circle in center
-            const arenaGeometry = new THREE.CircleGeometry(15, 32);
-            const arenaMaterial = new THREE.MeshLambertMaterial({
-                color: 0x8b7355 // Dirt brown
+            // Safe spawn area - different colored floor
+            const spawnGeometry = new THREE.PlaneGeometry(hallwayWidth - 2, 15);
+            const spawnMaterial = new THREE.MeshLambertMaterial({
+                color: 0x3a5a3a // Green-tinted safe zone
             });
-            const arena = new THREE.Mesh(arenaGeometry, arenaMaterial);
-            arena.rotation.x = -Math.PI / 2;
-            arena.position.y = 0.01;
-            arena.receiveShadow = true;
-            this.scene.add(arena);
+            const spawnArea = new THREE.Mesh(spawnGeometry, spawnMaterial);
+            spawnArea.rotation.x = -Math.PI / 2;
+            spawnArea.position.y = 0.01;
+            spawnArea.position.z = -5;
+            spawnArea.receiveShadow = true;
+            this.scene.add(spawnArea);
 
-            this.isOutdoorMap = true;
+            // Left wall
+            const wallGeometry = new THREE.BoxGeometry(2, 6, hallwayLength);
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a4a });
+            const leftWall = new THREE.Mesh(wallGeometry, wallMaterial);
+            leftWall.position.set(-hallwayWidth / 2 - 1, 3, hallwayLength / 2 - 10);
+            leftWall.castShadow = true;
+            leftWall.receiveShadow = true;
+            this.scene.add(leftWall);
+
+            // Right wall
+            const rightWall = new THREE.Mesh(wallGeometry, wallMaterial);
+            rightWall.position.set(hallwayWidth / 2 + 1, 3, hallwayLength / 2 - 10);
+            rightWall.castShadow = true;
+            rightWall.receiveShadow = true;
+            this.scene.add(rightWall);
+
+            // Back wall (behind spawn)
+            const backWallGeometry = new THREE.BoxGeometry(hallwayWidth + 4, 6, 2);
+            const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+            backWall.position.set(0, 3, -12);
+            backWall.castShadow = true;
+            backWall.receiveShadow = true;
+            this.scene.add(backWall);
+
+            // Add torches along walls
+            for (let z = 0; z < hallwayLength - 20; z += 15) {
+                // Left wall torches
+                const torchLight1 = new THREE.PointLight(0xff6633, 0.8, 12);
+                torchLight1.position.set(-hallwayWidth / 2 + 1, 4, z);
+                this.scene.add(torchLight1);
+
+                // Right wall torches
+                const torchLight2 = new THREE.PointLight(0xff6633, 0.8, 12);
+                torchLight2.position.set(hallwayWidth / 2 - 1, 4, z);
+                this.scene.add(torchLight2);
+            }
+
+            this.isOutdoorMap = false; // Use dungeon lighting
         } else {
             // Dungeon environment for dungeon and boss modes
             this.scene.background = new THREE.Color(0x1a1a2e);
@@ -362,19 +405,67 @@ export class Game {
                 this.enemies.push(guard);
             }
         } else if (this.gameMode === 'horde') {
-            // Skeleton horde - many enemies
-            const positions = [
-                { x: 6, z: 4, type: 'warrior' },
-                { x: -6, z: 4, type: 'warrior' },
-                { x: 0, z: 8, type: 'mage' },
-                { x: 8, z: -4, type: 'rogue' },
-                { x: -8, z: -4, type: 'rogue' },
-                { x: 4, z: -6, type: 'minion' },
-                { x: -4, z: -6, type: 'minion' },
-                { x: 0, z: -8, type: 'minion' },
-                { x: 10, z: 6, type: 'minion' },
-                { x: -10, z: 6, type: 'minion' }
-            ];
+            // Skeleton horde - many enemies spread through hallway
+            // Safe zone is z < 5, so spawn enemies starting at z = 10
+            const hallwayWidth = 30;
+            const positions = [];
+
+            // First wave - near safe zone
+            positions.push(
+                { x: -8, z: 15, type: 'warrior' },
+                { x: 8, z: 15, type: 'warrior' },
+                { x: 0, z: 18, type: 'mage' },
+                { x: -4, z: 12, type: 'minion' },
+                { x: 4, z: 12, type: 'minion' }
+            );
+
+            // Second wave
+            positions.push(
+                { x: -10, z: 30, type: 'warrior' },
+                { x: 10, z: 30, type: 'warrior' },
+                { x: 0, z: 35, type: 'mage' },
+                { x: -6, z: 28, type: 'rogue' },
+                { x: 6, z: 28, type: 'rogue' },
+                { x: -3, z: 32, type: 'minion' },
+                { x: 3, z: 32, type: 'minion' }
+            );
+
+            // Third wave
+            positions.push(
+                { x: -12, z: 50, type: 'warrior' },
+                { x: 12, z: 50, type: 'warrior' },
+                { x: 0, z: 55, type: 'mage' },
+                { x: -8, z: 48, type: 'rogue' },
+                { x: 8, z: 48, type: 'rogue' },
+                { x: -5, z: 52, type: 'minion' },
+                { x: 5, z: 52, type: 'minion' },
+                { x: 0, z: 45, type: 'minion' }
+            );
+
+            // Fourth wave - further down
+            positions.push(
+                { x: -10, z: 70, type: 'warrior' },
+                { x: 10, z: 70, type: 'warrior' },
+                { x: -5, z: 75, type: 'mage' },
+                { x: 5, z: 75, type: 'mage' },
+                { x: -8, z: 68, type: 'rogue' },
+                { x: 8, z: 68, type: 'rogue' },
+                { x: 0, z: 72, type: 'minion' },
+                { x: -3, z: 78, type: 'minion' },
+                { x: 3, z: 78, type: 'minion' }
+            );
+
+            // Fifth wave - end of hallway
+            positions.push(
+                { x: -12, z: 90, type: 'warrior' },
+                { x: 12, z: 90, type: 'warrior' },
+                { x: 0, z: 95, type: 'mage' },
+                { x: -6, z: 88, type: 'rogue' },
+                { x: 6, z: 88, type: 'rogue' },
+                { x: -9, z: 92, type: 'minion' },
+                { x: 9, z: 92, type: 'minion' },
+                { x: 0, z: 85, type: 'minion' }
+            );
 
             for (const pos of positions) {
                 const skeleton = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);

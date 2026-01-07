@@ -306,24 +306,24 @@ export class KayKitCharacter {
     }
 
     retargetClip(clip) {
-        // KayKit animations use track names like "Armature|BoneName.property" or "Armature/BoneName.property"
-        // Our model has bones directly, so we need to strip the Armature prefix
+        // KayKit animations use track names like "Armature|BoneName.property"
+        // Three.js mixer searches for objects by name in the model hierarchy
         const newTracks = [];
 
-        // Build a map of bone names in our model for fast lookup
-        const modelBones = new Set();
+        // Build map of all object names in our model (bones, meshes, etc)
+        const modelObjects = new Map();
         this.model.traverse((child) => {
-            if (child.isBone || child.isSkinnedMesh) {
-                modelBones.add(child.name);
-            }
+            modelObjects.set(child.name, child);
         });
 
         // Debug: Log first clip's bone matching (only once)
         if (!this._debuggedClip) {
             this._debuggedClip = true;
-            console.log(`Model bones (first 10):`, Array.from(modelBones).slice(0, 10));
+            const allNames = Array.from(modelObjects.keys());
+            console.log(`Model object names (${allNames.length} total):`, allNames.slice(0, 15));
             if (clip.tracks.length > 0) {
-                console.log(`First track in clip: ${clip.tracks[0].name}`);
+                console.log(`Animation tracks (first 5):`);
+                clip.tracks.slice(0, 5).forEach(t => console.log(`  - ${t.name}`));
             }
         }
 
@@ -348,11 +348,11 @@ export class KayKitCharacter {
             }
 
             // Check if this bone exists in our model
-            if (modelBones.has(boneName)) {
+            if (modelObjects.has(boneName)) {
                 const newTrack = track.clone();
                 newTrack.name = `${boneName}.${property}`;
                 newTracks.push(newTrack);
-            } else if (modelBones.has(bonePath)) {
+            } else if (modelObjects.has(bonePath)) {
                 // Full path exists in model
                 newTracks.push(track.clone());
             } else {

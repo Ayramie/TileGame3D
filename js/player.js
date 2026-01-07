@@ -10,7 +10,7 @@ export class Player {
         this.rotation = 0; // Y-axis rotation
 
         // Stats
-        this.maxHealth = 100;
+        this.maxHealth = 500;
         this.health = this.maxHealth;
         this.moveSpeed = 8;
         this.jumpForce = 12;
@@ -44,8 +44,8 @@ export class Player {
                 cooldownRemaining: 0,
                 damage: 35,
                 range: 3.5,
-                dashDistance: 4,
-                dashDuration: 0.3,
+                dashDistance: 10,
+                dashDuration: 0.5,
                 isActive: false,
                 activeTime: 0,
                 dashDirection: null
@@ -53,10 +53,9 @@ export class Player {
             parry: {
                 cooldown: 5,
                 cooldownRemaining: 0,
-                duration: 0.5,
-                perfectWindow: 0.2,
-                riposteDamage: 60,
-                perfectDamage: 120,
+                damage: 50,
+                range: 4, // AoE radius
+                spinDuration: 0.4,
                 isActive: false,
                 activeTime: 0
             },
@@ -77,16 +76,16 @@ export class Player {
                 cooldown: 5,
                 cooldownRemaining: 0,
                 damage: 40,
-                range: 12,
-                width: 2, // Width of spike wave
-                spikeCount: 6, // Number of spikes
+                range: 16,
+                width: 3.5, // Width of spike wave
+                spikeCount: 8, // Number of spikes
                 isActive: false,
                 activeTime: 0
             },
             potion: {
                 cooldown: 12,
                 cooldownRemaining: 0,
-                healAmount: 35,
+                healAmount: 100,
                 isActive: false
             }
         };
@@ -126,8 +125,8 @@ export class Player {
         shape.lineTo(0, 0);
 
         const geometry = new THREE.ShapeGeometry(shape);
-        // Rotate geometry to lay flat (XY shape -> XZ ground plane)
-        geometry.rotateX(-Math.PI / 2);
+        // Rotate geometry to lay flat: +Y in shape becomes +Z in world (forward)
+        geometry.rotateX(Math.PI / 2);
 
         const material = new THREE.MeshBasicMaterial({
             color: 0xff6600,
@@ -161,7 +160,8 @@ export class Player {
         shape.lineTo(-startWidth / 2, 0);
 
         const geometry = new THREE.ShapeGeometry(shape);
-        geometry.rotateX(-Math.PI / 2);
+        // Rotate geometry to lay flat: +Y in shape becomes +Z in world (forward)
+        geometry.rotateX(Math.PI / 2);
 
         const material = new THREE.MeshBasicMaterial({
             color: 0x886644,
@@ -242,10 +242,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse - add PI to flip direction
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
+        this.sunderIndicator.rotation.y = Math.atan2(dx, dz) + Math.PI;
     }
 
     showHeroicLeapIndicator(show) {
@@ -303,8 +303,8 @@ export class Player {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        // After rotation.x = -Math.PI/2, the cone points +Z, so rotate by angle around Y
-        this.cleaveIndicator.rotation.y = angle;
+        // Cone points +Z after geometry rotation, add PI to flip direction
+        this.cleaveIndicator.rotation.y = angle + Math.PI;
     }
 
     async loadCharacter() {
@@ -689,12 +689,18 @@ export class Player {
             }
         }
 
-        // Parry duration
+        // Spin Attack duration
         if (this.abilities.parry.isActive) {
-            this.abilities.parry.activeTime += deltaTime;
-            if (this.abilities.parry.activeTime >= this.abilities.parry.duration) {
-                this.abilities.parry.isActive = false;
-                this.abilities.parry.activeTime = 0;
+            const ability = this.abilities.parry;
+            ability.activeTime += deltaTime;
+
+            // Spin the player during the attack
+            const spinSpeed = Math.PI * 4; // 2 rotations during spin
+            this.rotation += spinSpeed * deltaTime;
+
+            if (ability.activeTime >= ability.spinDuration) {
+                ability.isActive = false;
+                ability.activeTime = 0;
             }
         }
 
@@ -944,7 +950,7 @@ export class Player {
         }
     }
 
-    // Ability: Parry
+    // Ability: Spin Attack (E) - AoE spin damage around player
     useParry() {
         const ability = this.abilities.parry;
         if (ability.cooldownRemaining > 0) return false;
@@ -953,41 +959,42 @@ export class Player {
         ability.isActive = true;
         ability.activeTime = 0;
         ability.cooldownRemaining = ability.cooldown;
+        ability.startRotation = this.rotation;
 
-        // Play block animation
+        // Play attack animation
         if (this.useAnimatedCharacter) {
-            this.character.playBlock();
+            this.character.playAttack(2);
         }
 
-        // Visual parry stance effect
+        // Create spin visual effect
         if (this.game && this.game.effects) {
-            this.game.effects.createParryEffect(this.position);
+            this.game.effects.createSpinAttackEffect(this.position, ability.range);
+        }
+
+        // Damage all enemies in range
+        if (this.game && this.game.enemies) {
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isDead) {
+                    const dx = enemy.position.x - this.position.x;
+                    const dz = enemy.position.z - this.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+
+                    if (dist <= ability.range) {
+                        enemy.takeDamage(ability.damage, this);
+                        if (this.game.effects) {
+                            this.game.effects.createDamageNumber(enemy.position, ability.damage, false, false);
+                        }
+                    }
+                }
+            }
         }
 
         return true;
     }
 
+    // Legacy tryParry kept for compatibility but now does nothing
     tryParry(attacker) {
-        const ability = this.abilities.parry;
-        if (!ability.isActive) return false;
-
-        // Successful parry!
-        const isPerfect = ability.activeTime <= ability.perfectWindow;
-        const damage = isPerfect ? ability.perfectDamage : ability.riposteDamage;
-
-        // Riposte visual effect
-        if (this.game && this.game.effects && attacker) {
-            this.game.effects.createRiposteEffect(this.position, attacker.position);
-            this.game.effects.createDamageNumber(attacker.position, damage, false, isPerfect);
-        }
-
-        if (attacker && attacker.takeDamage) {
-            attacker.takeDamage(damage, this);
-            attacker.stun(isPerfect ? 1.0 : 0.5);
-        }
-
-        ability.isActive = false;
-        return true;
+        return false;
     }
 
     // Ability: Heroic Leap - jump to target location with AoE damage
@@ -1194,9 +1201,8 @@ export class Player {
     }
 
     takeDamage(amount) {
-        // Check parry
+        // Invulnerable during spin attack
         if (this.abilities.parry.isActive) {
-            // Parry is handled by tryParry, called by attacker
             return;
         }
 
