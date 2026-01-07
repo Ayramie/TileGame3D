@@ -129,6 +129,17 @@ export class InputManager {
             case '1':
                 this.game.player.usePotion();
                 break;
+
+            case 't':
+                // T ability - Sunder (Warrior only)
+                if (this.game.selectedClass !== 'mage') {
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    this.game.player.useSunder(direction);
+                }
+                break;
         }
     }
 

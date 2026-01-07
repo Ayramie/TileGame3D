@@ -875,6 +875,97 @@ export class EffectsManager {
         });
     }
 
+    // Sunder - ground spike wave
+    createSunderEffect(position, direction, range = 12, spikeCount = 6) {
+        const group = new THREE.Group();
+        const dir = direction.clone().normalize();
+
+        // Create spikes that erupt along the line
+        for (let i = 0; i < spikeCount; i++) {
+            const dist = (i + 1) * (range / spikeCount);
+            const spikePos = position.clone().add(dir.clone().multiplyScalar(dist));
+
+            // Main spike (cone)
+            const spikeGeometry = new THREE.ConeGeometry(0.3, 1.5, 6);
+            const spikeMaterial = new THREE.MeshBasicMaterial({
+                color: 0x886644,
+                transparent: true,
+                opacity: 0.9
+            });
+            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+            spike.position.set(spikePos.x - position.x, -0.5, spikePos.z - position.z);
+            spike.userData.targetY = 0.75;
+            spike.userData.delay = i * 0.05;
+            spike.userData.emerged = false;
+            group.add(spike);
+
+            // Small side spikes
+            for (let j = -1; j <= 1; j += 2) {
+                const smallSpikeGeometry = new THREE.ConeGeometry(0.15, 0.8, 4);
+                const smallSpikeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x776655,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const smallSpike = new THREE.Mesh(smallSpikeGeometry, smallSpikeMaterial);
+                const perpOffset = j * 0.5;
+                smallSpike.position.set(
+                    spikePos.x - position.x + (-dir.z * perpOffset),
+                    -0.5,
+                    spikePos.z - position.z + (dir.x * perpOffset)
+                );
+                smallSpike.rotation.z = j * 0.3;
+                smallSpike.userData.targetY = 0.4;
+                smallSpike.userData.delay = i * 0.05 + 0.02;
+                smallSpike.userData.emerged = false;
+                group.add(smallSpike);
+            }
+        }
+
+        // Ground crack line
+        const crackGeometry = new THREE.PlaneGeometry(range, 0.8);
+        const crackMaterial = new THREE.MeshBasicMaterial({
+            color: 0x442211,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        const crack = new THREE.Mesh(crackGeometry, crackMaterial);
+        crack.rotation.x = -Math.PI / 2;
+        crack.rotation.z = -Math.atan2(dir.z, dir.x);
+        crack.position.set(dir.x * range / 2, 0.05, dir.z * range / 2);
+        group.add(crack);
+
+        group.position.copy(position);
+        this.scene.add(group);
+
+        this.effects.push({
+            group: group,
+            life: 1.0,
+            update: (dt, eff) => {
+                const elapsed = 1.0 - eff.life;
+
+                // Spikes emerge from ground
+                for (let i = 0; i < group.children.length - 1; i++) {
+                    const spike = group.children[i];
+                    if (elapsed > spike.userData.delay && !spike.userData.emerged) {
+                        const emergeProgress = Math.min(1, (elapsed - spike.userData.delay) / 0.15);
+                        spike.position.y = -0.5 + (spike.userData.targetY + 0.5) * emergeProgress;
+                        if (emergeProgress >= 1) spike.userData.emerged = true;
+                    }
+                    // Fade out after emerging
+                    if (spike.userData.emerged) {
+                        spike.material.opacity = eff.life * 1.5;
+                    }
+                }
+
+                // Crack fades
+                const crack = group.children[group.children.length - 1];
+                crack.material.opacity = eff.life * 0.7;
+            }
+        });
+    }
+
     // Damage number floating text (using sprite)
     createDamageNumber(position, damage, isHeal = false, isCrit = false) {
         // Limit concurrent damage numbers to prevent texture overflow

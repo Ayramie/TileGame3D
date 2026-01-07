@@ -1323,4 +1323,65 @@ export class ParticleSystem {
             });
         }, 100);
     }
+
+    // Sunder ground spike wave particles
+    sunderWave(position, direction, range = 12) {
+        const dir = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+
+        // Particles along the wave path
+        for (let d = 1; d < range; d += 1.5) {
+            const pos = {
+                x: position.x + dir.x * d,
+                y: 0.3,
+                z: position.z + dir.z * d
+            };
+
+            setTimeout(() => {
+                // Earth/rock debris
+                this.spawn(pos, {
+                    count: 8,
+                    spread: 0.8,
+                    speed: 6,
+                    life: 0.6,
+                    size: 0.35,
+                    endSize: 0.1,
+                    gravity: -15,
+                    upwardBias: 8,
+                    color: 0x886644,
+                    endColor: 0x554433,
+                    texture: 'soft'
+                });
+
+                // Dust cloud
+                this.spawn(pos, {
+                    count: 5,
+                    spread: 0.5,
+                    speed: 2,
+                    life: 0.8,
+                    size: 0.5,
+                    endSize: 0.2,
+                    gravity: 1,
+                    upwardBias: 2,
+                    drag: 0.92,
+                    color: 0xaa9977,
+                    endColor: 0x665544,
+                    texture: 'smoke',
+                    blendMode: 'normal'
+                });
+
+                // Sparks from impact
+                this.spawn(pos, {
+                    count: 4,
+                    spread: 0.3,
+                    speed: 10,
+                    life: 0.4,
+                    size: 0.2,
+                    gravity: -12,
+                    upwardBias: 5,
+                    color: 0xffddaa,
+                    texture: 'spark'
+                });
+            }, d * 40); // Delayed to follow the wave
+        }
+    }
 }

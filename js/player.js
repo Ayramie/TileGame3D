@@ -73,6 +73,16 @@ export class Player {
                 targetPos: null,
                 startPos: null
             },
+            sunder: {
+                cooldown: 5,
+                cooldownRemaining: 0,
+                damage: 40,
+                range: 12,
+                width: 2, // Width of spike wave
+                spikeCount: 6, // Number of spikes
+                isActive: false,
+                activeTime: 0
+            },
             potion: {
                 cooldown: 12,
                 cooldownRemaining: 0,
@@ -919,6 +929,75 @@ export class Player {
         // Heal particles
         if (this.game && this.game.particles) {
             this.game.particles.healEffect(this.position);
+        }
+
+        return true;
+    }
+
+    // Ability: Sunder - shoot a wave of ground spikes
+    useSunder(direction = null) {
+        const ability = this.abilities.sunder;
+        if (ability.cooldownRemaining > 0) return false;
+
+        ability.cooldownRemaining = ability.cooldown;
+
+        // Use provided direction or default to player facing
+        let forward;
+        if (direction) {
+            forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            this.rotation = Math.atan2(forward.x, forward.z);
+        } else {
+            forward = new THREE.Vector3(
+                Math.sin(this.rotation),
+                0,
+                Math.cos(this.rotation)
+            );
+        }
+
+        // Play attack animation
+        if (this.useAnimatedCharacter) {
+            this.character.playAttack(3);
+        }
+
+        // Create spike wave visual effect
+        if (this.game && this.game.effects) {
+            this.game.effects.createSunderEffect(this.position, forward, ability.range, ability.spikeCount);
+        }
+
+        // Particle effect
+        if (this.game && this.game.particles) {
+            this.game.particles.sunderWave(this.position, forward, ability.range);
+        }
+
+        // Damage enemies in line
+        if (this.game && this.game.enemies) {
+            const perp = new THREE.Vector3(-forward.z, 0, forward.x);
+
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isAlive) continue;
+
+                const toEnemy = new THREE.Vector3(
+                    enemy.position.x - this.position.x,
+                    0,
+                    enemy.position.z - this.position.z
+                );
+
+                // Check if enemy is in front (within range)
+                const forwardDist = toEnemy.dot(forward);
+                if (forwardDist < 0.5 || forwardDist > ability.range) continue;
+
+                // Check if enemy is within width
+                const perpDist = Math.abs(toEnemy.dot(perp));
+                if (perpDist > ability.width) continue;
+
+                // Hit this enemy!
+                enemy.takeDamage(ability.damage, this);
+
+                // Damage number
+                if (this.game.effects) {
+                    this.game.effects.createDamageNumber(enemy.position, ability.damage, false, false);
+                }
+            }
         }
 
         return true;

@@ -143,16 +143,22 @@ export class Game {
     }
 
     updateAbilityLabels() {
+        const sunderSlot = document.getElementById('ability-t');
         if (this.selectedClass === 'mage') {
             document.querySelector('#ability-q .name').textContent = 'Blizzard';
             document.querySelector('#ability-f .name').textContent = 'Flame Wave';
             document.querySelector('#ability-e .name').textContent = 'Burn Aura';
             document.querySelector('#ability-r .name').textContent = 'Backstep';
+            // Hide Sunder for mage
+            if (sunderSlot) sunderSlot.style.display = 'none';
         } else {
             document.querySelector('#ability-q .name').textContent = 'Cleave';
             document.querySelector('#ability-f .name').textContent = 'Whirlwind';
             document.querySelector('#ability-e .name').textContent = 'Parry';
             document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
+            document.querySelector('#ability-t .name').textContent = 'Sunder';
+            // Show Sunder for warrior
+            if (sunderSlot) sunderSlot.style.display = '';
         }
     }
 
@@ -710,6 +716,7 @@ export class Game {
             this.updateAbilityCooldown('f', this.player.abilities.whirlwind);
             this.updateAbilityCooldown('e', this.player.abilities.parry);
             this.updateAbilityCooldown('r', this.player.abilities.heroicLeap);
+            this.updateAbilityCooldown('t', this.player.abilities.sunder);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
         }
     }
