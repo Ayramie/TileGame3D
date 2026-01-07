@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { Enemy } from './enemy.js';
 import { AssetManifest, getCharacterPath, getAnimationPath, getEquipmentPath } from './assetManifest.js';
 
@@ -91,8 +92,8 @@ export class SkeletonEnemy extends Enemy {
                 this.scene.remove(this.mesh);
             }
 
-            // Clone the scene but share materials/textures
-            this.mesh = gltf.scene.clone();
+            // Clone with SkeletonUtils to properly clone bones for animation
+            this.mesh = SkeletonUtils.clone(gltf.scene);
             this.mesh.scale.setScalar(1.0);
             this.mesh.position.copy(this.position);
 
