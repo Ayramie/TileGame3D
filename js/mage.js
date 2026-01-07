@@ -77,6 +77,10 @@ export class Mage {
         this.useAnimatedCharacter = false;
         this.characterLoading = false;
 
+        // Click-to-move target
+        this.moveTarget = null;
+        this.moveTargetThreshold = 0.5;
+
         // Ability indicators
         this.blizzardIndicator = null;
         this.flameWaveIndicator = null;
@@ -252,6 +256,14 @@ export class Mage {
         }
     }
 
+    setMoveTarget(position) {
+        this.moveTarget = position;
+    }
+
+    clearMoveTarget() {
+        this.moveTarget = null;
+    }
+
     update(deltaTime, input, cameraController) {
         // Process movement
         const isMoving = this.handleMovement(deltaTime, input, cameraController, input.rightMouseDown);
@@ -303,6 +315,14 @@ export class Mage {
         if (input.keys.a || input.keys.arrowleft) strafe.x -= 1;
         if (input.keys.d || input.keys.arrowright) strafe.x += 1;
 
+        // Check if using keyboard movement
+        const usingKeyboard = forwardBack.length() > 0 || strafe.length() > 0;
+
+        // Clear move target if using keyboard
+        if (usingKeyboard && this.moveTarget) {
+            this.clearMoveTarget();
+        }
+
         const moveDir = new THREE.Vector3();
         const cameraYaw = -cameraController.yaw;
         const cos = Math.cos(cameraYaw);
@@ -323,7 +343,30 @@ export class Mage {
         }
 
         let isMoving = false;
-        if (moveDir.length() > 0) {
+
+        // Click-to-move: if we have a move target and not using keyboard, move toward it
+        if (this.moveTarget && !usingKeyboard) {
+            const dx = this.moveTarget.x - this.position.x;
+            const dz = this.moveTarget.z - this.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+
+            if (dist > this.moveTargetThreshold) {
+                // Move toward target
+                moveDir.x = dx / dist;
+                moveDir.z = dz / dist;
+                isMoving = true;
+
+                // Apply movement
+                this.position.x += moveDir.x * this.moveSpeed * deltaTime;
+                this.position.z += moveDir.z * this.moveSpeed * deltaTime;
+
+                // Face movement direction
+                this.rotation = Math.atan2(moveDir.x, moveDir.z);
+            } else {
+                // Reached target
+                this.clearMoveTarget();
+            }
+        } else if (moveDir.length() > 0) {
             isMoving = true;
             moveDir.normalize();
 

@@ -230,26 +230,94 @@ export class InputManager {
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
 
-        if (e.button === 0) { // Left click - attack
+        if (e.button === 0) { // Left click - attack or click-to-move
             this.leftMouseDown = true;
-        } else if (e.button === 2) { // Right click - camera rotation
+            this.leftClickStartX = e.clientX;
+            this.leftClickStartY = e.clientY;
+        } else if (e.button === 2) { // Right click - camera rotation or target enemy
             this.rightMouseDown = true;
+            this.rightClickStartX = e.clientX;
+            this.rightClickStartY = e.clientY;
             this.game.cameraController.startDrag(e.clientX);
         }
     }
 
     onMouseUp(e) {
         if (e.button === 0) {
-            // Left click attack
+            // Left click - attack or click-to-move
             if (this.leftMouseDown && !this.wasDragging) {
-                this.game.player.performAutoAttack();
+                // Check if clicked on an enemy first
+                const clickedEnemy = this.raycastEnemy(e);
+                if (clickedEnemy) {
+                    // Attack the clicked enemy (if in range) or target it
+                    if (this.game.player.targetEnemy !== clickedEnemy) {
+                        this.game.player.setTarget(clickedEnemy);
+                    }
+                    this.game.player.performAutoAttack();
+                } else {
+                    // Click-to-move to ground position
+                    this.updateMouseWorldPosition(e);
+                    if (this.mouseWorldPos && this.game.player.setMoveTarget) {
+                        this.game.player.setMoveTarget(this.mouseWorldPos.clone());
+                    }
+                }
             }
             this.leftMouseDown = false;
         } else if (e.button === 2) {
+            // Right click - check if it was a click (not drag) to target enemy
+            if (!this.wasDragging) {
+                const clickedEnemy = this.raycastEnemy(e);
+                if (clickedEnemy) {
+                    this.game.player.setTarget(clickedEnemy);
+                }
+            }
             this.rightMouseDown = false;
             this.game.cameraController.endDrag();
         }
         this.wasDragging = false;
+    }
+
+    // Raycast to find enemy under mouse cursor
+    raycastEnemy(e) {
+        if (!this.game.camera || !this.game.enemies) return null;
+
+        // Update mouse NDC
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), this.game.camera);
+
+        // Collect all enemy meshes
+        const enemyMeshes = [];
+        for (const enemy of this.game.enemies) {
+            if (enemy.isAlive && enemy.mesh) {
+                enemyMeshes.push(enemy.mesh);
+            }
+        }
+
+        // Raycast against enemy meshes
+        const intersects = this.raycaster.intersectObjects(enemyMeshes, true);
+
+        if (intersects.length > 0) {
+            // Find which enemy this mesh belongs to
+            const hitObject = intersects[0].object;
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isAlive || !enemy.mesh) continue;
+
+                // Check if the hit object is part of this enemy's mesh
+                let isMatch = enemy.mesh === hitObject;
+                if (!isMatch) {
+                    enemy.mesh.traverse((child) => {
+                        if (child === hitObject) isMatch = true;
+                    });
+                }
+
+                if (isMatch) return enemy;
+            }
+        }
+
+        return null;
     }
 
     onMouseMove(e) {

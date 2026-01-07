@@ -507,7 +507,11 @@ export class SkeletonEnemy extends Enemy {
 
     takeDamage(amount, source) {
         this.health -= amount;
+        if (this.health < 0) this.health = 0; // Clamp to 0
         this.isAggro = true;
+
+        // Update health bar immediately after damage
+        this.updateHealthBar(null);
 
         // Play hit animation
         if (this.modelLoaded && this.animations.hit) {
