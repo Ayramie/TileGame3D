@@ -197,59 +197,117 @@ export class Game {
     }
 
     async setupScene() {
-        // Dungeon environment for all modes
-        this.scene.background = new THREE.Color(0x1a1a2e);
-        this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.025);
+        if (this.gameMode === 'horde') {
+            // Open outdoor arena for horde mode
+            this.scene.background = new THREE.Color(0x87ceeb); // Sky blue
+            this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
 
-        // Create dungeon builder and build dungeon
-        this.dungeonBuilder = new DungeonBuilder(this.scene);
-        await this.dungeonBuilder.preloadAssets();
+            // Create large grass ground plane
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshLambertMaterial({
+                color: 0x3d5c3d // Dark grass green
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            ground.receiveShadow = true;
+            this.scene.add(ground);
 
-        if (this.gameMode === 'boss') {
-            // Boss arena - larger room
-            await this.dungeonBuilder.buildRoom(0, 0, 12, 12);
-            await this.dungeonBuilder.addTorches(0, 0, 12, 12, 4);
+            // Add some variation with a dirt circle in center
+            const arenaGeometry = new THREE.CircleGeometry(15, 32);
+            const arenaMaterial = new THREE.MeshLambertMaterial({
+                color: 0x8b7355 // Dirt brown
+            });
+            const arena = new THREE.Mesh(arenaGeometry, arenaMaterial);
+            arena.rotation.x = -Math.PI / 2;
+            arena.position.y = 0.01;
+            arena.receiveShadow = true;
+            this.scene.add(arena);
+
+            this.isOutdoorMap = true;
         } else {
-            // Standard dungeon room
-            await this.dungeonBuilder.buildTestDungeon();
+            // Dungeon environment for dungeon and boss modes
+            this.scene.background = new THREE.Color(0x1a1a2e);
+            this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.025);
+
+            // Create dungeon builder and build dungeon
+            this.dungeonBuilder = new DungeonBuilder(this.scene);
+            await this.dungeonBuilder.preloadAssets();
+
+            if (this.gameMode === 'boss') {
+                // Boss arena - larger room
+                await this.dungeonBuilder.buildRoom(0, 0, 12, 12);
+                await this.dungeonBuilder.addTorches(0, 0, 12, 12, 4);
+            } else {
+                // Standard dungeon room
+                await this.dungeonBuilder.buildTestDungeon();
+            }
+
+            this.isOutdoorMap = false;
         }
     }
 
     setupLighting() {
-        // Dungeon ambient light - dim and moody
-        const ambient = new THREE.AmbientLight(0x332244, 0.4);
-        this.scene.add(ambient);
+        if (this.isOutdoorMap) {
+            // Bright outdoor lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            this.scene.add(ambient);
 
-        // Main light from above - dim moonlight through cracks
-        const mainLight = new THREE.DirectionalLight(0x6688aa, 0.6);
-        mainLight.position.set(10, 30, 10);
-        mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 2048;
-        mainLight.shadow.mapSize.height = 2048;
-        mainLight.shadow.camera.near = 0.5;
-        mainLight.shadow.camera.far = 100;
-        mainLight.shadow.camera.left = -30;
-        mainLight.shadow.camera.right = 30;
-        mainLight.shadow.camera.top = 30;
-        mainLight.shadow.camera.bottom = -30;
-        mainLight.shadow.bias = -0.0001;
-        mainLight.shadow.normalBias = 0.02;
-        this.scene.add(mainLight);
+            // Sun light
+            const sunLight = new THREE.DirectionalLight(0xffffee, 1.2);
+            sunLight.position.set(20, 40, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 100;
+            sunLight.shadow.camera.left = -40;
+            sunLight.shadow.camera.right = 40;
+            sunLight.shadow.camera.top = 40;
+            sunLight.shadow.camera.bottom = -40;
+            sunLight.shadow.bias = -0.0001;
+            sunLight.shadow.normalBias = 0.02;
+            this.scene.add(sunLight);
 
-        // Warm fill from torches
-        const torchFill = new THREE.DirectionalLight(0xff6622, 0.3);
-        torchFill.position.set(-10, 10, -10);
-        this.scene.add(torchFill);
+            // Sky hemisphere light
+            const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3d5c3d, 0.6);
+            this.scene.add(hemi);
+        } else {
+            // Dungeon ambient light - dim and moody
+            const ambient = new THREE.AmbientLight(0x332244, 0.4);
+            this.scene.add(ambient);
 
-        // Hemisphere light for dungeon feel
-        const hemi = new THREE.HemisphereLight(0x444466, 0x222211, 0.3);
-        this.scene.add(hemi);
+            // Main light from above - dim moonlight through cracks
+            const mainLight = new THREE.DirectionalLight(0x6688aa, 0.6);
+            mainLight.position.set(10, 30, 10);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            mainLight.shadow.camera.near = 0.5;
+            mainLight.shadow.camera.far = 100;
+            mainLight.shadow.camera.left = -30;
+            mainLight.shadow.camera.right = 30;
+            mainLight.shadow.camera.top = 30;
+            mainLight.shadow.camera.bottom = -30;
+            mainLight.shadow.bias = -0.0001;
+            mainLight.shadow.normalBias = 0.02;
+            this.scene.add(mainLight);
 
-        // Central torch light for player area
-        const playerLight = new THREE.PointLight(0xff8844, 0.8, 15);
-        playerLight.position.set(0, 3, 0);
-        this.scene.add(playerLight);
-        this.playerLight = playerLight;
+            // Warm fill from torches
+            const torchFill = new THREE.DirectionalLight(0xff6622, 0.3);
+            torchFill.position.set(-10, 10, -10);
+            this.scene.add(torchFill);
+
+            // Hemisphere light for dungeon feel
+            const hemi = new THREE.HemisphereLight(0x444466, 0x222211, 0.3);
+            this.scene.add(hemi);
+
+            // Central torch light for player area
+            const playerLight = new THREE.PointLight(0xff8844, 0.8, 15);
+            playerLight.position.set(0, 3, 0);
+            this.scene.add(playerLight);
+            this.playerLight = playerLight;
+        }
     }
 
     setupPlayer() {

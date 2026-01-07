@@ -124,7 +124,9 @@ export class Player {
         });
 
         this.cleaveIndicator = new THREE.Mesh(geometry, material);
-        // Rotate to lay flat: shape's +Y becomes world +Z (forward)
+        // Rotate to lay flat on ground
+        // Use YXZ order so Y rotation (facing direction) is applied in world space
+        this.cleaveIndicator.rotation.order = 'YXZ';
         this.cleaveIndicator.rotation.x = -Math.PI / 2;
         this.cleaveIndicator.position.y = 0.1;
         this.cleaveIndicator.visible = false;
