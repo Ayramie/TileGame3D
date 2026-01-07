@@ -93,25 +93,49 @@ export class Game {
         // Allow the loading screen to render before heavy work
         await new Promise(resolve => setTimeout(resolve, 50));
 
+        const loadingText = menu.querySelector('.loading-text');
+        const updateLoadingText = (text) => {
+            if (loadingText) loadingText.textContent = text;
+        };
+
         // Clear previous game state
+        updateLoadingText('Clearing scene...');
         this.clearScene();
+        await new Promise(resolve => setTimeout(resolve, 10));
 
         // Setup fresh game
+        updateLoadingText('Building environment...');
         await this.setupScene();
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        updateLoadingText('Setting up lighting...');
         this.setupLighting();
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        updateLoadingText('Loading player...');
         this.setupPlayer();
 
         // Wait for character to load before continuing
         if (this.player && this.player.character) {
-            // Wait for character loading to complete
             while (this.player.characterLoading) {
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
         }
+        await new Promise(resolve => setTimeout(resolve, 10));
 
         this.setupCamera();
         this.setupInput();
+
+        updateLoadingText('Spawning enemies...');
         this.spawnEnemies();
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Wait for all enemy models to load
+        updateLoadingText('Loading enemy models...');
+        await this.waitForEnemyModels();
+
+        updateLoadingText('Finishing up...');
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         // Create particle system
         this.particles = new ParticleSystem(this.scene);
@@ -889,6 +913,43 @@ export class Game {
             this.camera.updateProjectionMatrix();
         }
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Wait for all enemy models to finish loading
+    async waitForEnemyModels() {
+        const maxWaitTime = 10000; // 10 second timeout
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitTime) {
+            // Check if all enemies have loaded their models
+            let allLoaded = true;
+            let loadedCount = 0;
+
+            for (const enemy of this.enemies) {
+                if (enemy.modelLoaded) {
+                    loadedCount++;
+                } else {
+                    allLoaded = false;
+                }
+            }
+
+            if (allLoaded || this.enemies.length === 0) {
+                console.log(`All ${this.enemies.length} enemy models loaded`);
+                return;
+            }
+
+            // Update loading text with progress
+            const menu = document.getElementById('main-menu');
+            const loadingText = menu?.querySelector('.loading-text');
+            if (loadingText) {
+                loadingText.textContent = `Loading enemies... (${loadedCount}/${this.enemies.length})`;
+            }
+
+            // Wait a bit before checking again
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        console.warn('Enemy model loading timed out, continuing anyway');
     }
 
     // Setup minimap canvas
