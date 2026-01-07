@@ -3,6 +3,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Enemy } from './enemy.js';
 import { AssetManifest, getCharacterPath, getAnimationPath, getEquipmentPath } from './assetManifest.js';
 
+// Shared model cache to prevent WebGL texture limit issues
+// Each skeleton type shares the same loaded GLTF (textures, materials)
+const modelCache = new Map();
+const loaderInstance = new GLTFLoader();
+
 // Skeleton enemy using KayKit skeleton models
 export class SkeletonEnemy extends Enemy {
     constructor(scene, x, z, type = 'warrior') {
@@ -61,8 +66,6 @@ export class SkeletonEnemy extends Enemy {
     }
 
     async loadModel() {
-        const loader = new GLTFLoader();
-
         try {
             // Get skeleton path from manifest
             const charPath = getCharacterPath('skeletons', this.skeletonType);
@@ -72,39 +75,50 @@ export class SkeletonEnemy extends Enemy {
                 return;
             }
 
-            console.log(`Loading skeleton: ${charPath}`);
-            const gltf = await this.loadGLTF(loader, charPath);
+            // Check if model is already cached
+            let gltf;
+            if (modelCache.has(charPath)) {
+                gltf = modelCache.get(charPath);
+            } else {
+                console.log(`Loading skeleton: ${charPath}`);
+                gltf = await this.loadGLTF(loaderInstance, charPath);
+                modelCache.set(charPath, gltf);
+            }
 
             // Remove fallback mesh if it exists
             if (this.mesh) {
                 this.scene.remove(this.mesh);
             }
 
-            this.mesh = gltf.scene;
+            // Clone the scene but share materials/textures
+            this.mesh = gltf.scene.clone();
             this.mesh.scale.setScalar(1.0);
             this.mesh.position.copy(this.position);
 
-            // Setup materials
+            // Share materials from the original to avoid texture duplication
+            const originalMeshes = [];
+            gltf.scene.traverse((child) => {
+                if (child.isMesh) originalMeshes.push(child);
+            });
+
+            let meshIndex = 0;
             this.mesh.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
 
-                    // Make skeleton materials slightly emissive for eerie glow
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(m => this.fixMaterial(m));
-                        } else {
-                            this.fixMaterial(child.material);
-                        }
+                    // Share material from original (keeps same texture reference)
+                    if (originalMeshes[meshIndex]) {
+                        child.material = originalMeshes[meshIndex].material;
                     }
+                    meshIndex++;
                 }
             });
 
-            // Setup animations
+            // Setup animations with cloned mixer
             this.mixer = new THREE.AnimationMixer(this.mesh);
 
-            // First try embedded animations
+            // Use animations from cached GLTF
             if (gltf.animations && gltf.animations.length > 0) {
                 for (const clip of gltf.animations) {
                     const action = this.mixer.clipAction(clip);
@@ -114,7 +128,7 @@ export class SkeletonEnemy extends Enemy {
 
             // Load animations from rig files if no embedded animations
             if (Object.keys(this.animations).length === 0) {
-                await this.loadRigAnimations(loader);
+                await this.loadRigAnimations(loaderInstance);
             }
 
             // Play idle animation
@@ -131,21 +145,6 @@ export class SkeletonEnemy extends Enemy {
         } catch (error) {
             console.warn(`Failed to load skeleton model, using fallback:`, error);
             this.createFallbackMesh();
-        }
-    }
-
-    fixMaterial(material) {
-        if (!material) return;
-
-        material.transparent = false;
-        material.opacity = 1.0;
-
-        // Add subtle bone-like glow
-        if (material.isMeshStandardMaterial) {
-            material.emissive = new THREE.Color(0x221111);
-            material.emissiveIntensity = 0.1;
-            material.roughness = 0.7;
-            material.metalness = 0.1;
         }
     }
 
