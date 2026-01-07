@@ -225,14 +225,14 @@ export class DungeonBuilder {
     }
 
     // Add torches along walls
-    async addTorches(centerX, centerZ, width, depth, spacing = 4) {
+    async addTorches(centerX, centerZ, width, depth, spacing = 6) {
         const halfWidth = (width * this.tileSize) / 2;
         const halfDepth = (depth * this.tileSize) / 2;
 
-        // Calculate torch positions along walls
+        // Calculate torch positions along walls - only corners and midpoints
         const torchPositions = [];
 
-        // North and South walls
+        // North and South walls - fewer torches with wider spacing
         for (let x = 0; x < width * this.tileSize; x += spacing) {
             const posX = centerX - halfWidth + x + spacing / 2;
             torchPositions.push({ x: posX, z: centerZ - halfDepth + 0.3, rotation: 0 });
@@ -249,13 +249,11 @@ export class DungeonBuilder {
         for (const pos of torchPositions) {
             const torch = await this.placePiece('lighting', 'torchMounted', pos.x, 1.5, pos.z, pos.rotation);
 
-            // Add point light for each torch
+            // Add point light for each torch - NO shadows to reduce GPU load
             if (torch) {
-                const light = new THREE.PointLight(0xff6622, 0.8, 8);
+                const light = new THREE.PointLight(0xff6622, 1.0, 10);
                 light.position.set(pos.x, 2, pos.z);
-                light.castShadow = true;
-                light.shadow.mapSize.width = 256;
-                light.shadow.mapSize.height = 256;
+                light.castShadow = false; // Disabled to reduce GPU/texture load
                 this.scene.add(light);
             }
         }

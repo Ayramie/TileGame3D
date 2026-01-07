@@ -6,6 +6,7 @@ import { AssetManifest, getCharacterPath, getAnimationPath, getEquipmentPath } f
 // Shared model cache to prevent WebGL texture limit issues
 // Each skeleton type shares the same loaded GLTF (textures, materials)
 const modelCache = new Map();
+const materialCache = new Map(); // Cache simplified materials to share between clones
 const loaderInstance = new GLTFLoader();
 
 // Skeleton enemy using KayKit skeleton models
@@ -97,21 +98,31 @@ export class SkeletonEnemy extends Enemy {
 
             // Simplify materials to reduce texture count
             // Convert to basic materials with only diffuse texture to stay under WebGL limit
+            // Share materials between skeleton clones to reduce GPU memory
             this.mesh.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
 
-                    // Convert to simpler material to reduce texture usage
+                    // Convert to simpler material or reuse cached one
                     if (child.material) {
                         const oldMat = child.material;
-                        const newMat = new THREE.MeshLambertMaterial({
-                            map: oldMat.map || null,
-                            color: oldMat.color || 0xffffff,
-                            emissive: new THREE.Color(0x221111),
-                            emissiveIntensity: 0.15
-                        });
-                        child.material = newMat;
+                        const matKey = `${this.skeletonType}_${child.name}`;
+
+                        if (materialCache.has(matKey)) {
+                            // Reuse cached material
+                            child.material = materialCache.get(matKey);
+                        } else {
+                            // Create and cache new simplified material
+                            const newMat = new THREE.MeshLambertMaterial({
+                                map: oldMat.map || null,
+                                color: oldMat.color || 0xffffff,
+                                emissive: new THREE.Color(0x221111),
+                                emissiveIntensity: 0.15
+                            });
+                            materialCache.set(matKey, newMat);
+                            child.material = newMat;
+                        }
                     }
                 }
             });

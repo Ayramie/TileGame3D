@@ -4,6 +4,19 @@ export class EffectsManager {
     constructor(scene) {
         this.scene = scene;
         this.effects = [];
+
+        // Cache for damage number textures to avoid WebGL texture limit
+        this.damageTextureCache = new Map();
+        this.maxDamageNumbers = 15; // Limit concurrent damage numbers
+        this.damageNumberCount = 0;
+
+        // Shared materials for simple effects (no textures)
+        this.sharedMaterials = {
+            white: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true }),
+            orange: new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true }),
+            blue: new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true }),
+            yellow: new THREE.MeshBasicMaterial({ color: 0xffffaa, transparent: true })
+        };
     }
 
     update(deltaTime) {
@@ -19,18 +32,87 @@ export class EffectsManager {
                 if (effect.mesh) {
                     this.scene.remove(effect.mesh);
                     if (effect.mesh.geometry) effect.mesh.geometry.dispose();
-                    if (effect.mesh.material) effect.mesh.material.dispose();
+                    if (effect.mesh.material) {
+                        // Don't dispose cached textures - only dispose non-cached materials
+                        if (!effect.usesCachedTexture) {
+                            if (effect.mesh.material.map) {
+                                effect.mesh.material.map.dispose();
+                            }
+                            effect.mesh.material.dispose();
+                        }
+                    }
                 }
                 if (effect.group) {
                     effect.group.traverse((child) => {
                         if (child.geometry) child.geometry.dispose();
-                        if (child.material) child.material.dispose();
+                        if (child.material && !this.isSharedMaterial(child.material)) {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
                     });
                     this.scene.remove(effect.group);
+                }
+                // Track damage number count
+                if (effect.isDamageNumber) {
+                    this.damageNumberCount--;
                 }
                 this.effects.splice(i, 1);
             }
         }
+    }
+
+    // Check if material is one of our shared materials
+    isSharedMaterial(material) {
+        return Object.values(this.sharedMaterials).includes(material);
+    }
+
+    // Get or create cached damage number texture
+    getDamageTexture(damage, isHeal, isCrit) {
+        const key = `${Math.round(damage)}_${isHeal ? 'h' : 'd'}_${isCrit ? 'c' : 'n'}`;
+
+        if (this.damageTextureCache.has(key)) {
+            return this.damageTextureCache.get(key);
+        }
+
+        // Limit cache size
+        if (this.damageTextureCache.size > 50) {
+            // Remove oldest entries
+            const keysToDelete = Array.from(this.damageTextureCache.keys()).slice(0, 10);
+            for (const k of keysToDelete) {
+                const tex = this.damageTextureCache.get(k);
+                tex.dispose();
+                this.damageTextureCache.delete(k);
+            }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+
+        let color = '#ff4444';
+        let fontSize = 64;
+        if (isHeal) {
+            color = '#44ff44';
+        } else if (isCrit || damage > 40) {
+            color = '#ffff44';
+            fontSize = 72;
+        }
+
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 6;
+        ctx.strokeText(Math.round(damage), 128, 64);
+
+        ctx.fillStyle = color;
+        ctx.fillText(Math.round(damage), 128, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        this.damageTextureCache.set(key, texture);
+        return texture;
     }
 
     // Sword swing arc effect - clear horizontal slash arc (90 degree, range 3)
@@ -795,41 +877,26 @@ export class EffectsManager {
 
     // Damage number floating text (using sprite)
     createDamageNumber(position, damage, isHeal = false, isCrit = false) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-
-        // Style based on type
-        let color = '#ff4444';
-        let fontSize = 64;
-        if (isHeal) {
-            color = '#44ff44';
-        } else if (isCrit || damage > 40) {
-            color = '#ffff44';
-            fontSize = 72;
+        // Limit concurrent damage numbers to prevent texture overflow
+        if (this.damageNumberCount >= this.maxDamageNumbers) {
+            // Remove oldest damage number
+            for (let i = 0; i < this.effects.length; i++) {
+                if (this.effects[i].isDamageNumber) {
+                    this.effects[i].life = 0; // Mark for removal
+                    break;
+                }
+            }
         }
 
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // Outline/shadow for visibility
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 6;
-        ctx.strokeText(Math.round(damage), 128, 64);
-
-        // Main text
-        ctx.fillStyle = color;
-        ctx.fillText(Math.round(damage), 128, 64);
-
-        const texture = new THREE.CanvasTexture(canvas);
+        // Use cached texture
+        const texture = this.getDamageTexture(damage, isHeal, isCrit);
         const spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
             depthTest: false // Always render on top
         });
         const sprite = new THREE.Sprite(spriteMaterial);
+
         // Clone position with slight random offset so numbers don't stack
         const offsetX = (Math.random() - 0.5) * 1;
         const offsetZ = (Math.random() - 0.5) * 0.5;
@@ -837,11 +904,14 @@ export class EffectsManager {
         sprite.scale.set(3, 1.5, 1);
 
         this.scene.add(sprite);
+        this.damageNumberCount++;
 
         this.effects.push({
             mesh: sprite,
             life: 1.2,
             velocityY: 3,
+            isDamageNumber: true,
+            usesCachedTexture: true, // Don't dispose the shared texture
             update: (dt, eff) => {
                 eff.mesh.position.y += eff.velocityY * dt;
                 eff.velocityY -= dt * 5; // Gravity
