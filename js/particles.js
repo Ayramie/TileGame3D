@@ -1075,4 +1075,252 @@ export class ParticleSystem {
             texture: 'spark'
         });
     }
+
+    // === Warrior Ability Effects ===
+
+    whirlwindSpin(position, radius = 3.5) {
+        // Create a ring of spinning particles
+        for (let i = 0; i < 24; i++) {
+            const angle = (i / 24) * Math.PI * 2 + Math.random() * 0.2;
+            const r = radius * (0.6 + Math.random() * 0.4);
+            const pos = {
+                x: position.x + Math.cos(angle) * r,
+                y: position.y + 0.5 + Math.random() * 1.0,
+                z: position.z + Math.sin(angle) * r
+            };
+            this.spawn(pos, {
+                count: 2,
+                spread: 0.1,
+                speed: 5,
+                life: 0.4,
+                size: 0.4,
+                endSize: 0.05,
+                gravity: 0,
+                upwardBias: 1,
+                drag: 0.85,
+                color: 0xffaa44,
+                endColor: 0xff6600,
+                texture: 'soft'
+            });
+        }
+        // Central burst
+        this.spawn({x: position.x, y: position.y + 1, z: position.z}, {
+            count: 15,
+            spread: 0.5,
+            speed: 8,
+            life: 0.3,
+            size: 0.3,
+            gravity: 0,
+            upwardBias: 2,
+            color: 0xffffaa,
+            texture: 'spark'
+        });
+    }
+
+    dashTrail(position, direction) {
+        // Trail particles behind during whirlwind dash
+        const perpX = -direction.z;
+        const perpZ = direction.x;
+        for (let i = 0; i < 3; i++) {
+            const offset = (i - 1) * 0.4;
+            const pos = {
+                x: position.x + perpX * offset,
+                y: position.y + 0.5 + Math.random() * 0.5,
+                z: position.z + perpZ * offset
+            };
+            this.spawn(pos, {
+                count: 2,
+                spread: 0.15,
+                speed: 2,
+                life: 0.35,
+                size: 0.35,
+                endSize: 0.05,
+                gravity: 0,
+                upwardBias: 0.5,
+                drag: 0.9,
+                color: 0xffcc66,
+                endColor: 0xff8800,
+                texture: 'soft'
+            });
+        }
+    }
+
+    leapTrail(position) {
+        // Particles trailing during heroic leap
+        this.spawn(position, {
+            count: 4,
+            spread: 0.3,
+            speed: 2,
+            life: 0.5,
+            size: 0.4,
+            endSize: 0.1,
+            gravity: -8,
+            upwardBias: 0,
+            drag: 0.95,
+            color: 0x66aaff,
+            endColor: 0x2266ff,
+            texture: 'soft'
+        });
+        // Sparks
+        this.spawn(position, {
+            count: 2,
+            spread: 0.2,
+            speed: 4,
+            life: 0.3,
+            size: 0.2,
+            gravity: -10,
+            upwardBias: -2,
+            color: 0xaaddff,
+            texture: 'spark'
+        });
+    }
+
+    groundSlam(position, radius = 4) {
+        // Expanding shockwave ring
+        for (let ring = 0; ring < 3; ring++) {
+            setTimeout(() => {
+                const r = radius * (ring + 1) / 3;
+                for (let i = 0; i < 20; i++) {
+                    const angle = (i / 20) * Math.PI * 2;
+                    const pos = {
+                        x: position.x + Math.cos(angle) * r,
+                        y: position.y + 0.2,
+                        z: position.z + Math.sin(angle) * r
+                    };
+                    this.spawn(pos, {
+                        count: 2,
+                        spread: 0.2,
+                        speed: 6,
+                        life: 0.5,
+                        size: 0.5,
+                        endSize: 0.1,
+                        gravity: -3,
+                        upwardBias: 4,
+                        drag: 0.9,
+                        color: 0xffaa44,
+                        endColor: 0xff6622,
+                        texture: 'soft'
+                    });
+                }
+            }, ring * 50);
+        }
+
+        // Central impact
+        this.spawn(position, {
+            count: 30,
+            spread: 0.8,
+            speed: 12,
+            life: 0.6,
+            size: 0.5,
+            endSize: 0.05,
+            gravity: -8,
+            upwardBias: 8,
+            color: 0xffdd66,
+            endColor: 0xff8800,
+            texture: 'soft'
+        });
+
+        // Dust cloud
+        this.spawn(position, {
+            count: 15,
+            spread: 1.5,
+            speed: 4,
+            life: 1.0,
+            size: 0.8,
+            endSize: 0.3,
+            gravity: -1,
+            upwardBias: 2,
+            drag: 0.92,
+            color: 0xaa9977,
+            endColor: 0x665544,
+            texture: 'smoke',
+            blendMode: 'normal'
+        });
+
+        // Sparks flying outward
+        this.spawn(position, {
+            count: 20,
+            spread: 0.5,
+            speed: 15,
+            life: 0.5,
+            size: 0.25,
+            gravity: -12,
+            upwardBias: 6,
+            color: 0xffffaa,
+            texture: 'spark'
+        });
+    }
+
+    parryFlash(position) {
+        // Bright defensive flash
+        this.spawn({x: position.x, y: position.y + 1, z: position.z}, {
+            count: 15,
+            spread: 0.4,
+            speed: 6,
+            life: 0.3,
+            size: 0.5,
+            endSize: 0.1,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xaaddff,
+            endColor: 0x4488ff,
+            texture: 'soft'
+        });
+        // Shield sparkles
+        this.spawn({x: position.x, y: position.y + 1, z: position.z}, {
+            count: 8,
+            spread: 0.3,
+            speed: 8,
+            life: 0.4,
+            size: 0.3,
+            gravity: -5,
+            upwardBias: 2,
+            color: 0xffffff,
+            texture: 'star',
+            rotationSpeed: 5
+        });
+    }
+
+    riposteSlash(fromPos, toPos) {
+        // Quick slash trail toward enemy
+        const dir = new THREE.Vector3().subVectors(toPos, fromPos);
+        const dist = dir.length();
+        dir.normalize();
+
+        const steps = Math.max(3, Math.floor(dist * 2));
+        for (let i = 0; i < steps; i++) {
+            const t = i / steps;
+            const pos = new THREE.Vector3().lerpVectors(fromPos, toPos, t);
+            pos.y += 1;
+            setTimeout(() => {
+                this.spawn(pos, {
+                    count: 3,
+                    spread: 0.1,
+                    speed: 3,
+                    life: 0.25,
+                    size: 0.4 * (1 - t * 0.5),
+                    endSize: 0.05,
+                    gravity: 0,
+                    upwardBias: 0,
+                    color: 0xffdd44,
+                    endColor: 0xff8800,
+                    texture: 'soft'
+                });
+            }, t * 80);
+        }
+        // Impact sparks at target
+        setTimeout(() => {
+            this.spawn({x: toPos.x, y: toPos.y + 1, z: toPos.z}, {
+                count: 12,
+                spread: 0.2,
+                speed: 10,
+                life: 0.3,
+                size: 0.25,
+                gravity: -8,
+                upwardBias: 3,
+                color: 0xffffaa,
+                texture: 'spark'
+            });
+        }, 100);
+    }
 }

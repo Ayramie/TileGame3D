@@ -561,6 +561,238 @@ export class EffectsManager {
         });
     }
 
+    // Whirlwind 360° spin effect
+    createWhirlwindEffect(position, radius = 3.5) {
+        const group = new THREE.Group();
+
+        // Spinning blade ring
+        for (let i = 0; i < 6; i++) {
+            const bladeGeometry = new THREE.BoxGeometry(0.08, 0.3, 1.2);
+            const bladeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa44,
+                transparent: true,
+                opacity: 0.9
+            });
+            const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+            const angle = (i / 6) * Math.PI * 2;
+            blade.position.x = Math.cos(angle) * radius * 0.8;
+            blade.position.z = Math.sin(angle) * radius * 0.8;
+            blade.position.y = 1;
+            blade.rotation.y = angle + Math.PI / 2;
+            blade.userData.baseAngle = angle;
+            group.add(blade);
+        }
+
+        // Ground shockwave ring
+        const ringGeometry = new THREE.RingGeometry(radius * 0.3, radius, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff8844,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.15;
+        group.add(ring);
+
+        // Central vortex effect
+        const vortexGeometry = new THREE.CylinderGeometry(0.3, radius * 0.6, 2, 16, 1, true);
+        const vortexMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffcc66,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide
+        });
+        const vortex = new THREE.Mesh(vortexGeometry, vortexMaterial);
+        vortex.position.y = 1;
+        group.add(vortex);
+
+        group.position.copy(position);
+        this.scene.add(group);
+
+        this.effects.push({
+            group: group,
+            life: 0.4,
+            spinAngle: 0,
+            update: (dt, eff) => {
+                eff.spinAngle += dt * 25;
+                const progress = (0.4 - eff.life) / 0.4;
+
+                // Spin blades outward
+                for (let i = 0; i < 6; i++) {
+                    const blade = group.children[i];
+                    const angle = blade.userData.baseAngle + eff.spinAngle;
+                    const r = radius * (0.5 + progress * 0.5);
+                    blade.position.x = Math.cos(angle) * r;
+                    blade.position.z = Math.sin(angle) * r;
+                    blade.rotation.y = angle + Math.PI / 2;
+                    blade.material.opacity = eff.life * 2.5;
+                }
+
+                // Expand and fade ring
+                const ringScale = 1 + progress * 0.5;
+                group.children[6].scale.set(ringScale, ringScale, 1);
+                group.children[6].material.opacity = eff.life * 2;
+
+                // Vortex effect
+                group.children[7].rotation.y = eff.spinAngle * 0.5;
+                group.children[7].material.opacity = eff.life * 0.5;
+            }
+        });
+    }
+
+    // Heroic Leap launch trail effect
+    createLeapTrailEffect(position) {
+        const group = new THREE.Group();
+
+        // Launch burst
+        const burstGeometry = new THREE.RingGeometry(0.5, 2, 16);
+        const burstMaterial = new THREE.MeshBasicMaterial({
+            color: 0x66aaff,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        const burst = new THREE.Mesh(burstGeometry, burstMaterial);
+        burst.rotation.x = -Math.PI / 2;
+        burst.position.y = 0.1;
+        group.add(burst);
+
+        // Vertical energy column
+        const columnGeometry = new THREE.CylinderGeometry(0.3, 0.8, 3, 12, 1, true);
+        const columnMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+        const column = new THREE.Mesh(columnGeometry, columnMaterial);
+        column.position.y = 1.5;
+        group.add(column);
+
+        group.position.copy(position);
+        this.scene.add(group);
+
+        this.effects.push({
+            group: group,
+            life: 0.5,
+            update: (dt, eff) => {
+                const progress = (0.5 - eff.life) / 0.5;
+
+                // Burst expands
+                const burstScale = 1 + progress * 2;
+                group.children[0].scale.set(burstScale, burstScale, 1);
+                group.children[0].material.opacity = eff.life * 2;
+
+                // Column rises and fades
+                group.children[1].position.y = 1.5 + progress * 3;
+                group.children[1].scale.y = 1 - progress * 0.5;
+                group.children[1].material.opacity = eff.life * 1.5;
+            }
+        });
+    }
+
+    // Ground slam AoE effect
+    createGroundSlamEffect(position, radius = 4) {
+        const group = new THREE.Group();
+
+        // Central impact crater
+        const craterGeometry = new THREE.RingGeometry(0.2, radius * 0.4, 24);
+        const craterMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff6622,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+        crater.rotation.x = -Math.PI / 2;
+        crater.position.y = 0.12;
+        group.add(crater);
+
+        // Expanding shockwave rings
+        for (let i = 0; i < 3; i++) {
+            const ringGeometry = new THREE.RingGeometry(
+                radius * (0.2 + i * 0.25),
+                radius * (0.3 + i * 0.25),
+                32
+            );
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: i === 0 ? 0xffaa44 : 0xff8822,
+                transparent: true,
+                opacity: 0.8 - i * 0.15,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.1 + i * 0.02;
+            ring.userData.delay = i * 0.05;
+            group.add(ring);
+        }
+
+        // Debris chunks flying up
+        for (let i = 0; i < 8; i++) {
+            const chunkGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const chunkMaterial = new THREE.MeshBasicMaterial({
+                color: 0x886644,
+                transparent: true,
+                opacity: 0.9
+            });
+            const chunk = new THREE.Mesh(chunkGeometry, chunkMaterial);
+            const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.3;
+            const dist = radius * (0.3 + Math.random() * 0.4);
+            chunk.position.x = Math.cos(angle) * dist;
+            chunk.position.z = Math.sin(angle) * dist;
+            chunk.position.y = 0.2;
+            chunk.userData.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                6 + Math.random() * 4,
+                (Math.random() - 0.5) * 4
+            );
+            chunk.userData.rotSpeed = (Math.random() - 0.5) * 10;
+            group.add(chunk);
+        }
+
+        group.position.copy(position);
+        this.scene.add(group);
+
+        this.effects.push({
+            group: group,
+            life: 0.8,
+            update: (dt, eff) => {
+                const progress = (0.8 - eff.life) / 0.8;
+
+                // Crater fades
+                group.children[0].material.opacity = eff.life * 1.5;
+
+                // Rings expand outward
+                for (let i = 1; i < 4; i++) {
+                    const ring = group.children[i];
+                    const ringProgress = Math.max(0, progress - ring.userData.delay * 2);
+                    const scale = 1 + ringProgress * 1.5;
+                    ring.scale.set(scale, scale, 1);
+                    ring.material.opacity = Math.max(0, eff.life * 2 - ringProgress);
+                }
+
+                // Debris flies up and falls
+                for (let i = 4; i < group.children.length; i++) {
+                    const chunk = group.children[i];
+                    chunk.userData.velocity.y -= dt * 20; // Gravity
+                    chunk.position.add(chunk.userData.velocity.clone().multiplyScalar(dt));
+                    chunk.rotation.x += chunk.userData.rotSpeed * dt;
+                    chunk.rotation.z += chunk.userData.rotSpeed * dt * 0.7;
+                    chunk.material.opacity = eff.life;
+
+                    // Stop at ground
+                    if (chunk.position.y < 0.15) {
+                        chunk.position.y = 0.15;
+                        chunk.userData.velocity.set(0, 0, 0);
+                    }
+                }
+            }
+        });
+    }
+
     // Damage number floating text (using sprite)
     createDamageNumber(position, damage, isHeal = false, isCrit = false) {
         const canvas = document.createElement('canvas');

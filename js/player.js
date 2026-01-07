@@ -23,47 +23,60 @@ export class Player {
         this.autoAttackCooldownMax = 0.8; // Faster attacks
         this.autoAttackDamage = 25;
 
-        // Abilities
+        // Abilities - Warrior kit:
+        // Q: Cleave (cone damage)
+        // F: Whirlwind (360° spin + forward dash)
+        // E: Parry (block + counter)
+        // R: Heroic Leap (jump to location + AoE)
+        // 1: Potion (heal)
         this.abilities = {
             cleave: {
-                cooldown: 5,
+                cooldown: 4,
                 cooldownRemaining: 0,
-                damage: 40,
-                range: 5.5,
-                angle: Math.PI * 0.7, // 126 degrees (wider)
+                damage: 45,
+                range: 5.0,
+                angle: Math.PI * 0.6, // 108 degrees
                 isCharging: false,
                 isActive: false
             },
-            bladestorm: {
+            whirlwind: {
                 cooldown: 6,
                 cooldownRemaining: 0,
-                spinDamage: 15,
-                diskDamage: 25,
-                duration: 3,
-                isCharging: false,
+                damage: 35,
+                range: 3.5,
+                dashDistance: 4,
+                dashDuration: 0.3,
                 isActive: false,
-                activeTime: 0
+                activeTime: 0,
+                dashDirection: null
             },
             parry: {
                 cooldown: 5,
                 cooldownRemaining: 0,
-                duration: 0.4,
-                perfectWindow: 0.15,
-                riposteDamage: 50,
-                perfectDamage: 100,
+                duration: 0.5,
+                perfectWindow: 0.2,
+                riposteDamage: 60,
+                perfectDamage: 120,
                 isActive: false,
                 activeTime: 0
             },
-            charge: {
-                cooldown: 8,
-                cooldownRemaining: 0,
-                stunDuration: 1,
-                isActive: false
-            },
-            potion: {
+            heroicLeap: {
                 cooldown: 10,
                 cooldownRemaining: 0,
-                healAmount: 30,
+                damage: 50,
+                stunDuration: 0.8,
+                range: 12,
+                aoeRadius: 4,
+                isActive: false,
+                activeTime: 0,
+                leapDuration: 0.5,
+                targetPos: null,
+                startPos: null
+            },
+            potion: {
+                cooldown: 12,
+                cooldownRemaining: 0,
+                healAmount: 35,
                 isActive: false
             }
         };
@@ -90,6 +103,7 @@ export class Player {
         const coneRange = this.abilities.cleave.range;
         const segments = 32;
 
+        // Draw cone pointing in +Y direction (will become +Z after rotation)
         const shape = new THREE.Shape();
         shape.moveTo(0, 0);
         for (let i = 0; i <= segments; i++) {
@@ -110,6 +124,7 @@ export class Player {
         });
 
         this.cleaveIndicator = new THREE.Mesh(geometry, material);
+        // Rotate to lay flat: shape's +Y becomes world +Z (forward)
         this.cleaveIndicator.rotation.x = -Math.PI / 2;
         this.cleaveIndicator.position.y = 0.1;
         this.cleaveIndicator.visible = false;
@@ -129,11 +144,12 @@ export class Player {
         this.cleaveIndicator.position.x = this.position.x;
         this.cleaveIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse - rotate around Y axis (world up)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.cleaveIndicator.rotation.z = -angle;
+        // After rotation.x = -Math.PI/2, the cone points +Z, so rotate by angle around Y
+        this.cleaveIndicator.rotation.y = angle;
     }
 
     async loadCharacter() {
@@ -389,19 +405,15 @@ export class Player {
             this.autoAttackCooldown -= deltaTime;
         }
 
-        // Automatically attack target if in range
-        if (this.targetEnemy && this.targetEnemy.isAlive && this.autoAttackCooldown <= 0) {
+        // Automatically attack target if in range (unless in movement ability)
+        const inMovementAbility = this.abilities.whirlwind.isActive || this.abilities.heroicLeap.isActive;
+        if (this.targetEnemy && this.targetEnemy.isAlive && this.autoAttackCooldown <= 0 && !inMovementAbility) {
             const dx = this.targetEnemy.position.x - this.position.x;
             const dz = this.targetEnemy.position.z - this.position.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
             if (dist <= this.attackRange) {
                 this.performAutoAttack();
             }
-        }
-
-        // Bladestorm tick damage
-        if (this.abilities.bladestorm.isActive && this.game) {
-            this.bladestormTick(this.game.enemies);
         }
 
         // Update visual position - use animated character if loaded
@@ -531,12 +543,14 @@ export class Player {
             }
         }
 
-        // Bladestorm duration
-        if (this.abilities.bladestorm.isActive) {
-            this.abilities.bladestorm.activeTime += deltaTime;
-            if (this.abilities.bladestorm.activeTime >= this.abilities.bladestorm.duration) {
-                this.endBladestorm();
-            }
+        // Whirlwind dash
+        if (this.abilities.whirlwind.isActive) {
+            this.updateWhirlwind(deltaTime);
+        }
+
+        // Heroic Leap arc
+        if (this.abilities.heroicLeap.isActive) {
+            this.updateHeroicLeap(deltaTime);
         }
     }
 
@@ -651,90 +665,86 @@ export class Player {
         return hitCount > 0;
     }
 
-    // Ability: Bladestorm
-    useBladestorm() {
-        const ability = this.abilities.bladestorm;
+    // Ability: Whirlwind - 360° spin attack with forward dash
+    useWhirlwind(direction = null) {
+        const ability = this.abilities.whirlwind;
         if (ability.cooldownRemaining > 0) return false;
         if (ability.isActive) return false;
 
         ability.isActive = true;
         ability.activeTime = 0;
+        ability.cooldownRemaining = ability.cooldown;
 
-        // Play power up animation
-        if (this.useAnimatedCharacter) {
-            this.character.playPowerUp();
+        // Set dash direction (forward by default, or toward cursor)
+        if (direction) {
+            ability.dashDirection = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            this.rotation = Math.atan2(direction.x, direction.z);
+        } else {
+            ability.dashDirection = new THREE.Vector3(
+                Math.sin(this.rotation),
+                0,
+                Math.cos(this.rotation)
+            );
         }
 
-        // Visual effect - spinning blades around player
+        // Store start position
+        ability.startPos = this.position.clone();
+
+        // Play attack animation (spin)
+        if (this.useAnimatedCharacter) {
+            this.character.playAttack(2);
+        }
+
+        // Create whirlwind visual effect
         if (this.game && this.game.effects) {
-            const targetGroup = this.useAnimatedCharacter ? this.character.model : this.group;
-            this.bladestormEffect = this.game.effects.createBladestormEffect(targetGroup);
+            this.game.effects.createWhirlwindEffect(this.position, ability.range);
+        }
+
+        // Emit spin particles
+        if (this.game && this.game.particles) {
+            this.game.particles.whirlwindSpin(this.position, ability.range);
+        }
+
+        // Deal damage to all nearby enemies immediately
+        if (this.game) {
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isAlive) continue;
+                const dx = enemy.position.x - this.position.x;
+                const dz = enemy.position.z - this.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist <= ability.range) {
+                    enemy.takeDamage(ability.damage, this);
+                    if (this.game.effects) {
+                        this.game.effects.createDamageNumber(enemy.position, ability.damage);
+                    }
+                }
+            }
         }
 
         return true;
     }
 
-    endBladestorm() {
-        const ability = this.abilities.bladestorm;
-        ability.isActive = false;
-        ability.activeTime = 0;
-        ability.cooldownRemaining = ability.cooldown;
+    updateWhirlwind(deltaTime) {
+        const ability = this.abilities.whirlwind;
+        ability.activeTime += deltaTime;
 
-        // Remove bladestorm visual effect
-        if (this.bladestormEffect) {
-            this.bladestormEffect.life = 0;
-            this.bladestormEffect = null;
-        }
+        // Progress through dash
+        const progress = ability.activeTime / ability.dashDuration;
 
-        // Throw disk projectile toward cursor/target
-        if (this.game && this.game.effects) {
-            const forward = new THREE.Vector3(
-                Math.sin(this.rotation),
-                0,
-                Math.cos(this.rotation)
-            );
-            this.game.effects.createBladestormDiskEffect(this.position, forward);
-        }
-    }
+        if (progress < 1) {
+            // Move player forward during dash
+            const moveAmount = (ability.dashDistance / ability.dashDuration) * deltaTime;
+            this.position.add(ability.dashDirection.clone().multiplyScalar(moveAmount));
 
-    bladestormTick(enemies) {
-        const ability = this.abilities.bladestorm;
-        if (!ability.isActive) return;
-
-        // Spin particles
-        if (this.game && this.game.particles && Math.random() < 0.5) {
-            this.game.particles.bladestormSpin(this.position);
-        }
-
-        // Track damage for periodic damage numbers
-        if (!this.bladestormDamageAccum) this.bladestormDamageAccum = {};
-
-        // Damage nearby enemies
-        for (const enemy of enemies) {
-            if (!enemy.isAlive) continue;
-
-            const dx = enemy.position.x - this.position.x;
-            const dz = enemy.position.z - this.position.z;
-            const horizontalDist = Math.sqrt(dx * dx + dz * dz);
-            if (horizontalDist <= 3) {
-                const damage = ability.spinDamage * 0.1;
-                enemy.takeDamage(damage, this);
-
-                // Accumulate damage for this enemy
-                const id = enemy.id || enemies.indexOf(enemy);
-                if (!this.bladestormDamageAccum[id]) {
-                    this.bladestormDamageAccum[id] = 0;
-                }
-                this.bladestormDamageAccum[id] += damage;
-
-                // Show damage number every 0.5 worth of damage accumulated
-                if (this.bladestormDamageAccum[id] >= 5) {
-                    if (this.game && this.game.effects) {
-                        this.game.effects.createDamageNumber(enemy.position, Math.round(this.bladestormDamageAccum[id]));
-                    }
-                    this.bladestormDamageAccum[id] = 0;
-                }
+            // Spin particles during dash
+            if (this.game && this.game.particles && Math.random() < 0.7) {
+                this.game.particles.dashTrail(this.position, ability.dashDirection);
             }
+        } else {
+            // End whirlwind
+            ability.isActive = false;
+            ability.activeTime = 0;
+            ability.dashDirection = null;
         }
     }
 
@@ -784,49 +794,110 @@ export class Player {
         return true;
     }
 
-    // Ability: Charge
-    useCharge() {
-        const ability = this.abilities.charge;
+    // Ability: Heroic Leap - jump to target location with AoE damage
+    useHeroicLeap(targetPos) {
+        const ability = this.abilities.heroicLeap;
         if (ability.cooldownRemaining > 0) return false;
-        if (!this.targetEnemy || !this.targetEnemy.isAlive) return false;
+        if (ability.isActive) return false;
 
+        // Validate target position
+        if (!targetPos) return false;
+
+        // Check range
+        const dx = targetPos.x - this.position.x;
+        const dz = targetPos.z - this.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Clamp to max range
+        let finalTarget = targetPos.clone();
+        if (dist > ability.range) {
+            const dir = new THREE.Vector3(dx, 0, dz).normalize();
+            finalTarget = this.position.clone().add(dir.multiplyScalar(ability.range));
+        }
+
+        ability.isActive = true;
+        ability.activeTime = 0;
         ability.cooldownRemaining = ability.cooldown;
+        ability.startPos = this.position.clone();
+        ability.targetPos = finalTarget;
 
-        const startPos = this.position.clone();
+        // Face target direction
+        this.rotation = Math.atan2(dx, dz);
 
-        // Dash to target
-        const dir = new THREE.Vector3().subVectors(this.targetEnemy.position, this.position);
-        dir.y = 0;
-        const dist = dir.length();
-
-        if (dist > 1.5) {
-            dir.normalize();
-            this.position.add(dir.multiplyScalar(dist - 1));
-            this.rotation = Math.atan2(dir.x, dir.z);
+        // Play jump animation
+        if (this.useAnimatedCharacter) {
+            this.character.playJump();
         }
 
-        // Charge trail effect
+        // Create leap trail effect
         if (this.game && this.game.effects) {
-            this.game.effects.createChargeEffect(startPos, this.position);
+            this.game.effects.createLeapTrailEffect(this.position);
         }
 
-        // Particle trail
-        if (this.game && this.game.particles) {
-            // Create trail along charge path
-            const trailDir = new THREE.Vector3().subVectors(this.position, startPos).normalize();
-            const steps = Math.ceil(dist / 1.5);
-            for (let i = 0; i < steps; i++) {
-                const pos = startPos.clone().addScaledVector(trailDir, i * 1.5);
-                this.game.particles.chargeTrail(pos, trailDir);
-            }
-            // Impact at destination
-            this.game.particles.bounceImpact(this.position);
-            this.game.addScreenShake(0.6);
-        }
-
-        // Stun target
-        this.targetEnemy.stun(ability.stunDuration);
         return true;
+    }
+
+    updateHeroicLeap(deltaTime) {
+        const ability = this.abilities.heroicLeap;
+        ability.activeTime += deltaTime;
+
+        const progress = Math.min(ability.activeTime / ability.leapDuration, 1);
+
+        // Parabolic arc - higher jump at midpoint
+        const arcHeight = 5;
+        const t = progress;
+        const heightOffset = 4 * arcHeight * t * (1 - t); // Parabola peaking at t=0.5
+
+        // Interpolate position
+        this.position.x = ability.startPos.x + (ability.targetPos.x - ability.startPos.x) * progress;
+        this.position.z = ability.startPos.z + (ability.targetPos.z - ability.startPos.z) * progress;
+        this.position.y = heightOffset;
+
+        // Trail particles during leap
+        if (this.game && this.game.particles && Math.random() < 0.8) {
+            this.game.particles.leapTrail(this.position);
+        }
+
+        // Land
+        if (progress >= 1) {
+            this.position.y = 0;
+            ability.isActive = false;
+            ability.activeTime = 0;
+
+            // AoE damage and stun on landing
+            if (this.game) {
+                // Ground slam effect
+                if (this.game.effects) {
+                    this.game.effects.createGroundSlamEffect(this.position, ability.aoeRadius);
+                }
+
+                // Shockwave particles
+                if (this.game.particles) {
+                    this.game.particles.groundSlam(this.position, ability.aoeRadius);
+                }
+
+                // Screen shake
+                this.game.addScreenShake(0.8);
+
+                // Damage and stun enemies in AoE
+                for (const enemy of this.game.enemies) {
+                    if (!enemy.isAlive) continue;
+                    const dx = enemy.position.x - this.position.x;
+                    const dz = enemy.position.z - this.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist <= ability.aoeRadius) {
+                        enemy.takeDamage(ability.damage, this);
+                        enemy.stun(ability.stunDuration);
+                        if (this.game.effects) {
+                            this.game.effects.createDamageNumber(enemy.position, ability.damage);
+                        }
+                    }
+                }
+            }
+
+            ability.startPos = null;
+            ability.targetPos = null;
+        }
     }
 
     // Ability: Health Potion

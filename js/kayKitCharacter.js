@@ -290,41 +290,52 @@ export class KayKitCharacter {
     }
 
     retargetClip(clip) {
-        // KayKit animations use track names like "Armature/Bone.property"
-        // We need to ensure these match our model's structure
-        // Clone the clip and modify track names if needed
+        // KayKit animations use track names like "Armature|BoneName.property" or "Armature/BoneName.property"
+        // Our model has bones directly, so we need to strip the Armature prefix
         const newTracks = [];
 
+        // Build a map of bone names in our model for fast lookup
+        const modelBones = new Set();
+        this.model.traverse((child) => {
+            if (child.isBone || child.isSkinnedMesh) {
+                modelBones.add(child.name);
+            }
+        });
+
         for (const track of clip.tracks) {
-            // Parse track name: "Armature/BoneName.property" or just "BoneName.property"
-            let trackName = track.name;
-
-            // Try to find the bone in our model
-            const match = trackName.match(/^(.+?)\.(.+)$/);
-            if (match) {
-                const bonePath = match[1];
-                const property = match[2];
-                const boneName = bonePath.split('/').pop(); // Get just the bone name
-
-                // Check if bone exists in model
-                let boneFound = false;
-                this.model.traverse((child) => {
-                    if (child.name === boneName || child.name === bonePath) {
-                        boneFound = true;
-                    }
-                });
-
-                // If the full path doesn't work, try just the bone name
-                if (!boneFound) {
-                    // Create new track with simplified name
-                    const newTrack = track.clone();
-                    newTrack.name = `${boneName}.${property}`;
-                    newTracks.push(newTrack);
-                    continue;
-                }
+            // Parse track name: various formats like:
+            // "Armature|BoneName.property", "Armature/BoneName.property", "BoneName.property"
+            const match = track.name.match(/^(.+?)\.([^.]+)$/);
+            if (!match) {
+                newTracks.push(track.clone());
+                continue;
             }
 
-            newTracks.push(track.clone());
+            const bonePath = match[1];
+            const property = match[2];
+
+            // Extract just the bone name, handling different separators
+            let boneName = bonePath;
+            if (bonePath.includes('|')) {
+                boneName = bonePath.split('|').pop();
+            } else if (bonePath.includes('/')) {
+                boneName = bonePath.split('/').pop();
+            }
+
+            // Check if this bone exists in our model
+            if (modelBones.has(boneName)) {
+                const newTrack = track.clone();
+                newTrack.name = `${boneName}.${property}`;
+                newTracks.push(newTrack);
+            } else if (modelBones.has(bonePath)) {
+                // Full path exists in model
+                newTracks.push(track.clone());
+            } else {
+                // Try with just bone name anyway - might work with mixer's search
+                const newTrack = track.clone();
+                newTrack.name = `${boneName}.${property}`;
+                newTracks.push(newTrack);
+            }
         }
 
         return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);

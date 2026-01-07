@@ -90,7 +90,7 @@ export class InputManager {
                 break;
 
             case 'f':
-                // F ability - Bladestorm (Warrior) / Flame Wave (Mage)
+                // F ability - Whirlwind (Warrior) / Flame Wave (Mage)
                 if (this.game.selectedClass === 'mage') {
                     // Start aiming flame wave
                     this.aimingAbility = 'f';
@@ -98,7 +98,12 @@ export class InputManager {
                         this.game.player.showFlameWaveIndicator(true);
                     }
                 } else {
-                    this.game.player.useBladestorm();
+                    // Whirlwind uses direction to mouse
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    this.game.player.useWhirlwind(direction);
                 }
                 break;
 
@@ -112,11 +117,12 @@ export class InputManager {
                 break;
 
             case 'r':
-                // R ability - Charge (Warrior) / Backstep (Mage)
+                // R ability - Heroic Leap (Warrior) / Backstep (Mage)
                 if (this.game.selectedClass === 'mage') {
                     this.game.player.useBackstep();
                 } else {
-                    this.game.player.useCharge();
+                    // Heroic Leap jumps to mouse position
+                    this.game.player.useHeroicLeap(this.mouseWorldPos.clone());
                 }
                 break;
 
