@@ -114,7 +114,7 @@ export class KayKitCharacter {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    this.fixMaterial(child.material);
+                    this.fixMaterial(child.material, child);
                 }
                 // Find bones for attachments
                 if (child.isBone) {
@@ -155,23 +155,25 @@ export class KayKitCharacter {
         }
     }
 
-    fixMaterial(material) {
+    fixMaterial(material, mesh) {
         if (!material) return;
 
         if (Array.isArray(material)) {
-            material.forEach(m => this.fixMaterial(m));
+            mesh.material = material.map(m => this.createSimpleMaterial(m));
             return;
         }
 
-        // Ensure proper rendering
-        material.transparent = false;
-        material.opacity = 1.0;
-        material.side = THREE.FrontSide;
+        // Convert to simpler material to reduce texture count (WebGL limit is 16)
+        mesh.material = this.createSimpleMaterial(material);
+    }
 
-        if (material.isMeshStandardMaterial) {
-            material.roughness = Math.max(0.4, material.roughness || 0.5);
-            material.metalness = Math.min(0.3, material.metalness || 0.0);
-        }
+    createSimpleMaterial(material) {
+        // MeshLambertMaterial only uses diffuse map, avoiding normal/roughness/metalness maps
+        return new THREE.MeshLambertMaterial({
+            map: material.map || null,
+            color: material.color || 0xffffff,
+            side: THREE.FrontSide
+        });
     }
 
     loadGLTF(loader, path) {

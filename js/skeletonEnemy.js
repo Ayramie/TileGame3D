@@ -95,23 +95,24 @@ export class SkeletonEnemy extends Enemy {
             this.mesh.scale.setScalar(1.0);
             this.mesh.position.copy(this.position);
 
-            // Share materials from the original to avoid texture duplication
-            const originalMeshes = [];
-            gltf.scene.traverse((child) => {
-                if (child.isMesh) originalMeshes.push(child);
-            });
-
-            let meshIndex = 0;
+            // Simplify materials to reduce texture count
+            // Convert to basic materials with only diffuse texture to stay under WebGL limit
             this.mesh.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
 
-                    // Share material from original (keeps same texture reference)
-                    if (originalMeshes[meshIndex]) {
-                        child.material = originalMeshes[meshIndex].material;
+                    // Convert to simpler material to reduce texture usage
+                    if (child.material) {
+                        const oldMat = child.material;
+                        const newMat = new THREE.MeshLambertMaterial({
+                            map: oldMat.map || null,
+                            color: oldMat.color || 0xffffff,
+                            emissive: new THREE.Color(0x221111),
+                            emissiveIntensity: 0.15
+                        });
+                        child.material = newMat;
                     }
-                    meshIndex++;
                 }
             });
 

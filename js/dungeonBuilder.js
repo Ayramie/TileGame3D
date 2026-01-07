@@ -111,20 +111,20 @@ export class DungeonBuilder {
         const piece = await this.getAsset(category, name);
         if (!piece) return null;
 
-        // Apply dungeon texture if available
-        if (this.dungeonTexture) {
-            piece.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    // Apply texture to materials that accept it
-                    if (child.material && child.material.map === null) {
-                        child.material.map = this.dungeonTexture;
-                        child.material.needsUpdate = true;
-                    }
-                }
-            });
-        }
+        // Convert to simple materials to reduce texture count (WebGL limit is 16)
+        piece.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                // Convert to MeshLambertMaterial to reduce texture usage
+                const oldMat = child.material;
+                const tex = oldMat?.map || this.dungeonTexture || null;
+                child.material = new THREE.MeshLambertMaterial({
+                    map: tex,
+                    color: oldMat?.color || 0xffffff
+                });
+            }
+        });
 
         piece.position.set(x, y, z);
         piece.rotation.y = rotation;
