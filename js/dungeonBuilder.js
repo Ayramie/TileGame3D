@@ -198,7 +198,7 @@ export class DungeonBuilder {
             { category: 'props', name: 'chest', chance: 0.1 },
             { category: 'furniture', name: 'tableSmall', chance: 0.15 },
             { category: 'furniture', name: 'chair', chance: 0.2 },
-            { category: 'decoration', name: 'rubblePile', chance: 0.1 }
+            { category: 'decoration', name: 'rubbleLarge', chance: 0.1 }
         ];
 
         // Calculate number of props

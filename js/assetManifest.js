@@ -187,7 +187,7 @@ export const AssetManifest = {
             coinStackSilver: 'assets/kaykit/dungeon/decoration/coin_stack_silver.gltf',
             keyGold: 'assets/kaykit/dungeon/decoration/key_gold.gltf',
             keySilver: 'assets/kaykit/dungeon/decoration/key_silver.gltf',
-            rubblePile: 'assets/kaykit/dungeon/decoration/rubble_pile.gltf'
+            rubbleLarge: 'assets/kaykit/dungeon/decoration/rubble_large.gltf'
         },
         texture: 'assets/kaykit/dungeon/texture/dungeon_texture.png'
     }
