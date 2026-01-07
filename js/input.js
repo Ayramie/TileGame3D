@@ -73,17 +73,22 @@ export class InputManager {
                 break;
 
             case 'q':
-                // Q ability - Cleave (Warrior) / Blizzard (Mage) - hold to aim
+                // Q ability - Cleave (Warrior) / Blizzard (Mage) / Arrow Wave (Hunter)
                 if (this.game.selectedClass === 'mage') {
-                    // Start aiming blizzard (check cooldown)
                     if (this.game.player.abilities.blizzard?.cooldownRemaining <= 0) {
                         this.aimingAbility = 'q';
                         if (this.game.player.showBlizzardIndicator) {
                             this.game.player.showBlizzardIndicator(true);
                         }
                     }
+                } else if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.abilities.arrowWave?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                        if (this.game.player.showArrowWaveIndicator) {
+                            this.game.player.showArrowWaveIndicator(true);
+                        }
+                    }
                 } else {
-                    // Start aiming cleave (check cooldown)
                     if (this.game.player.abilities.cleave.cooldownRemaining <= 0) {
                         this.aimingAbility = 'q';
                         if (this.game.player.showCleaveIndicator) {
@@ -94,15 +99,20 @@ export class InputManager {
                 break;
 
             case 'f':
-                // F ability - Whirlwind (Warrior) / Flame Wave (Mage)
+                // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
                 if (this.game.selectedClass === 'mage') {
-                    // Start aiming flame wave
                     this.aimingAbility = 'f';
                     if (this.game.player.showFlameWaveIndicator) {
                         this.game.player.showFlameWaveIndicator(true);
                     }
+                } else if (this.game.selectedClass === 'hunter') {
+                    // Spin dash toward mouse direction
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    this.game.player.useSpinDash(direction);
                 } else {
-                    // Whirlwind uses direction to mouse
                     const direction = {
                         x: this.mouseWorldPos.x - this.game.player.position.x,
                         z: this.mouseWorldPos.z - this.game.player.position.z
@@ -112,20 +122,28 @@ export class InputManager {
                 break;
 
             case 'e':
-                // E ability - Parry (Warrior) / Frost Nova (Mage)
+                // E ability - Parry (Warrior) / Frost Nova (Mage) / Shotgun (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.game.player.useFrostNova();
+                } else if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.abilities.shotgun?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'e';
+                        if (this.game.player.showShotgunIndicator) {
+                            this.game.player.showShotgunIndicator(true);
+                        }
+                    }
                 } else {
                     this.game.player.useParry();
                 }
                 break;
 
             case 'r':
-                // R ability - Heroic Leap (Warrior) / Backstep (Mage)
+                // R ability - Heroic Leap (Warrior) / Backstep (Mage) / Trap (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.game.player.useBackstep();
+                } else if (this.game.selectedClass === 'hunter') {
+                    this.game.player.useTrap();
                 } else {
-                    // Start aiming heroic leap (check cooldown)
                     if (this.game.player.abilities.heroicLeap.cooldownRemaining <= 0) {
                         this.aimingAbility = 'r';
                         if (this.game.player.showHeroicLeapIndicator) {
@@ -136,9 +154,8 @@ export class InputManager {
                 break;
 
             case 'c':
-                // C ability - Sunder (Warrior) / Frozen Orb (Mage) - hold to aim
+                // C ability - Sunder (Warrior) / Frozen Orb (Mage) / Giant Arrow (Hunter)
                 if (this.game.selectedClass === 'mage') {
-                    // Frozen orb - aim toward mouse
                     if (this.game.player.abilities.frozenOrb.cooldownRemaining <= 0) {
                         const direction = {
                             x: this.mouseWorldPos.x - this.game.player.position.x,
@@ -146,8 +163,14 @@ export class InputManager {
                         };
                         this.game.player.useFrozenOrb(direction);
                     }
+                } else if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.abilities.giantArrow?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'c';
+                        if (this.game.player.showGiantArrowIndicator) {
+                            this.game.player.showGiantArrowIndicator(true);
+                        }
+                    }
                 } else {
-                    // Sunder - hold to aim
                     if (this.game.player.abilities.sunder.cooldownRemaining <= 0) {
                         this.aimingAbility = 'c';
                         if (this.game.player.showSunderIndicator) {
@@ -189,13 +212,16 @@ export class InputManager {
         switch (key) {
             case 'q':
                 if (this.game.selectedClass === 'mage') {
-                    // Fire blizzard at mouse position
                     if (this.game.player.showBlizzardIndicator) {
                         this.game.player.showBlizzardIndicator(false);
                     }
                     this.game.player.useBlizzard(this.mouseWorldPos.clone());
+                } else if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.showArrowWaveIndicator) {
+                        this.game.player.showArrowWaveIndicator(false);
+                    }
+                    this.game.player.useArrowWave(direction);
                 } else {
-                    // Fire cleave toward mouse
                     if (this.game.player.showCleaveIndicator) {
                         this.game.player.showCleaveIndicator(false);
                     }
@@ -205,7 +231,6 @@ export class InputManager {
 
             case 'f':
                 if (this.game.selectedClass === 'mage') {
-                    // Fire flame wave toward mouse
                     if (this.game.player.showFlameWaveIndicator) {
                         this.game.player.showFlameWaveIndicator(false);
                     }
@@ -213,9 +238,17 @@ export class InputManager {
                 }
                 break;
 
+            case 'e':
+                if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.showShotgunIndicator) {
+                        this.game.player.showShotgunIndicator(false);
+                    }
+                    this.game.player.useShotgun(direction);
+                }
+                break;
+
             case 'r':
-                if (this.game.selectedClass !== 'mage') {
-                    // Fire heroic leap to mouse position
+                if (this.game.selectedClass === 'warrior') {
                     if (this.game.player.showHeroicLeapIndicator) {
                         this.game.player.showHeroicLeapIndicator(false);
                     }
@@ -224,8 +257,12 @@ export class InputManager {
                 break;
 
             case 'c':
-                if (this.game.selectedClass !== 'mage') {
-                    // Fire sunder toward mouse
+                if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.showGiantArrowIndicator) {
+                        this.game.player.showGiantArrowIndicator(false);
+                    }
+                    this.game.player.useGiantArrow(direction);
+                } else if (this.game.selectedClass === 'warrior') {
                     if (this.game.player.showSunderIndicator) {
                         this.game.player.showSunderIndicator(false);
                     }
@@ -356,6 +393,10 @@ export class InputManager {
                     if (this.game.player.updateBlizzardIndicator) {
                         this.game.player.updateBlizzardIndicator(this.mouseWorldPos);
                     }
+                } else if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.updateArrowWaveIndicator) {
+                        this.game.player.updateArrowWaveIndicator(this.mouseWorldPos);
+                    }
                 } else {
                     if (this.game.player.updateCleaveIndicator) {
                         this.game.player.updateCleaveIndicator(this.mouseWorldPos);
@@ -365,13 +406,25 @@ export class InputManager {
                 if (this.game.player.updateFlameWaveIndicator) {
                     this.game.player.updateFlameWaveIndicator(this.mouseWorldPos);
                 }
+            } else if (this.aimingAbility === 'e') {
+                if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.updateShotgunIndicator) {
+                        this.game.player.updateShotgunIndicator(this.mouseWorldPos);
+                    }
+                }
             } else if (this.aimingAbility === 'r') {
                 if (this.game.player.updateHeroicLeapIndicator) {
                     this.game.player.updateHeroicLeapIndicator(this.mouseWorldPos);
                 }
             } else if (this.aimingAbility === 'c') {
-                if (this.game.player.updateSunderIndicator) {
-                    this.game.player.updateSunderIndicator(this.mouseWorldPos);
+                if (this.game.selectedClass === 'hunter') {
+                    if (this.game.player.updateGiantArrowIndicator) {
+                        this.game.player.updateGiantArrowIndicator(this.mouseWorldPos);
+                    }
+                } else {
+                    if (this.game.player.updateSunderIndicator) {
+                        this.game.player.updateSunderIndicator(this.mouseWorldPos);
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Player } from './player.js';
 import { Mage } from './mage.js';
+import { Hunter } from './hunter.js';
 import { ThirdPersonCamera } from './camera.js';
 import { InputManager } from './input.js';
 import { SkeletonEnemy, createSkeletonEnemy } from './skeletonEnemy.js';
@@ -187,7 +188,13 @@ export class Game {
             document.querySelector('#ability-e .name').textContent = 'Frost Nova';
             document.querySelector('#ability-r .name').textContent = 'Backstep';
             document.querySelector('#ability-c .name').textContent = 'Frozen Orb';
-            // Show C slot for mage (Frozen Orb)
+            if (cSlot) cSlot.style.display = '';
+        } else if (this.selectedClass === 'hunter') {
+            document.querySelector('#ability-q .name').textContent = 'Arrow Wave';
+            document.querySelector('#ability-f .name').textContent = 'Spin Dash';
+            document.querySelector('#ability-e .name').textContent = 'Shotgun';
+            document.querySelector('#ability-r .name').textContent = 'Trap';
+            document.querySelector('#ability-c .name').textContent = 'Giant Arrow';
             if (cSlot) cSlot.style.display = '';
         } else {
             document.querySelector('#ability-q .name').textContent = 'Cleave';
@@ -195,7 +202,6 @@ export class Game {
             document.querySelector('#ability-e .name').textContent = 'Parry';
             document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
             document.querySelector('#ability-c .name').textContent = 'Sunder';
-            // Show C slot for warrior (Sunder)
             if (cSlot) cSlot.style.display = '';
         }
     }
@@ -391,6 +397,8 @@ export class Game {
         // Create player based on selected class
         if (this.selectedClass === 'mage') {
             this.player = new Mage(this.scene, this);
+        } else if (this.selectedClass === 'hunter') {
+            this.player = new Hunter(this.scene, this);
         } else {
             this.player = new Player(this.scene, this);
         }
@@ -842,6 +850,13 @@ export class Game {
             this.updateAbilityCooldown('e', this.player.abilities.frostNova);
             this.updateAbilityCooldown('r', this.player.abilities.backstep);
             this.updateAbilityCooldown('c', this.player.abilities.frozenOrb);
+            this.updateAbilityCooldown('1', this.player.abilities.potion);
+        } else if (this.selectedClass === 'hunter') {
+            this.updateAbilityCooldown('q', this.player.abilities.arrowWave);
+            this.updateAbilityCooldown('f', this.player.abilities.spinDash);
+            this.updateAbilityCooldown('e', this.player.abilities.shotgun);
+            this.updateAbilityCooldown('r', this.player.abilities.trap);
+            this.updateAbilityCooldown('c', this.player.abilities.giantArrow);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
         } else {
             this.updateAbilityCooldown('q', this.player.abilities.cleave);

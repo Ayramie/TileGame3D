@@ -11,7 +11,7 @@ export class Mage {
         this.className = 'Mage';
 
         // Stats - Mage has less health but ranged attacks
-        this.maxHealth = 80;
+        this.maxHealth = 300;
         this.health = this.maxHealth;
         this.moveSpeed = 7;
         this.jumpForce = 12;
@@ -178,11 +178,11 @@ export class Mage {
         this.flameWaveIndicator.position.x = this.position.x;
         this.flameWaveIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse (add PI to flip direction)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.flameWaveIndicator.rotation.z = -angle;
+        this.flameWaveIndicator.rotation.z = -angle + Math.PI;
     }
 
     async loadCharacter() {
@@ -855,7 +855,7 @@ export class Mage {
         animate();
 
         // Particle effect
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.frostNova) {
             this.game.particles.frostNova(this.position, ability.radius);
         }
     }
@@ -973,7 +973,7 @@ export class Mage {
         });
 
         // Cast particles
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.frostCast) {
             this.game.particles.frostCast(startPos);
         }
     }
@@ -1028,7 +1028,7 @@ export class Mage {
                 }
 
                 // Spawn ice particles as it travels
-                if (this.game && this.game.particles) {
+                if (this.game && this.game.particles && this.game.particles.frozenOrbTrail) {
                     this.game.particles.frozenOrbTrail(orb.mesh.position);
                 }
             }
@@ -1102,7 +1102,7 @@ export class Mage {
         animate();
 
         // Explosion particles
-        if (this.game && this.game.particles) {
+        if (this.game && this.game.particles && this.game.particles.frozenOrbExplosion) {
             this.game.particles.frozenOrbExplosion(explosionPos, orb.aoeRadius);
         }
 

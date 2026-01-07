@@ -543,6 +543,10 @@ export class SkeletonEnemy extends Enemy {
         }
     }
 
+    stun(duration) {
+        this.stunTime = duration;
+    }
+
     die() {
         this.isAlive = false;
 
