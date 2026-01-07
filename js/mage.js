@@ -510,10 +510,14 @@ export class Mage {
             const proj = this.projectiles[i];
 
             if (!proj.target || !proj.target.isAlive) {
-                // Target died, remove projectile
+                // Target died, remove projectile (with glow child disposal)
+                proj.mesh.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    }
+                });
                 this.scene.remove(proj.mesh);
-                proj.mesh.geometry.dispose();
-                proj.mesh.material.dispose();
                 this.projectiles.splice(i, 1);
                 continue;
             }
@@ -543,10 +547,14 @@ export class Mage {
                     this.game.particles.magicImpact(proj.mesh.position);
                 }
 
-                // Remove projectile
+                // Remove projectile (with glow child disposal)
+                proj.mesh.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    }
+                });
                 this.scene.remove(proj.mesh);
-                proj.mesh.geometry.dispose();
-                proj.mesh.material.dispose();
                 this.projectiles.splice(i, 1);
             }
         }
@@ -1154,10 +1162,14 @@ export class Mage {
             this.game.addScreenShake(0.4);
         }
 
-        // Remove orb mesh
+        // Remove orb mesh (with proper child disposal)
+        orb.mesh.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+        });
         this.scene.remove(orb.mesh);
-        orb.mesh.geometry.dispose();
-        orb.mesh.material.dispose();
     }
 
     // R - Blink: Dash toward mouse direction
@@ -1268,19 +1280,27 @@ export class Mage {
 
     // Cleanup
     dispose() {
-        // Remove projectiles
+        // Remove projectiles (with proper child disposal for glow effects)
         for (const proj of this.projectiles) {
+            proj.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
             this.scene.remove(proj.mesh);
-            proj.mesh.geometry.dispose();
-            proj.mesh.material.dispose();
         }
         this.projectiles = [];
 
-        // Remove frozen orbs
+        // Remove frozen orbs (with proper child disposal for swirl/glow)
         for (const orb of this.frozenOrbs) {
+            orb.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
             this.scene.remove(orb.mesh);
-            orb.mesh.geometry.dispose();
-            orb.mesh.material.dispose();
         }
         this.frozenOrbs = [];
 
@@ -1294,6 +1314,18 @@ export class Mage {
             effect.border.material.dispose();
         }
         this.groundEffects = [];
+
+        // Remove ability indicators
+        if (this.blizzardIndicator) {
+            this.scene.remove(this.blizzardIndicator);
+            this.blizzardIndicator.geometry.dispose();
+            this.blizzardIndicator.material.dispose();
+        }
+        if (this.flameWaveIndicator) {
+            this.scene.remove(this.flameWaveIndicator);
+            this.flameWaveIndicator.geometry.dispose();
+            this.flameWaveIndicator.material.dispose();
+        }
 
         // Remove character
         if (this.character) {

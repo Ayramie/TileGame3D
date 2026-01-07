@@ -1198,7 +1198,13 @@ export class Hunter {
         };
         animate();
 
-        // Remove trap mesh
+        // Remove trap mesh (with proper child disposal)
+        trap.mesh.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+        });
         this.scene.remove(trap.mesh);
 
         // Extra explosion debris
@@ -1421,6 +1427,13 @@ export class Hunter {
 
             // Check max range
             if (arrow.distanceTraveled >= arrow.maxRange) {
+                // Dispose all child meshes properly
+                arrow.mesh.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    }
+                });
                 this.scene.remove(arrow.mesh);
                 this.giantArrows.splice(i, 1);
             }
@@ -1435,9 +1448,14 @@ export class Hunter {
             // Homing bolts (auto-attack)
             if (proj.type === 'bolt') {
                 if (!proj.target || !proj.target.isAlive) {
+                    // Dispose bolt and tip child
+                    proj.mesh.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) child.material.dispose();
+                        }
+                    });
                     this.scene.remove(proj.mesh);
-                    proj.mesh.geometry.dispose();
-                    proj.mesh.material.dispose();
                     this.projectiles.splice(i, 1);
                     continue;
                 }
@@ -1463,9 +1481,14 @@ export class Hunter {
                     // Impact spark
                     this.createArrowHitSpark(proj.mesh.position.clone());
 
+                    // Dispose bolt and tip child
+                    proj.mesh.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) child.material.dispose();
+                        }
+                    });
                     this.scene.remove(proj.mesh);
-                    proj.mesh.geometry.dispose();
-                    proj.mesh.material.dispose();
                     this.projectiles.splice(i, 1);
                 }
             }
@@ -1786,14 +1809,26 @@ export class Hunter {
         }
         this.projectiles = [];
 
-        // Remove giant arrows
+        // Remove giant arrows (with proper child disposal)
         for (const arrow of this.giantArrows) {
+            arrow.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
             this.scene.remove(arrow.mesh);
         }
         this.giantArrows = [];
 
-        // Remove traps
+        // Remove traps (with proper child disposal)
         for (const trap of this.traps) {
+            trap.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
             this.scene.remove(trap.mesh);
         }
         this.traps = [];
