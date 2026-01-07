@@ -273,10 +273,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse (negate angle for correct direction)
+        // Point toward mouse
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz);
+        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz) + Math.PI;
     }
 
     showHeroicLeapIndicator(show) {

@@ -1087,8 +1087,9 @@ export class Game {
             // First corridor right wall
             { x1: 10, z1: 5, x2: 10, z2: 40 },
 
-            // Turn section
-            { x1: -10, z1: 50, x2: 5, z2: 70 },        // Left wall continues
+            // Turn section - use axis-aligned segments instead of diagonal
+            { x1: -10, z1: 50, x2: -10, z2: 70 },      // Left wall continues vertical
+            { x1: -10, z1: 70, x2: 5, z2: 70 },        // Left wall horizontal segment
             { x1: 10, z1: 40, x2: 35, z2: 40 },        // Inner corner
 
             // Right corridor walls
