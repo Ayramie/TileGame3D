@@ -35,6 +35,8 @@ export class Game {
         this.particles = [];
         this.damageNumbers = [];
         this.groundHazards = [];
+        this.respawnQueue = []; // Queue for enemy respawns
+        this.respawnDelay = 10; // Seconds before respawn
 
         // Dungeon builder
         this.dungeonBuilder = null;
@@ -245,6 +247,7 @@ export class Game {
         this.enemies = [];
         this.projectiles = [];
         this.groundHazards = [];
+        this.respawnQueue = [];
     }
 
     async setupScene() {
@@ -514,6 +517,7 @@ export class Game {
 
             for (const pos of positions) {
                 const skeleton = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);
+                skeleton.spawnData = { x: pos.x, z: pos.z, type: pos.type };
                 this.enemies.push(skeleton);
             }
         } else {
@@ -529,7 +533,26 @@ export class Game {
 
             for (const pos of positions) {
                 const skeleton = createSkeletonEnemy(this.scene, pos.x, pos.z, pos.type);
+                skeleton.spawnData = { x: pos.x, z: pos.z, type: pos.type };
                 this.enemies.push(skeleton);
+            }
+        }
+    }
+
+    updateRespawns(deltaTime) {
+        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+            const respawn = this.respawnQueue[i];
+            respawn.timer -= deltaTime;
+
+            if (respawn.timer <= 0) {
+                // Respawn the enemy
+                const data = respawn.spawnData;
+                const skeleton = createSkeletonEnemy(this.scene, data.x, data.z, data.type);
+                skeleton.spawnData = { x: data.x, z: data.z, type: data.type };
+                this.enemies.push(skeleton);
+
+                // Remove from queue
+                this.respawnQueue.splice(i, 1);
             }
         }
     }
@@ -692,11 +715,22 @@ export class Game {
                     // Skeleton crumbles to dust
                     this.particles.deathExplosion(enemy.deathPosition, 0xddddcc, 1);
                     this.addScreenShake(0.4);
+
+                    // Queue respawn (not for bosses)
+                    if (enemy.spawnData) {
+                        this.respawnQueue.push({
+                            spawnData: enemy.spawnData,
+                            timer: this.respawnDelay
+                        });
+                    }
                 }
 
                 enemy.justDied = false;
             }
         }
+
+        // Process respawn queue
+        this.updateRespawns(deltaTime);
 
         // Update projectiles
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
