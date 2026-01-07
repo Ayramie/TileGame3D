@@ -425,11 +425,28 @@ export class SkeletonEnemy extends Enemy {
             this.mixer.update(deltaTime);
         }
 
-        // Stun
+        // Stun (frozen)
         if (this.stunTime > 0) {
             this.stunTime -= deltaTime;
+            this.updateFrozenIndicator(true);
             this.updateHealthBar(camera);
+            if (this.stunTime <= 0) {
+                this.updateFrozenIndicator(false);
+            }
             return;
+        }
+
+        // Slow timer
+        if (this.slowTimer && this.slowTimer > 0) {
+            this.slowTimer -= deltaTime;
+            this.updateSlowIndicator(true);
+            if (this.slowTimer <= 0 && this.originalMoveSpeed) {
+                this.moveSpeed = this.originalMoveSpeed;
+                this.originalMoveSpeed = null;
+                this.updateSlowIndicator(false);
+            }
+        } else {
+            this.updateSlowIndicator(false);
         }
 
         // Attack cooldown
@@ -565,6 +582,122 @@ export class SkeletonEnemy extends Enemy {
         this.justDied = true;
     }
 
+    updateSlowIndicator(show) {
+        if (show && !this.slowIndicator) {
+            // Create snowflake indicator
+            const snowflakeGroup = new THREE.Group();
+
+            // Create a simple snowflake shape using lines
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x88ddff,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            // Center diamond
+            const diamondGeo = new THREE.OctahedronGeometry(0.15, 0);
+            const diamond = new THREE.Mesh(diamondGeo, material);
+            snowflakeGroup.add(diamond);
+
+            // Create 6 arms
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const armGeo = new THREE.BoxGeometry(0.04, 0.25, 0.04);
+                const arm = new THREE.Mesh(armGeo, material);
+                arm.position.set(Math.cos(angle) * 0.2, 0, Math.sin(angle) * 0.2);
+                arm.rotation.y = -angle;
+                arm.rotation.z = Math.PI / 2;
+                snowflakeGroup.add(arm);
+            }
+
+            snowflakeGroup.position.copy(this.position);
+            snowflakeGroup.position.y = 2.5;
+            this.scene.add(snowflakeGroup);
+            this.slowIndicator = snowflakeGroup;
+        } else if (!show && this.slowIndicator) {
+            this.scene.remove(this.slowIndicator);
+            this.slowIndicator = null;
+        } else if (show && this.slowIndicator) {
+            // Update position and rotate
+            this.slowIndicator.position.copy(this.position);
+            this.slowIndicator.position.y = 2.5;
+            this.slowIndicator.rotation.y += 0.05;
+        }
+    }
+
+    updateFrozenIndicator(show) {
+        if (show && !this.frozenIndicator) {
+            // Create ice crystal ring around enemy
+            const frozenGroup = new THREE.Group();
+
+            const iceMaterial = new THREE.MeshBasicMaterial({
+                color: 0xaaeeff,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            // Ice crystals around the enemy
+            const crystalCount = 8;
+            for (let i = 0; i < crystalCount; i++) {
+                const angle = (i / crystalCount) * Math.PI * 2;
+                const crystalGeo = new THREE.ConeGeometry(0.15, 0.6, 4);
+                const crystal = new THREE.Mesh(crystalGeo, iceMaterial);
+                crystal.position.set(
+                    Math.cos(angle) * 0.8,
+                    0.3,
+                    Math.sin(angle) * 0.8
+                );
+                crystal.rotation.x = Math.PI; // Point up
+                crystal.rotation.y = angle;
+                frozenGroup.add(crystal);
+            }
+
+            // Frozen ring on ground
+            const ringGeo = new THREE.RingGeometry(0.6, 0.8, 16);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x88ccff,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.1;
+            frozenGroup.add(ring);
+
+            frozenGroup.position.copy(this.position);
+            this.scene.add(frozenGroup);
+            this.frozenIndicator = frozenGroup;
+
+            // Also tint the enemy blue
+            if (this.mesh) {
+                this.mesh.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (!child.userData.originalColor) {
+                            child.userData.originalColor = child.material.color.getHex();
+                        }
+                        child.material.color.setHex(0x88ccff);
+                    }
+                });
+            }
+        } else if (!show && this.frozenIndicator) {
+            this.scene.remove(this.frozenIndicator);
+            this.frozenIndicator = null;
+
+            // Restore original color
+            if (this.mesh) {
+                this.mesh.traverse((child) => {
+                    if (child.isMesh && child.material && child.userData.originalColor) {
+                        child.material.color.setHex(child.userData.originalColor);
+                    }
+                });
+            }
+        } else if (show && this.frozenIndicator) {
+            // Update position
+            this.frozenIndicator.position.copy(this.position);
+        }
+    }
+
     cleanup() {
         if (this.mesh) {
             this.scene.remove(this.mesh);
@@ -574,6 +707,12 @@ export class SkeletonEnemy extends Enemy {
         }
         if (this.targetRing) {
             this.scene.remove(this.targetRing);
+        }
+        if (this.slowIndicator) {
+            this.scene.remove(this.slowIndicator);
+        }
+        if (this.frozenIndicator) {
+            this.scene.remove(this.frozenIndicator);
         }
     }
 }

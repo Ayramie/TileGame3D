@@ -56,7 +56,7 @@ export class Mage {
                 cooldownRemaining: 0,
                 damage: 15, // per tick as it passes
                 explosionDamage: 40, // on final explosion
-                speed: 12,
+                speed: 6, // Slower, more menacing
                 range: 25,
                 aoeRadius: 3,
                 tickInterval: 0.3,
@@ -943,6 +943,33 @@ export class Mage {
         const glow = new THREE.Mesh(glowGeometry, glowMaterial);
         orb.add(glow);
 
+        // Swirling ice shards around the orb
+        const swirlGroup = new THREE.Group();
+        const shardCount = 8;
+        const shardMaterial = new THREE.MeshBasicMaterial({
+            color: 0xccffff,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        for (let i = 0; i < shardCount; i++) {
+            const shardGeo = new THREE.ConeGeometry(0.08, 0.4, 4);
+            const shard = new THREE.Mesh(shardGeo, shardMaterial);
+            const angle = (i / shardCount) * Math.PI * 2;
+            const radius = 0.9;
+            const heightOffset = (i % 2 === 0) ? 0.2 : -0.2;
+            shard.position.set(
+                Math.cos(angle) * radius,
+                heightOffset,
+                Math.sin(angle) * radius
+            );
+            // Point shards outward
+            shard.rotation.z = Math.PI / 2;
+            shard.rotation.y = -angle;
+            swirlGroup.add(shard);
+        }
+        orb.add(swirlGroup);
+
         // Outer aura ring showing AoE
         const auraGeometry = new THREE.RingGeometry(ability.aoeRadius - 0.2, ability.aoeRadius, 32);
         const auraMaterial = new THREE.MeshBasicMaterial({
@@ -959,6 +986,7 @@ export class Mage {
 
         this.frozenOrbs.push({
             mesh: orb,
+            swirlGroup: swirlGroup,
             direction: direction.clone(),
             startPos: startPos.clone(),
             speed: ability.speed,
@@ -988,8 +1016,12 @@ export class Mage {
             orb.distanceTraveled += moveAmount;
 
             // Rotate the orb for visual effect
-            orb.mesh.rotation.y += deltaTime * 3;
-            orb.mesh.rotation.x += deltaTime * 2;
+            orb.mesh.rotation.y += deltaTime * 2;
+
+            // Rotate the swirl faster in opposite direction
+            if (orb.swirlGroup) {
+                orb.swirlGroup.rotation.y -= deltaTime * 5;
+            }
 
             // AoE damage tick
             orb.tickTimer += deltaTime;
