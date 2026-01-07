@@ -113,18 +113,22 @@ export class Player {
         const coneRange = this.abilities.cleave.range;
         const segments = 32;
 
-        // Draw cone pointing in +Y direction (will become +Z after rotation)
+        // Draw cone in XZ plane directly (no rotation needed for laying flat)
         const shape = new THREE.Shape();
         shape.moveTo(0, 0);
         for (let i = 0; i <= segments; i++) {
             const angle = -coneAngle / 2 + (coneAngle * i / segments);
+            // X is left/right, Y (in shape) will map to Z (forward/back)
             const x = Math.sin(angle) * coneRange;
-            const y = Math.cos(angle) * coneRange;
-            shape.lineTo(x, y);
+            const z = Math.cos(angle) * coneRange;
+            shape.lineTo(x, z);
         }
         shape.lineTo(0, 0);
 
         const geometry = new THREE.ShapeGeometry(shape);
+        // Rotate geometry to lay flat (XY shape -> XZ ground plane)
+        geometry.rotateX(-Math.PI / 2);
+
         const material = new THREE.MeshBasicMaterial({
             color: 0xff6600,
             transparent: true,
@@ -134,13 +138,152 @@ export class Player {
         });
 
         this.cleaveIndicator = new THREE.Mesh(geometry, material);
-        // Rotate to lay flat on ground
-        // Use YXZ order so Y rotation (facing direction) is applied in world space
-        this.cleaveIndicator.rotation.order = 'YXZ';
-        this.cleaveIndicator.rotation.x = -Math.PI / 2;
         this.cleaveIndicator.position.y = 0.1;
         this.cleaveIndicator.visible = false;
         this.scene.add(this.cleaveIndicator);
+
+        // Sunder line indicator
+        this.createSunderIndicator();
+    }
+
+    createSunderIndicator() {
+        const ability = this.abilities.sunder;
+        const range = ability.range;
+        const startWidth = 0.5;
+        const endWidth = ability.width * 2; // Gets wider at the end
+
+        // Create trapezoid shape (narrow at player, wide at end)
+        const shape = new THREE.Shape();
+        shape.moveTo(-startWidth / 2, 0);
+        shape.lineTo(-endWidth / 2, range);
+        shape.lineTo(endWidth / 2, range);
+        shape.lineTo(startWidth / 2, 0);
+        shape.lineTo(-startWidth / 2, 0);
+
+        const geometry = new THREE.ShapeGeometry(shape);
+        geometry.rotateX(-Math.PI / 2);
+
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x886644,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        this.sunderIndicator = new THREE.Mesh(geometry, material);
+        this.sunderIndicator.position.y = 0.1;
+        this.sunderIndicator.visible = false;
+        this.scene.add(this.sunderIndicator);
+
+        // Heroic Leap indicator
+        this.createHeroicLeapIndicator();
+    }
+
+    createHeroicLeapIndicator() {
+        const ability = this.abilities.heroicLeap;
+
+        // Range circle (shows max jump range)
+        const rangeGeometry = new THREE.RingGeometry(ability.range - 0.2, ability.range, 48);
+        const rangeMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4488ff,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.leapRangeIndicator = new THREE.Mesh(rangeGeometry, rangeMaterial);
+        this.leapRangeIndicator.rotation.x = -Math.PI / 2;
+        this.leapRangeIndicator.position.y = 0.1;
+        this.leapRangeIndicator.visible = false;
+        this.scene.add(this.leapRangeIndicator);
+
+        // Target circle (shows where you'll land and AoE radius)
+        const targetGeometry = new THREE.RingGeometry(ability.aoeRadius - 0.2, ability.aoeRadius, 32);
+        const targetMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff4444,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.leapTargetIndicator = new THREE.Mesh(targetGeometry, targetMaterial);
+        this.leapTargetIndicator.rotation.x = -Math.PI / 2;
+        this.leapTargetIndicator.position.y = 0.12;
+        this.leapTargetIndicator.visible = false;
+        this.scene.add(this.leapTargetIndicator);
+
+        // Inner target circle (landing spot)
+        const innerGeometry = new THREE.CircleGeometry(0.8, 16);
+        const innerMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        this.leapInnerIndicator = new THREE.Mesh(innerGeometry, innerMaterial);
+        this.leapInnerIndicator.rotation.x = -Math.PI / 2;
+        this.leapInnerIndicator.position.y = 0.13;
+        this.leapInnerIndicator.visible = false;
+        this.scene.add(this.leapInnerIndicator);
+    }
+
+    showSunderIndicator(show) {
+        if (this.sunderIndicator) {
+            this.sunderIndicator.visible = show;
+        }
+    }
+
+    updateSunderIndicator(mouseWorldPos) {
+        if (!this.sunderIndicator || !this.sunderIndicator.visible) return;
+
+        // Position at player
+        this.sunderIndicator.position.x = this.position.x;
+        this.sunderIndicator.position.z = this.position.z;
+
+        // Point toward mouse
+        const dx = mouseWorldPos.x - this.position.x;
+        const dz = mouseWorldPos.z - this.position.z;
+        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
+    }
+
+    showHeroicLeapIndicator(show) {
+        if (this.leapRangeIndicator) this.leapRangeIndicator.visible = show;
+        if (this.leapTargetIndicator) this.leapTargetIndicator.visible = show;
+        if (this.leapInnerIndicator) this.leapInnerIndicator.visible = show;
+    }
+
+    updateHeroicLeapIndicator(mouseWorldPos) {
+        if (!this.leapRangeIndicator || !this.leapRangeIndicator.visible) return;
+
+        const ability = this.abilities.heroicLeap;
+
+        // Position range indicator at player
+        this.leapRangeIndicator.position.x = this.position.x;
+        this.leapRangeIndicator.position.z = this.position.z;
+
+        // Calculate target position (clamped to range)
+        const dx = mouseWorldPos.x - this.position.x;
+        const dz = mouseWorldPos.z - this.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        let targetX, targetZ;
+        if (dist > ability.range) {
+            // Clamp to max range
+            const dir = new THREE.Vector3(dx, 0, dz).normalize();
+            targetX = this.position.x + dir.x * ability.range;
+            targetZ = this.position.z + dir.z * ability.range;
+        } else {
+            targetX = mouseWorldPos.x;
+            targetZ = mouseWorldPos.z;
+        }
+
+        // Position target indicators at landing spot
+        this.leapTargetIndicator.position.x = targetX;
+        this.leapTargetIndicator.position.z = targetZ;
+        this.leapInnerIndicator.position.x = targetX;
+        this.leapInnerIndicator.position.z = targetZ;
     }
 
     showCleaveIndicator(show) {
@@ -748,15 +891,56 @@ export class Player {
             const moveAmount = (ability.dashDistance / ability.dashDuration) * deltaTime;
             this.position.add(ability.dashDirection.clone().multiplyScalar(moveAmount));
 
+            // Spin the player rapidly while dashing (3 full rotations during dash)
+            const spinSpeed = Math.PI * 6; // 3 rotations per dashDuration
+            this.rotation += spinSpeed * deltaTime;
+
+            // Update character rotation for spinning effect
+            if (this.useAnimatedCharacter) {
+                this.character.setRotation(this.rotation);
+            }
+
             // Spin particles during dash
             if (this.game && this.game.particles && Math.random() < 0.7) {
                 this.game.particles.dashTrail(this.position, ability.dashDirection);
+                // Add whirlwind spin particles around player
+                this.game.particles.whirlwindSpin(this.position);
+            }
+
+            // Damage enemies we pass through during spin
+            if (this.game && this.game.enemies) {
+                for (const enemy of this.game.enemies) {
+                    if (!enemy.isAlive) continue;
+                    if (enemy.whirlwindHit) continue; // Already hit this spin
+
+                    const dx = enemy.position.x - this.position.x;
+                    const dz = enemy.position.z - this.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+
+                    if (dist <= ability.range) {
+                        enemy.takeDamage(ability.damage, this);
+                        enemy.whirlwindHit = true; // Mark as hit
+
+                        if (this.game.effects) {
+                            this.game.effects.createDamageNumber(enemy.position, ability.damage, false, false);
+                        }
+                    }
+                }
             }
         } else {
-            // End whirlwind
+            // End whirlwind - reset hit flags
+            if (this.game && this.game.enemies) {
+                for (const enemy of this.game.enemies) {
+                    enemy.whirlwindHit = false;
+                }
+            }
+
             ability.isActive = false;
             ability.activeTime = 0;
             ability.dashDirection = null;
+
+            // Face the direction we were dashing
+            this.rotation = Math.atan2(ability.dashDirection?.x || 0, ability.dashDirection?.z || 1);
         }
     }
 
@@ -969,9 +1153,11 @@ export class Player {
             this.game.particles.sunderWave(this.position, forward, ability.range);
         }
 
-        // Damage enemies in line
+        // Damage enemies in line (widening cone)
         if (this.game && this.game.enemies) {
             const perp = new THREE.Vector3(-forward.z, 0, forward.x);
+            const startWidth = 0.5;
+            const endWidth = ability.width * 2;
 
             for (const enemy of this.game.enemies) {
                 if (!enemy.isAlive) continue;
@@ -986,9 +1172,13 @@ export class Player {
                 const forwardDist = toEnemy.dot(forward);
                 if (forwardDist < 0.5 || forwardDist > ability.range) continue;
 
-                // Check if enemy is within width
+                // Width increases with distance (trapezoid shape)
+                const distRatio = forwardDist / ability.range;
+                const widthAtDist = startWidth + (endWidth - startWidth) * distRatio;
+
+                // Check if enemy is within width at that distance
                 const perpDist = Math.abs(toEnemy.dot(perp));
-                if (perpDist > ability.width) continue;
+                if (perpDist > widthAtDist) continue;
 
                 // Hit this enemy!
                 enemy.takeDamage(ability.damage, this);

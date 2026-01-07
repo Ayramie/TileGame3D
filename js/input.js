@@ -121,24 +121,26 @@ export class InputManager {
                 if (this.game.selectedClass === 'mage') {
                     this.game.player.useBackstep();
                 } else {
-                    // Heroic Leap jumps to mouse position
-                    this.game.player.useHeroicLeap(this.mouseWorldPos.clone());
+                    // Start aiming heroic leap
+                    this.aimingAbility = 'r';
+                    if (this.game.player.showHeroicLeapIndicator) {
+                        this.game.player.showHeroicLeapIndicator(true);
+                    }
+                }
+                break;
+
+            case 't':
+                // T ability - Sunder (Warrior only) - hold to aim
+                if (this.game.selectedClass !== 'mage') {
+                    this.aimingAbility = 't';
+                    if (this.game.player.showSunderIndicator) {
+                        this.game.player.showSunderIndicator(true);
+                    }
                 }
                 break;
 
             case '1':
                 this.game.player.usePotion();
-                break;
-
-            case 't':
-                // T ability - Sunder (Warrior only)
-                if (this.game.selectedClass !== 'mage') {
-                    const direction = {
-                        x: this.mouseWorldPos.x - this.game.player.position.x,
-                        z: this.mouseWorldPos.z - this.game.player.position.z
-                    };
-                    this.game.player.useSunder(direction);
-                }
                 break;
         }
     }
@@ -190,6 +192,26 @@ export class InputManager {
                         this.game.player.showFlameWaveIndicator(false);
                     }
                     this.game.player.useFlameWave(this.game.enemies, direction);
+                }
+                break;
+
+            case 'r':
+                if (this.game.selectedClass !== 'mage') {
+                    // Fire heroic leap to mouse position
+                    if (this.game.player.showHeroicLeapIndicator) {
+                        this.game.player.showHeroicLeapIndicator(false);
+                    }
+                    this.game.player.useHeroicLeap(this.mouseWorldPos.clone());
+                }
+                break;
+
+            case 't':
+                if (this.game.selectedClass !== 'mage') {
+                    // Fire sunder toward mouse
+                    if (this.game.player.showSunderIndicator) {
+                        this.game.player.showSunderIndicator(false);
+                    }
+                    this.game.player.useSunder(direction);
                 }
                 break;
         }
@@ -256,6 +278,14 @@ export class InputManager {
             } else if (this.aimingAbility === 'f') {
                 if (this.game.player.updateFlameWaveIndicator) {
                     this.game.player.updateFlameWaveIndicator(this.mouseWorldPos);
+                }
+            } else if (this.aimingAbility === 'r') {
+                if (this.game.player.updateHeroicLeapIndicator) {
+                    this.game.player.updateHeroicLeapIndicator(this.mouseWorldPos);
+                }
+            } else if (this.aimingAbility === 't') {
+                if (this.game.player.updateSunderIndicator) {
+                    this.game.player.updateSunderIndicator(this.mouseWorldPos);
                 }
             }
         }

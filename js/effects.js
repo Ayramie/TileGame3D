@@ -875,18 +875,27 @@ export class EffectsManager {
         });
     }
 
-    // Sunder - ground spike wave
+    // Sunder - ground spike wave (widens as it goes)
     createSunderEffect(position, direction, range = 12, spikeCount = 6) {
         const group = new THREE.Group();
         const dir = direction.clone().normalize();
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x);
 
-        // Create spikes that erupt along the line
+        // Create spikes that erupt along the line - get wider and bigger as distance increases
         for (let i = 0; i < spikeCount; i++) {
-            const dist = (i + 1) * (range / spikeCount);
+            const t = (i + 1) / spikeCount; // 0 to 1 progress
+            const dist = t * range;
             const spikePos = position.clone().add(dir.clone().multiplyScalar(dist));
 
+            // Spike size increases with distance
+            const spikeRadius = 0.25 + t * 0.3;
+            const spikeHeight = 1.2 + t * 0.8;
+
+            // Width spread increases with distance
+            const spreadWidth = 0.3 + t * 2.0;
+
             // Main spike (cone)
-            const spikeGeometry = new THREE.ConeGeometry(0.3, 1.5, 6);
+            const spikeGeometry = new THREE.ConeGeometry(spikeRadius, spikeHeight, 6);
             const spikeMaterial = new THREE.MeshBasicMaterial({
                 color: 0x886644,
                 transparent: true,
@@ -894,36 +903,52 @@ export class EffectsManager {
             });
             const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
             spike.position.set(spikePos.x - position.x, -0.5, spikePos.z - position.z);
-            spike.userData.targetY = 0.75;
-            spike.userData.delay = i * 0.05;
+            spike.userData.targetY = spikeHeight / 2;
+            spike.userData.delay = i * 0.04;
             spike.userData.emerged = false;
             group.add(spike);
 
-            // Small side spikes
-            for (let j = -1; j <= 1; j += 2) {
-                const smallSpikeGeometry = new THREE.ConeGeometry(0.15, 0.8, 4);
+            // Side spikes - more spread out at distance
+            const numSideSpikes = Math.floor(2 + t * 2); // More side spikes at distance
+            for (let j = -numSideSpikes; j <= numSideSpikes; j++) {
+                if (j === 0) continue; // Skip center (already have main spike)
+
+                const smallRadius = (spikeRadius * 0.5) + Math.random() * 0.1;
+                const smallHeight = (spikeHeight * 0.6) + Math.random() * 0.2;
+                const smallSpikeGeometry = new THREE.ConeGeometry(smallRadius, smallHeight, 4);
                 const smallSpikeMaterial = new THREE.MeshBasicMaterial({
                     color: 0x776655,
                     transparent: true,
                     opacity: 0.8
                 });
                 const smallSpike = new THREE.Mesh(smallSpikeGeometry, smallSpikeMaterial);
-                const perpOffset = j * 0.5;
+                const perpOffset = (j / numSideSpikes) * spreadWidth;
+                const randomOffset = (Math.random() - 0.5) * 0.3;
                 smallSpike.position.set(
-                    spikePos.x - position.x + (-dir.z * perpOffset),
+                    spikePos.x - position.x + perp.x * perpOffset + dir.x * randomOffset,
                     -0.5,
-                    spikePos.z - position.z + (dir.x * perpOffset)
+                    spikePos.z - position.z + perp.z * perpOffset + dir.z * randomOffset
                 );
-                smallSpike.rotation.z = j * 0.3;
-                smallSpike.userData.targetY = 0.4;
-                smallSpike.userData.delay = i * 0.05 + 0.02;
+                smallSpike.rotation.z = (j / numSideSpikes) * 0.4;
+                smallSpike.userData.targetY = smallHeight / 2;
+                smallSpike.userData.delay = i * 0.04 + 0.02 + Math.random() * 0.02;
                 smallSpike.userData.emerged = false;
                 group.add(smallSpike);
             }
         }
 
-        // Ground crack line
-        const crackGeometry = new THREE.PlaneGeometry(range, 0.8);
+        // Ground crack - trapezoid shape (narrow to wide)
+        const crackShape = new THREE.Shape();
+        const startWidth = 0.3;
+        const endWidth = 2.5;
+        crackShape.moveTo(-startWidth / 2, 0);
+        crackShape.lineTo(-endWidth / 2, range);
+        crackShape.lineTo(endWidth / 2, range);
+        crackShape.lineTo(startWidth / 2, 0);
+        crackShape.lineTo(-startWidth / 2, 0);
+
+        const crackGeometry = new THREE.ShapeGeometry(crackShape);
+        crackGeometry.rotateX(-Math.PI / 2);
         const crackMaterial = new THREE.MeshBasicMaterial({
             color: 0x442211,
             transparent: true,
@@ -931,9 +956,8 @@ export class EffectsManager {
             side: THREE.DoubleSide
         });
         const crack = new THREE.Mesh(crackGeometry, crackMaterial);
-        crack.rotation.x = -Math.PI / 2;
-        crack.rotation.z = -Math.atan2(dir.z, dir.x);
-        crack.position.set(dir.x * range / 2, 0.05, dir.z * range / 2);
+        crack.rotation.y = Math.atan2(dir.x, dir.z);
+        crack.position.y = 0.05;
         group.add(crack);
 
         group.position.copy(position);
