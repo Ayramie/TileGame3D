@@ -125,6 +125,20 @@ export class KayKitCharacter {
             // Create animation mixer
             this.mixer = new THREE.AnimationMixer(this.model);
 
+            // Debug: Log skeleton info
+            let skinnedMeshCount = 0;
+            let boneCount = 0;
+            this.model.traverse((child) => {
+                if (child.isSkinnedMesh) {
+                    skinnedMeshCount++;
+                    console.log(`SkinnedMesh found: ${child.name}, skeleton bones: ${child.skeleton?.bones?.length || 0}`);
+                }
+                if (child.isBone) {
+                    boneCount++;
+                }
+            });
+            console.log(`Model has ${skinnedMeshCount} SkinnedMeshes and ${boneCount} bones`);
+
             // Load animations from rig files
             await this.loadAnimations(loader, characterType);
 
@@ -303,6 +317,15 @@ export class KayKitCharacter {
                 modelBones.add(child.name);
             }
         });
+
+        // Debug: Log first clip's bone matching (only once)
+        if (!this._debuggedClip) {
+            this._debuggedClip = true;
+            console.log(`Model bones (first 10):`, Array.from(modelBones).slice(0, 10));
+            if (clip.tracks.length > 0) {
+                console.log(`First track in clip: ${clip.tracks[0].name}`);
+            }
+        }
 
         for (const track of clip.tracks) {
             // Parse track name: various formats like:
