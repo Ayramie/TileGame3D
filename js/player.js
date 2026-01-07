@@ -681,6 +681,10 @@ export class Player {
 
         let isMoving = false;
 
+        // Save old position for collision resolution
+        const oldX = this.position.x;
+        const oldZ = this.position.z;
+
         // Click-to-move: if we have a move target and not using keyboard, move toward it
         if (this.moveTarget && !usingKeyboard) {
             const dx = this.moveTarget.x - this.position.x;
@@ -713,6 +717,13 @@ export class Player {
 
             // Character faces the direction they're moving
             this.rotation = Math.atan2(moveDir.x, moveDir.z);
+        }
+
+        // Wall collision check
+        if (this.game && this.game.resolveWallCollision) {
+            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+            this.position.x = resolved.x;
+            this.position.z = resolved.z;
         }
 
         // Jumping (spacebar is ' ' key)

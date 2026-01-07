@@ -210,7 +210,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.arrowWaveIndicator.rotation.z = -angle;
+        this.arrowWaveIndicator.rotation.z = angle;
     }
 
     showShotgunIndicator(show) {
@@ -228,7 +228,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.shotgunIndicator.rotation.z = -angle;
+        this.shotgunIndicator.rotation.z = angle;
     }
 
     showGiantArrowIndicator(show) {
@@ -246,7 +246,7 @@ export class Hunter {
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
         const angle = Math.atan2(dx, dz);
-        this.giantArrowIndicator.rotation.z = -angle;
+        this.giantArrowIndicator.rotation.z = angle;
     }
 
     async loadCharacter() {
@@ -451,6 +451,10 @@ export class Hunter {
 
         let isMoving = false;
 
+        // Save old position for collision resolution
+        const oldX = this.position.x;
+        const oldZ = this.position.z;
+
         if (this.moveTarget && !usingKeyboard) {
             const dx = this.moveTarget.x - this.position.x;
             const dz = this.moveTarget.z - this.position.z;
@@ -476,6 +480,13 @@ export class Hunter {
             this.position.z += moveDir.z * this.moveSpeed * deltaTime;
 
             this.rotation = Math.atan2(moveDir.x, moveDir.z);
+        }
+
+        // Wall collision check
+        if (this.game && this.game.resolveWallCollision) {
+            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+            this.position.x = resolved.x;
+            this.position.z = resolved.z;
         }
 
         // Jumping
@@ -1509,8 +1520,11 @@ export class Hunter {
                     for (const enemy of this.game.enemies) {
                         if (!enemy.isAlive || proj.hitEnemies.has(enemy)) continue;
 
-                        const dist = enemy.position.distanceTo(proj.mesh.position);
-                        if (dist < 1.0) {
+                        // Use XZ distance only (ignore height difference)
+                        const dx = enemy.position.x - proj.mesh.position.x;
+                        const dz = enemy.position.z - proj.mesh.position.z;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        if (dist < 1.5) {
                             enemy.takeDamage(proj.damage, this);
                             proj.hitEnemies.add(enemy);
 

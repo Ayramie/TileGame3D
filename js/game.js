@@ -1075,7 +1075,8 @@ export class Game {
         const wallThickness = 2;
 
         // Wall segments: { x1, z1, x2, z2 } - start and end points
-        const wallSegments = [
+        // Store for collision detection
+        this.wallSegments = [
             // Starting area walls
             { x1: -12, z1: -15, x2: -12, z2: 5 },      // Left back
             { x1: 12, z1: -15, x2: 12, z2: 5 },        // Right back
@@ -1109,7 +1110,7 @@ export class Game {
             { x1: 60, z1: 140, x2: 100, z2: 140 },     // End wall
         ];
 
-        for (const seg of wallSegments) {
+        for (const seg of this.wallSegments) {
             const dx = seg.x2 - seg.x1;
             const dz = seg.z2 - seg.z1;
             const length = Math.sqrt(dx * dx + dz * dz);
@@ -1127,6 +1128,60 @@ export class Game {
             wall.receiveShadow = true;
             this.scene.add(wall);
         }
+    }
+
+    // Check if a position collides with walls
+    checkWallCollision(x, z, radius = 0.5) {
+        if (!this.wallSegments) return false;
+
+        const wallThickness = 2;
+
+        for (const seg of this.wallSegments) {
+            // Get wall center and dimensions
+            const wallCenterX = (seg.x1 + seg.x2) / 2;
+            const wallCenterZ = (seg.z1 + seg.z2) / 2;
+            const dx = seg.x2 - seg.x1;
+            const dz = seg.z2 - seg.z1;
+            const wallLength = Math.sqrt(dx * dx + dz * dz) + wallThickness;
+            const angle = Math.atan2(dx, dz);
+
+            // Transform point to wall's local space
+            const localX = (x - wallCenterX) * Math.cos(-angle) - (z - wallCenterZ) * Math.sin(-angle);
+            const localZ = (x - wallCenterX) * Math.sin(-angle) + (z - wallCenterZ) * Math.cos(-angle);
+
+            // Check if point is inside wall AABB (with radius)
+            const halfWidth = wallThickness / 2 + radius;
+            const halfLength = wallLength / 2 + radius;
+
+            if (Math.abs(localX) < halfWidth && Math.abs(localZ) < halfLength) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Get corrected position that doesn't collide with walls
+    resolveWallCollision(oldX, oldZ, newX, newZ, radius = 0.5) {
+        if (!this.wallSegments) return { x: newX, z: newZ };
+
+        // If no collision, return new position
+        if (!this.checkWallCollision(newX, newZ, radius)) {
+            return { x: newX, z: newZ };
+        }
+
+        // Try moving only in X
+        if (!this.checkWallCollision(newX, oldZ, radius)) {
+            return { x: newX, z: oldZ };
+        }
+
+        // Try moving only in Z
+        if (!this.checkWallCollision(oldX, newZ, radius)) {
+            return { x: oldX, z: newZ };
+        }
+
+        // Can't move at all
+        return { x: oldX, z: oldZ };
     }
 
     // Add decorative pillars
