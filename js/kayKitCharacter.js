@@ -218,14 +218,6 @@ export class KayKitCharacter {
             return;
         }
 
-        // Find the skeleton root in our model for retargeting
-        let skeletonRoot = null;
-        this.model.traverse((child) => {
-            if (child.isSkinnedMesh && child.skeleton) {
-                skeletonRoot = child.skeleton.bones[0]?.parent || this.model;
-            }
-        });
-
         console.log(`Loading ${Object.keys(animFiles).length} animation packs for ${rigKey}...`);
 
         // Load each animation file
@@ -279,9 +271,10 @@ export class KayKitCharacter {
 
                 // Create action if not already exists for this mapped name
                 if (!this.animations[mappedName]) {
-                    // Retarget the clip to work with our model's skeleton
-                    const retargetedClip = this.retargetClip(clip);
-                    const action = this.mixer.clipAction(retargetedClip);
+                    // Remove root motion and use clip directly (like TileGame-3D)
+                    const cleanClip = this.removeRootMotion(clip);
+                    cleanClip.name = mappedName;
+                    const action = this.mixer.clipAction(cleanClip);
 
                     // Configure animation properties
                     if (this.isLoopingAnimation(mappedName)) {
@@ -293,6 +286,7 @@ export class KayKitCharacter {
 
                     this.animations[mappedName] = action;
                     loadedCount++;
+                    console.log(`  - Registered animation: ${mappedName} (from ${clip.name})`);
                 }
             }
         }
@@ -305,65 +299,22 @@ export class KayKitCharacter {
         });
     }
 
-    retargetClip(clip) {
-        // KayKit animations use track names like "Armature|BoneName.property"
-        // Three.js mixer searches for objects by name in the model hierarchy
-        const newTracks = [];
+    // Remove root motion from animation clips to prevent character moving on its own
+    removeRootMotion(clip) {
+        const filteredTracks = clip.tracks.filter(track => {
+            const isPositionTrack = track.name.endsWith('.position');
+            const isRootBone = track.name.includes('Root') ||
+                              track.name.includes('Hips') ||
+                              track.name.includes('Armature');
 
-        // Build map of all object names in our model (bones, meshes, etc)
-        const modelObjects = new Map();
-        this.model.traverse((child) => {
-            modelObjects.set(child.name, child);
+            // Remove position tracks on root bones
+            if (isPositionTrack && isRootBone) {
+                return false;
+            }
+            return true;
         });
 
-        // Debug: Log first clip's bone matching (only once)
-        if (!this._debuggedClip) {
-            this._debuggedClip = true;
-            const allNames = Array.from(modelObjects.keys());
-            console.log(`Model object names (${allNames.length} total):`, allNames.slice(0, 15));
-            if (clip.tracks.length > 0) {
-                console.log(`Animation tracks (first 5):`);
-                clip.tracks.slice(0, 5).forEach(t => console.log(`  - ${t.name}`));
-            }
-        }
-
-        for (const track of clip.tracks) {
-            // Parse track name: various formats like:
-            // "Armature|BoneName.property", "Armature/BoneName.property", "BoneName.property"
-            const match = track.name.match(/^(.+?)\.([^.]+)$/);
-            if (!match) {
-                newTracks.push(track.clone());
-                continue;
-            }
-
-            const bonePath = match[1];
-            const property = match[2];
-
-            // Extract just the bone name, handling different separators
-            let boneName = bonePath;
-            if (bonePath.includes('|')) {
-                boneName = bonePath.split('|').pop();
-            } else if (bonePath.includes('/')) {
-                boneName = bonePath.split('/').pop();
-            }
-
-            // Check if this bone exists in our model
-            if (modelObjects.has(boneName)) {
-                const newTrack = track.clone();
-                newTrack.name = `${boneName}.${property}`;
-                newTracks.push(newTrack);
-            } else if (modelObjects.has(bonePath)) {
-                // Full path exists in model
-                newTracks.push(track.clone());
-            } else {
-                // Try with just bone name anyway - might work with mixer's search
-                const newTrack = track.clone();
-                newTrack.name = `${boneName}.${property}`;
-                newTracks.push(newTrack);
-            }
-        }
-
-        return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);
+        return new THREE.AnimationClip(clip.name, clip.duration, filteredTracks);
     }
 
     isLoopingAnimation(name) {

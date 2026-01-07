@@ -107,38 +107,41 @@ export class Player {
     }
 
     createAbilityIndicators() {
-        // Cleave cone indicator
-        const coneAngle = this.abilities.cleave.angle;
-        const coneRange = this.abilities.cleave.range;
-        const segments = 32;
+        // Cleave cone indicator - use CircleGeometry with theta offset like TileGame-3D
+        const ability = this.abilities.cleave;
+        const group = new THREE.Group();
 
-        // Draw cone in XZ plane directly (no rotation needed for laying flat)
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 0);
-        for (let i = 0; i <= segments; i++) {
-            const angle = -coneAngle / 2 + (coneAngle * i / segments);
-            // X is left/right, Y (in shape) will map to Z (forward/back)
-            const x = Math.sin(angle) * coneRange;
-            const z = Math.cos(angle) * coneRange;
-            shape.lineTo(x, z);
-        }
-        shape.lineTo(0, 0);
-
-        const geometry = new THREE.ShapeGeometry(shape);
-        // Rotate geometry to lay flat: +Y in shape becomes +Z in world (forward)
-        geometry.rotateX(Math.PI / 2);
-
+        // Offset by -90 degrees so the cone points forward (+Z) when rotation.y = 0
+        const angleOffset = -Math.PI / 2;
+        const geometry = new THREE.CircleGeometry(ability.range, 32, -ability.angle / 2 + angleOffset, ability.angle);
         const material = new THREE.MeshBasicMaterial({
             color: 0xff6600,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.35,
             side: THREE.DoubleSide,
             depthWrite: false
         });
+        const cone = new THREE.Mesh(geometry, material);
+        cone.rotation.x = -Math.PI / 2;
+        cone.position.y = 0.1;
+        group.add(cone);
 
-        this.cleaveIndicator = new THREE.Mesh(geometry, material);
-        this.cleaveIndicator.position.y = 0.1;
-        this.cleaveIndicator.visible = false;
+        // Edge highlight
+        const edgeGeo = new THREE.RingGeometry(ability.range - 0.15, ability.range, 32, 1, -ability.angle / 2 + angleOffset, ability.angle);
+        const edgeMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const edge = new THREE.Mesh(edgeGeo, edgeMat);
+        edge.rotation.x = -Math.PI / 2;
+        edge.position.y = 0.12;
+        group.add(edge);
+
+        group.visible = false;
+        this.cleaveIndicator = group;
         this.scene.add(this.cleaveIndicator);
 
         // Sunder line indicator
@@ -151,7 +154,9 @@ export class Player {
         const startWidth = 0.5;
         const endWidth = ability.width * 2; // Gets wider at the end
 
-        // Create trapezoid shape (narrow at player, wide at end)
+        const group = new THREE.Group();
+
+        // Create trapezoid shape pointing +Y in 2D, will rotate mesh to lay flat
         const shape = new THREE.Shape();
         shape.moveTo(-startWidth / 2, 0);
         shape.lineTo(-endWidth / 2, range);
@@ -160,20 +165,42 @@ export class Player {
         shape.lineTo(-startWidth / 2, 0);
 
         const geometry = new THREE.ShapeGeometry(shape);
-        // Rotate geometry to lay flat: +Y in shape becomes +Z in world (forward)
-        geometry.rotateX(Math.PI / 2);
-
         const material = new THREE.MeshBasicMaterial({
             color: 0x886644,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.35,
             side: THREE.DoubleSide,
             depthWrite: false
         });
 
-        this.sunderIndicator = new THREE.Mesh(geometry, material);
-        this.sunderIndicator.position.y = 0.1;
-        this.sunderIndicator.visible = false;
+        const trapezoid = new THREE.Mesh(geometry, material);
+        trapezoid.rotation.x = -Math.PI / 2; // Lay flat, +Y becomes +Z
+        trapezoid.position.y = 0.1;
+        group.add(trapezoid);
+
+        // Edge outline
+        const edgeShape = new THREE.Shape();
+        edgeShape.moveTo(-startWidth / 2, 0);
+        edgeShape.lineTo(-endWidth / 2, range);
+        edgeShape.lineTo(endWidth / 2, range);
+        edgeShape.lineTo(startWidth / 2, 0);
+        edgeShape.lineTo(-startWidth / 2, 0);
+        const edgeGeo = new THREE.ShapeGeometry(edgeShape);
+        const edgeMat = new THREE.MeshBasicMaterial({
+            color: 0xaa8866,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            wireframe: true
+        });
+        const edge = new THREE.Mesh(edgeGeo, edgeMat);
+        edge.rotation.x = -Math.PI / 2;
+        edge.position.y = 0.12;
+        group.add(edge);
+
+        group.visible = false;
+        this.sunderIndicator = group;
         this.scene.add(this.sunderIndicator);
 
         // Heroic Leap indicator
@@ -242,10 +269,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse - add PI to flip direction
+        // Point toward mouse
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = Math.atan2(dx, dz) + Math.PI;
+        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
     showHeroicLeapIndicator(show) {
@@ -299,12 +326,10 @@ export class Player {
         this.cleaveIndicator.position.x = this.position.x;
         this.cleaveIndicator.position.z = this.position.z;
 
-        // Point toward mouse - rotate around Y axis (world up)
+        // Point toward mouse
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        const angle = Math.atan2(dx, dz);
-        // Cone points +Z after geometry rotation, add PI to flip direction
-        this.cleaveIndicator.rotation.y = angle + Math.PI;
+        this.cleaveIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
     async loadCharacter() {
