@@ -143,7 +143,7 @@ export class Game {
     }
 
     updateAbilityLabels() {
-        const sunderSlot = document.getElementById('ability-t');
+        const sunderSlot = document.getElementById('ability-c');
         if (this.selectedClass === 'mage') {
             document.querySelector('#ability-q .name').textContent = 'Blizzard';
             document.querySelector('#ability-f .name').textContent = 'Flame Wave';
@@ -156,7 +156,7 @@ export class Game {
             document.querySelector('#ability-f .name').textContent = 'Whirlwind';
             document.querySelector('#ability-e .name').textContent = 'Parry';
             document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
-            document.querySelector('#ability-t .name').textContent = 'Sunder';
+            document.querySelector('#ability-c .name').textContent = 'Sunder';
             // Show Sunder for warrior
             if (sunderSlot) sunderSlot.style.display = '';
         }
@@ -807,7 +807,7 @@ export class Game {
             this.updateAbilityCooldown('f', this.player.abilities.whirlwind);
             this.updateAbilityCooldown('e', this.player.abilities.parry);
             this.updateAbilityCooldown('r', this.player.abilities.heroicLeap);
-            this.updateAbilityCooldown('t', this.player.abilities.sunder);
+            this.updateAbilityCooldown('c', this.player.abilities.sunder);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
         }
     }

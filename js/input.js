@@ -75,16 +75,20 @@ export class InputManager {
             case 'q':
                 // Q ability - Cleave (Warrior) / Blizzard (Mage) - hold to aim
                 if (this.game.selectedClass === 'mage') {
-                    // Start aiming blizzard
-                    this.aimingAbility = 'q';
-                    if (this.game.player.showBlizzardIndicator) {
-                        this.game.player.showBlizzardIndicator(true);
+                    // Start aiming blizzard (check cooldown)
+                    if (this.game.player.abilities.blizzard?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                        if (this.game.player.showBlizzardIndicator) {
+                            this.game.player.showBlizzardIndicator(true);
+                        }
                     }
                 } else {
-                    // Start aiming cleave
-                    this.aimingAbility = 'q';
-                    if (this.game.player.showCleaveIndicator) {
-                        this.game.player.showCleaveIndicator(true);
+                    // Start aiming cleave (check cooldown)
+                    if (this.game.player.abilities.cleave.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                        if (this.game.player.showCleaveIndicator) {
+                            this.game.player.showCleaveIndicator(true);
+                        }
                     }
                 }
                 break;
@@ -121,20 +125,25 @@ export class InputManager {
                 if (this.game.selectedClass === 'mage') {
                     this.game.player.useBackstep();
                 } else {
-                    // Start aiming heroic leap
-                    this.aimingAbility = 'r';
-                    if (this.game.player.showHeroicLeapIndicator) {
-                        this.game.player.showHeroicLeapIndicator(true);
+                    // Start aiming heroic leap (check cooldown)
+                    if (this.game.player.abilities.heroicLeap.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'r';
+                        if (this.game.player.showHeroicLeapIndicator) {
+                            this.game.player.showHeroicLeapIndicator(true);
+                        }
                     }
                 }
                 break;
 
-            case 't':
-                // T ability - Sunder (Warrior only) - hold to aim
+            case 'c':
+                // C ability - Sunder (Warrior only) - hold to aim
                 if (this.game.selectedClass !== 'mage') {
-                    this.aimingAbility = 't';
-                    if (this.game.player.showSunderIndicator) {
-                        this.game.player.showSunderIndicator(true);
+                    // Only show indicator if not on cooldown
+                    if (this.game.player.abilities.sunder.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'c';
+                        if (this.game.player.showSunderIndicator) {
+                            this.game.player.showSunderIndicator(true);
+                        }
                     }
                 }
                 break;
@@ -205,7 +214,7 @@ export class InputManager {
                 }
                 break;
 
-            case 't':
+            case 'c':
                 if (this.game.selectedClass !== 'mage') {
                     // Fire sunder toward mouse
                     if (this.game.player.showSunderIndicator) {
@@ -283,7 +292,7 @@ export class InputManager {
                 if (this.game.player.updateHeroicLeapIndicator) {
                     this.game.player.updateHeroicLeapIndicator(this.mouseWorldPos);
                 }
-            } else if (this.aimingAbility === 't') {
+            } else if (this.aimingAbility === 'c') {
                 if (this.game.player.updateSunderIndicator) {
                     this.game.player.updateSunderIndicator(this.mouseWorldPos);
                 }

@@ -150,9 +150,9 @@ export class Enemy {
             this.healthBarGroup.lookAt(camera.position);
         }
 
-        // Scale fill based on health
-        const healthPercent = this.health / this.maxHealth;
-        this.healthBarFill.scale.x = healthPercent;
+        // Scale fill based on health (clamp to 0-1 range)
+        const healthPercent = Math.max(0, Math.min(1, this.health / this.maxHealth));
+        this.healthBarFill.scale.x = Math.max(0.001, healthPercent); // Prevent zero scale
         this.healthBarFill.position.x = (healthPercent - 1) * 0.55;
     }
 

@@ -34,7 +34,7 @@ export class Player {
                 cooldown: 4,
                 cooldownRemaining: 0,
                 damage: 45,
-                range: 5.0,
+                range: 8.0,
                 angle: Math.PI * 0.6, // 108 degrees
                 isCharging: false,
                 isActive: false
@@ -269,10 +269,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse (negate angle for correct rotation direction)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
+        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz);
     }
 
     showHeroicLeapIndicator(show) {
@@ -326,10 +326,10 @@ export class Player {
         this.cleaveIndicator.position.x = this.position.x;
         this.cleaveIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse (negate angle for correct rotation direction)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.cleaveIndicator.rotation.y = Math.atan2(dx, dz);
+        this.cleaveIndicator.rotation.y = -Math.atan2(dx, dz);
     }
 
     async loadCharacter() {
