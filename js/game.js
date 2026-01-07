@@ -180,22 +180,23 @@ export class Game {
     }
 
     updateAbilityLabels() {
-        const sunderSlot = document.getElementById('ability-c');
+        const cSlot = document.getElementById('ability-c');
         if (this.selectedClass === 'mage') {
             document.querySelector('#ability-q .name').textContent = 'Blizzard';
             document.querySelector('#ability-f .name').textContent = 'Flame Wave';
-            document.querySelector('#ability-e .name').textContent = 'Burn Aura';
+            document.querySelector('#ability-e .name').textContent = 'Frost Nova';
             document.querySelector('#ability-r .name').textContent = 'Backstep';
-            // Hide Sunder for mage
-            if (sunderSlot) sunderSlot.style.display = 'none';
+            document.querySelector('#ability-c .name').textContent = 'Frozen Orb';
+            // Show C slot for mage (Frozen Orb)
+            if (cSlot) cSlot.style.display = '';
         } else {
             document.querySelector('#ability-q .name').textContent = 'Cleave';
             document.querySelector('#ability-f .name').textContent = 'Whirlwind';
             document.querySelector('#ability-e .name').textContent = 'Parry';
             document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
             document.querySelector('#ability-c .name').textContent = 'Sunder';
-            // Show Sunder for warrior
-            if (sunderSlot) sunderSlot.style.display = '';
+            // Show C slot for warrior (Sunder)
+            if (cSlot) cSlot.style.display = '';
         }
     }
 
@@ -838,8 +839,9 @@ export class Game {
         if (this.selectedClass === 'mage') {
             this.updateAbilityCooldown('q', this.player.abilities.blizzard);
             this.updateAbilityCooldown('f', this.player.abilities.flameWave);
-            this.updateAbilityCooldown('e', this.player.abilities.burnAura);
+            this.updateAbilityCooldown('e', this.player.abilities.frostNova);
             this.updateAbilityCooldown('r', this.player.abilities.backstep);
+            this.updateAbilityCooldown('c', this.player.abilities.frozenOrb);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
         } else {
             this.updateAbilityCooldown('q', this.player.abilities.cleave);

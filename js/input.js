@@ -112,9 +112,9 @@ export class InputManager {
                 break;
 
             case 'e':
-                // E ability - Parry (Warrior) / Burn Aura (Mage)
+                // E ability - Parry (Warrior) / Frost Nova (Mage)
                 if (this.game.selectedClass === 'mage') {
-                    this.game.player.toggleBurnAura();
+                    this.game.player.useFrostNova();
                 } else {
                     this.game.player.useParry();
                 }
@@ -136,9 +136,18 @@ export class InputManager {
                 break;
 
             case 'c':
-                // C ability - Sunder (Warrior only) - hold to aim
-                if (this.game.selectedClass !== 'mage') {
-                    // Only show indicator if not on cooldown
+                // C ability - Sunder (Warrior) / Frozen Orb (Mage) - hold to aim
+                if (this.game.selectedClass === 'mage') {
+                    // Frozen orb - aim toward mouse
+                    if (this.game.player.abilities.frozenOrb.cooldownRemaining <= 0) {
+                        const direction = {
+                            x: this.mouseWorldPos.x - this.game.player.position.x,
+                            z: this.mouseWorldPos.z - this.game.player.position.z
+                        };
+                        this.game.player.useFrozenOrb(direction);
+                    }
+                } else {
+                    // Sunder - hold to aim
                     if (this.game.player.abilities.sunder.cooldownRemaining <= 0) {
                         this.aimingAbility = 'c';
                         if (this.game.player.showSunderIndicator) {

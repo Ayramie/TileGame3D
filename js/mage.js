@@ -43,14 +43,24 @@ export class Mage {
                 angle: Math.PI * 0.6, // 108 degrees
                 isActive: false
             },
-            burnAura: {
-                cooldown: 1, // Toggle cooldown
+            frostNova: {
+                cooldown: 8,
                 cooldownRemaining: 0,
-                damage: 5, // per tick
-                radius: 4,
-                manaCost: 2, // per second (future mana system)
-                isActive: false,
-                tickTimer: 0
+                damage: 25,
+                radius: 6,
+                freezeDuration: 2.5, // How long enemies stay frozen
+                isActive: false
+            },
+            frozenOrb: {
+                cooldown: 10,
+                cooldownRemaining: 0,
+                damage: 15, // per tick as it passes
+                explosionDamage: 40, // on final explosion
+                speed: 12,
+                range: 25,
+                aoeRadius: 3,
+                tickInterval: 0.3,
+                isActive: false
             },
             backstep: {
                 cooldown: 5,
@@ -61,10 +71,13 @@ export class Mage {
             potion: {
                 cooldown: 10,
                 cooldownRemaining: 0,
-                healAmount: 25,
+                healAmount: 100,
                 isActive: false
             }
         };
+
+        // Frozen orb projectiles (separate from auto-attack projectiles)
+        this.frozenOrbs = [];
 
         // Projectiles for auto-attack
         this.projectiles = [];
@@ -277,10 +290,8 @@ export class Mage {
         // Update ground effects
         this.updateGroundEffects(deltaTime);
 
-        // Burn aura tick damage
-        if (this.abilities.burnAura.isActive && this.game) {
-            this.burnAuraTick(deltaTime);
-        }
+        // Update frozen orbs
+        this.updateFrozenOrbs(deltaTime);
 
         // Auto-attack cooldown
         if (this.autoAttackCooldown > 0) {
@@ -723,96 +734,387 @@ export class Mage {
         return hitCount > 0;
     }
 
-    // E - Burn Aura: Toggle AoE damage around self
-    toggleBurnAura() {
-        const ability = this.abilities.burnAura;
+    // E - Frost Nova: AoE freeze around player
+    useFrostNova() {
+        const ability = this.abilities.frostNova;
         if (ability.cooldownRemaining > 0) return false;
 
-        ability.isActive = !ability.isActive;
         ability.cooldownRemaining = ability.cooldown;
 
-        if (ability.isActive) {
-            // Create aura visual
-            this.createBurnAuraVisual();
-        } else {
-            // Remove aura visual
-            this.removeBurnAuraVisual();
+        // Play cast animation
+        if (this.useAnimatedCharacter) {
+            this.character.playAttack(2);
+        }
+
+        // Create frost nova visual effect
+        this.createFrostNovaEffect();
+
+        // Freeze and damage all enemies in radius
+        if (this.game && this.game.enemies) {
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isAlive) continue;
+
+                const dist = this.position.distanceTo(enemy.position);
+                if (dist < ability.radius) {
+                    // Deal damage
+                    enemy.takeDamage(ability.damage, this);
+
+                    if (this.game && this.game.effects) {
+                        this.game.effects.createDamageNumber(enemy.position, ability.damage);
+                    }
+
+                    // Freeze the enemy (stun them)
+                    if (enemy.stun) {
+                        enemy.stun(ability.freezeDuration);
+                    }
+
+                    // Visual freeze effect on enemy
+                    this.applyFreezeVisual(enemy);
+                }
+            }
+        }
+
+        // Screen shake
+        if (this.game) {
+            this.game.addScreenShake(0.5);
         }
 
         return true;
     }
 
-    createBurnAuraVisual() {
-        if (this.burnAuraMesh) return;
+    createFrostNovaEffect() {
+        const ability = this.abilities.frostNova;
 
-        const auraGeometry = new THREE.RingGeometry(0.5, this.abilities.burnAura.radius, 32);
-        const auraMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff4400,
+        // Expanding ring effect
+        const ringGeometry = new THREE.RingGeometry(0.5, ability.radius, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ddff,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.7,
             side: THREE.DoubleSide,
             depthWrite: false
         });
-        this.burnAuraMesh = new THREE.Mesh(auraGeometry, auraMaterial);
-        this.burnAuraMesh.rotation.x = -Math.PI / 2;
-        this.scene.add(this.burnAuraMesh);
-    }
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.copy(this.position);
+        ring.position.y = 0.2;
+        this.scene.add(ring);
 
-    removeBurnAuraVisual() {
-        if (this.burnAuraMesh) {
-            this.scene.remove(this.burnAuraMesh);
-            this.burnAuraMesh.geometry.dispose();
-            this.burnAuraMesh.material.dispose();
-            this.burnAuraMesh = null;
-        }
-    }
-
-    burnAuraTick(deltaTime) {
-        const ability = this.abilities.burnAura;
-        ability.tickTimer += deltaTime;
-
-        // Update aura position
-        if (this.burnAuraMesh) {
-            this.burnAuraMesh.position.x = this.position.x;
-            this.burnAuraMesh.position.y = 0.35;
-            this.burnAuraMesh.position.z = this.position.z;
-
-            // Pulse effect
-            const pulse = Math.sin(ability.tickTimer * 5) * 0.1 + 0.3;
-            this.burnAuraMesh.material.opacity = pulse;
-        }
-
-        // Fire particles
-        if (this.game && this.game.particles && Math.random() < 0.3) {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = Math.random() * ability.radius;
-            const pos = new THREE.Vector3(
-                this.position.x + Math.cos(angle) * dist,
-                0.5,
-                this.position.z + Math.sin(angle) * dist
+        // Ice spikes around the ring
+        const spikeCount = 12;
+        const spikes = [];
+        for (let i = 0; i < spikeCount; i++) {
+            const angle = (i / spikeCount) * Math.PI * 2;
+            const spikeGeo = new THREE.ConeGeometry(0.3, 1.5, 4);
+            const spikeMat = new THREE.MeshBasicMaterial({
+                color: 0xaaeeff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const spike = new THREE.Mesh(spikeGeo, spikeMat);
+            spike.position.set(
+                this.position.x + Math.cos(angle) * ability.radius * 0.8,
+                0.75,
+                this.position.z + Math.sin(angle) * ability.radius * 0.8
             );
-            this.game.particles.burnAuraFlame(pos);
+            spike.rotation.x = Math.PI; // Point up
+            this.scene.add(spike);
+            spikes.push(spike);
         }
 
-        // Damage tick
-        if (ability.tickTimer >= 0.5) {
-            ability.tickTimer = 0;
+        // Animate and remove
+        let elapsed = 0;
+        const duration = 0.5;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
 
-            if (this.game && this.game.enemies) {
-                for (const enemy of this.game.enemies) {
-                    if (!enemy.isAlive) continue;
+            // Fade out ring
+            ringMaterial.opacity = 0.7 * (1 - progress);
 
-                    const dist = this.position.distanceTo(enemy.position);
-                    if (dist < ability.radius) {
-                        enemy.takeDamage(ability.damage, this);
+            // Sink spikes
+            for (const spike of spikes) {
+                spike.position.y = 0.75 * (1 - progress);
+                spike.material.opacity = 0.8 * (1 - progress);
+            }
 
-                        if (this.game && this.game.effects) {
-                            this.game.effects.createDamageNumber(enemy.position, ability.damage);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                // Cleanup
+                this.scene.remove(ring);
+                ring.geometry.dispose();
+                ring.material.dispose();
+                for (const spike of spikes) {
+                    this.scene.remove(spike);
+                    spike.geometry.dispose();
+                    spike.material.dispose();
+                }
+            }
+        };
+        animate();
+
+        // Particle effect
+        if (this.game && this.game.particles) {
+            this.game.particles.frostNova(this.position, ability.radius);
+        }
+    }
+
+    applyFreezeVisual(enemy) {
+        // Add a blue tint to frozen enemy
+        if (enemy.mesh) {
+            enemy.mesh.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Store original color
+                    if (!child.userData.originalColor) {
+                        child.userData.originalColor = child.material.color.getHex();
+                    }
+                    child.material.color.setHex(0x88ccff);
+                }
+            });
+
+            // Remove freeze visual after duration
+            setTimeout(() => {
+                if (enemy.mesh) {
+                    enemy.mesh.traverse((child) => {
+                        if (child.isMesh && child.material && child.userData.originalColor) {
+                            child.material.color.setHex(child.userData.originalColor);
                         }
+                    });
+                }
+            }, this.abilities.frostNova.freezeDuration * 1000);
+        }
+    }
+
+    // C - Frozen Orb: Shoots orb that damages as it travels then explodes
+    useFrozenOrb(direction) {
+        const ability = this.abilities.frozenOrb;
+        if (ability.cooldownRemaining > 0) return false;
+
+        ability.cooldownRemaining = ability.cooldown;
+
+        // Calculate direction
+        let dir;
+        if (direction) {
+            dir = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            this.rotation = Math.atan2(dir.x, dir.z);
+        } else {
+            dir = new THREE.Vector3(
+                Math.sin(this.rotation),
+                0,
+                Math.cos(this.rotation)
+            );
+        }
+
+        // Play cast animation
+        if (this.useAnimatedCharacter) {
+            this.character.playAttack(1);
+        }
+
+        // Create the frozen orb projectile
+        this.createFrozenOrbProjectile(dir);
+
+        return true;
+    }
+
+    createFrozenOrbProjectile(direction) {
+        const ability = this.abilities.frozenOrb;
+        const startPos = this.position.clone();
+        startPos.y = 1.5;
+
+        // Main orb
+        const orbGeometry = new THREE.SphereGeometry(0.5, 16, 12);
+        const orbMaterial = new THREE.MeshBasicMaterial({
+            color: 0x44ddff,
+            transparent: true,
+            opacity: 0.8
+        });
+        const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+        orb.position.copy(startPos);
+        this.scene.add(orb);
+
+        // Inner glow
+        const glowGeometry = new THREE.SphereGeometry(0.7, 16, 12);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xaaeeff,
+            transparent: true,
+            opacity: 0.3
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        orb.add(glow);
+
+        // Outer aura ring showing AoE
+        const auraGeometry = new THREE.RingGeometry(ability.aoeRadius - 0.2, ability.aoeRadius, 32);
+        const auraMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const aura = new THREE.Mesh(auraGeometry, auraMaterial);
+        aura.rotation.x = -Math.PI / 2;
+        aura.position.y = -1.4; // At ground level relative to orb
+        orb.add(aura);
+
+        this.frozenOrbs.push({
+            mesh: orb,
+            direction: direction.clone(),
+            startPos: startPos.clone(),
+            speed: ability.speed,
+            maxRange: ability.range,
+            damage: ability.damage,
+            explosionDamage: ability.explosionDamage,
+            aoeRadius: ability.aoeRadius,
+            tickInterval: ability.tickInterval,
+            tickTimer: 0,
+            distanceTraveled: 0,
+            hitEnemies: new Set() // Track enemies hit this tick to avoid double damage
+        });
+
+        // Cast particles
+        if (this.game && this.game.particles) {
+            this.game.particles.frostCast(startPos);
+        }
+    }
+
+    updateFrozenOrbs(deltaTime) {
+        for (let i = this.frozenOrbs.length - 1; i >= 0; i--) {
+            const orb = this.frozenOrbs[i];
+
+            // Move the orb
+            const moveAmount = orb.speed * deltaTime;
+            orb.mesh.position.addScaledVector(orb.direction, moveAmount);
+            orb.distanceTraveled += moveAmount;
+
+            // Rotate the orb for visual effect
+            orb.mesh.rotation.y += deltaTime * 3;
+            orb.mesh.rotation.x += deltaTime * 2;
+
+            // AoE damage tick
+            orb.tickTimer += deltaTime;
+            if (orb.tickTimer >= orb.tickInterval) {
+                orb.tickTimer = 0;
+                orb.hitEnemies.clear(); // Reset hit tracking each tick
+
+                // Damage enemies in AoE
+                if (this.game && this.game.enemies) {
+                    const orbPos = orb.mesh.position;
+                    for (const enemy of this.game.enemies) {
+                        if (!enemy.isAlive) continue;
+
+                        const dist = new THREE.Vector3(
+                            enemy.position.x - orbPos.x,
+                            0,
+                            enemy.position.z - orbPos.z
+                        ).length();
+
+                        if (dist < orb.aoeRadius && !orb.hitEnemies.has(enemy)) {
+                            enemy.takeDamage(orb.damage, this);
+                            orb.hitEnemies.add(enemy);
+
+                            if (this.game && this.game.effects) {
+                                this.game.effects.createDamageNumber(enemy.position, orb.damage);
+                            }
+
+                            // Small slow effect
+                            if (!enemy.originalMoveSpeed) {
+                                enemy.originalMoveSpeed = enemy.moveSpeed;
+                            }
+                            enemy.moveSpeed = enemy.originalMoveSpeed * 0.7;
+                            enemy.slowTimer = 0.5;
+                        }
+                    }
+                }
+
+                // Spawn ice particles as it travels
+                if (this.game && this.game.particles) {
+                    this.game.particles.frozenOrbTrail(orb.mesh.position);
+                }
+            }
+
+            // Check if reached max range - explode
+            if (orb.distanceTraveled >= orb.maxRange) {
+                this.explodeFrozenOrb(orb);
+                this.frozenOrbs.splice(i, 1);
+            }
+        }
+    }
+
+    explodeFrozenOrb(orb) {
+        const explosionPos = orb.mesh.position.clone();
+
+        // Deal explosion damage to all enemies in range
+        if (this.game && this.game.enemies) {
+            for (const enemy of this.game.enemies) {
+                if (!enemy.isAlive) continue;
+
+                const dist = new THREE.Vector3(
+                    enemy.position.x - explosionPos.x,
+                    0,
+                    enemy.position.z - explosionPos.z
+                ).length();
+
+                if (dist < orb.aoeRadius * 1.5) { // Slightly larger explosion radius
+                    enemy.takeDamage(orb.explosionDamage, this);
+
+                    if (this.game && this.game.effects) {
+                        this.game.effects.createDamageNumber(enemy.position, orb.explosionDamage);
+                    }
+
+                    // Brief freeze on explosion
+                    if (enemy.stun) {
+                        enemy.stun(0.5);
                     }
                 }
             }
         }
+
+        // Explosion visual
+        const explosionGeo = new THREE.SphereGeometry(orb.aoeRadius * 1.5, 16, 12);
+        const explosionMat = new THREE.MeshBasicMaterial({
+            color: 0x88eeff,
+            transparent: true,
+            opacity: 0.6
+        });
+        const explosion = new THREE.Mesh(explosionGeo, explosionMat);
+        explosion.position.copy(explosionPos);
+        this.scene.add(explosion);
+
+        // Animate explosion
+        let elapsed = 0;
+        const duration = 0.3;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+
+            explosion.scale.setScalar(1 + progress * 0.5);
+            explosionMat.opacity = 0.6 * (1 - progress);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(explosion);
+                explosion.geometry.dispose();
+                explosion.material.dispose();
+            }
+        };
+        animate();
+
+        // Explosion particles
+        if (this.game && this.game.particles) {
+            this.game.particles.frozenOrbExplosion(explosionPos, orb.aoeRadius);
+        }
+
+        // Screen shake
+        if (this.game) {
+            this.game.addScreenShake(0.4);
+        }
+
+        // Remove orb mesh
+        this.scene.remove(orb.mesh);
+        orb.mesh.geometry.dispose();
+        orb.mesh.material.dispose();
     }
 
     // R - Backstep: Dash backward
@@ -902,10 +1204,6 @@ export class Mage {
             this.character.playDeath();
         }
 
-        // Cleanup burn aura
-        this.abilities.burnAura.isActive = false;
-        this.removeBurnAuraVisual();
-
         setTimeout(() => {
             this.health = this.maxHealth;
             this.position.set(0, 0, 0);
@@ -925,6 +1223,14 @@ export class Mage {
         }
         this.projectiles = [];
 
+        // Remove frozen orbs
+        for (const orb of this.frozenOrbs) {
+            this.scene.remove(orb.mesh);
+            orb.mesh.geometry.dispose();
+            orb.mesh.material.dispose();
+        }
+        this.frozenOrbs = [];
+
         // Remove ground effects
         for (const effect of this.groundEffects) {
             this.scene.remove(effect.mesh);
@@ -935,9 +1241,6 @@ export class Mage {
             effect.border.material.dispose();
         }
         this.groundEffects = [];
-
-        // Remove burn aura
-        this.removeBurnAuraVisual();
 
         // Remove character
         if (this.character) {
