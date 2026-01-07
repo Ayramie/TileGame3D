@@ -79,10 +79,19 @@ export class Game {
         this.gameMode = mode;
         this.gameState = 'loading';
 
-        // Hide menu, show loading text, hide canvas during load
+        // Hide menu, show loading screen with spinner
         const menu = document.getElementById('main-menu');
-        menu.innerHTML = '<h1>Loading...</h1>';
+        menu.innerHTML = `
+            <div class="loading-container">
+                <h1>Loading</h1>
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Preparing dungeon...</div>
+            </div>
+        `;
         this.canvas.style.opacity = '0';
+
+        // Allow the loading screen to render before heavy work
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         // Clear previous game state
         this.clearScene();
@@ -113,10 +122,14 @@ export class Game {
         // Ambient particle timer
         this.ambientTimer = 0;
 
+        // Setup minimap
+        this.setupMinimap();
+
         // Now show UI and canvas
         this.gameState = 'playing';
         this.canvas.style.opacity = '1';
         menu.classList.add('hidden');
+        document.getElementById('minimap').style.display = 'block';
         menu.innerHTML = `
             <h1>TileGame 3D</h1>
             <div class="class-selection">
@@ -171,6 +184,7 @@ export class Game {
         document.getElementById('ui').style.display = 'none';
         document.getElementById('return-menu-btn').style.display = 'none';
         document.getElementById('target-frame').style.display = 'none';
+        document.getElementById('minimap').style.display = 'none';
 
         // Clear the scene
         this.clearScene();
@@ -780,6 +794,9 @@ export class Game {
         document.getElementById('health-text').textContent =
             `${Math.ceil(this.player.health)} / ${this.player.maxHealth}`;
 
+        // Update minimap
+        this.updateMinimap();
+
         // Target frame
         const targetFrame = document.getElementById('target-frame');
         if (this.player.targetEnemy && this.player.targetEnemy.isAlive) {
@@ -872,6 +889,106 @@ export class Game {
             this.camera.updateProjectionMatrix();
         }
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Setup minimap canvas
+    setupMinimap() {
+        this.minimapCanvas = document.getElementById('minimap-canvas');
+        this.minimapCtx = this.minimapCanvas.getContext('2d');
+
+        // Minimap settings based on game mode
+        if (this.gameMode === 'horde') {
+            // Winding dungeon bounds
+            this.minimapBounds = { minX: -20, maxX: 110, minZ: -20, maxZ: 150 };
+        } else {
+            // Standard dungeon/boss bounds
+            this.minimapBounds = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
+        }
+    }
+
+    // Update minimap each frame
+    updateMinimap() {
+        if (!this.minimapCtx || !this.minimapCanvas) return;
+
+        const ctx = this.minimapCtx;
+        const canvas = this.minimapCanvas;
+        const bounds = this.minimapBounds;
+
+        // Clear
+        ctx.fillStyle = 'rgba(20, 20, 35, 0.9)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate scale
+        const worldWidth = bounds.maxX - bounds.minX;
+        const worldHeight = bounds.maxZ - bounds.minZ;
+        const scale = Math.min(canvas.width / worldWidth, canvas.height / worldHeight) * 0.9;
+        const offsetX = canvas.width / 2;
+        const offsetY = canvas.height / 2;
+        const centerX = (bounds.minX + bounds.maxX) / 2;
+        const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+
+        // Helper to convert world coords to minimap coords
+        const toMinimap = (x, z) => ({
+            x: offsetX + (x - centerX) * scale,
+            y: offsetY + (z - centerZ) * scale
+        });
+
+        // Draw floor areas (simplified rectangles)
+        ctx.fillStyle = 'rgba(60, 60, 80, 0.5)';
+        if (this.gameMode === 'horde') {
+            // Draw approximate floor areas
+            const floors = [
+                { x: 0, z: -5, w: 25, h: 20 },
+                { x: 0, z: 25, w: 20, h: 50 },
+                { x: 20, z: 55, w: 30, h: 30 },
+                { x: 50, z: 55, w: 50, h: 20 },
+                { x: 80, z: 30, w: 35, h: 35 },
+                { x: 80, z: 80, w: 20, h: 40 },
+                { x: 80, z: 120, w: 40, h: 40 }
+            ];
+            for (const f of floors) {
+                const p = toMinimap(f.x - f.w/2, f.z - f.h/2);
+                ctx.fillRect(p.x, p.y, f.w * scale, f.h * scale);
+            }
+        } else {
+            // Simple square for other modes
+            const p = toMinimap(-15, -15);
+            ctx.fillRect(p.x, p.y, 30 * scale, 30 * scale);
+        }
+
+        // Draw enemies (red dots)
+        ctx.fillStyle = '#ff4444';
+        for (const enemy of this.enemies) {
+            if (!enemy.isAlive) continue;
+            const pos = toMinimap(enemy.position.x, enemy.position.z);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw player (white dot with direction indicator)
+        const playerPos = toMinimap(this.player.position.x, this.player.position.z);
+
+        // Player direction line
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playerPos.x, playerPos.y);
+        const dirX = Math.sin(this.player.rotation) * 8;
+        const dirZ = Math.cos(this.player.rotation) * 8;
+        ctx.lineTo(playerPos.x + dirX, playerPos.y + dirZ);
+        ctx.stroke();
+
+        // Player dot
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(playerPos.x, playerPos.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Player outline
+        ctx.strokeStyle = '#88aaff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
 
     // Build walls for the winding dungeon

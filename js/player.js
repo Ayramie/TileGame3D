@@ -64,7 +64,7 @@ export class Player {
                 cooldownRemaining: 0,
                 damage: 50,
                 stunDuration: 0.8,
-                range: 12,
+                range: 20,
                 aoeRadius: 4,
                 isActive: false,
                 activeTime: 0,
@@ -273,10 +273,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse (add PI to flip 180 degrees due to shape orientation)
+        // Point toward mouse (negate angle for correct direction)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = Math.atan2(dx, dz) + Math.PI;
+        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz);
     }
 
     showHeroicLeapIndicator(show) {
