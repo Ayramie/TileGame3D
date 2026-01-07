@@ -102,17 +102,23 @@ export class SkeletonEnemy extends Enemy {
             });
 
             // Setup animations
-            if (gltf.animations && gltf.animations.length > 0) {
-                this.mixer = new THREE.AnimationMixer(this.mesh);
+            this.mixer = new THREE.AnimationMixer(this.mesh);
 
+            // First try embedded animations
+            if (gltf.animations && gltf.animations.length > 0) {
                 for (const clip of gltf.animations) {
                     const action = this.mixer.clipAction(clip);
                     this.animations[clip.name.toLowerCase()] = action;
                 }
-
-                // Play idle animation
-                this.playAnimation('idle');
             }
+
+            // Load animations from rig files if no embedded animations
+            if (Object.keys(this.animations).length === 0) {
+                await this.loadRigAnimations(loader);
+            }
+
+            // Play idle animation
+            this.playAnimation('idle');
 
             // Load weapon if applicable
             await this.loadWeapon(loader);
@@ -155,6 +161,12 @@ export class SkeletonEnemy extends Enemy {
     }
 
     async loadWeapon(loader) {
+        // Ensure mesh exists before loading weapon
+        if (!this.mesh) {
+            console.warn('Cannot load weapon - mesh not loaded');
+            return;
+        }
+
         // Load appropriate weapon based on type
         let weaponPath;
         switch (this.skeletonType) {
@@ -178,15 +190,117 @@ export class SkeletonEnemy extends Enemy {
             const weapon = weaponGltf.scene;
 
             // Find hand bone and attach weapon
+            let weaponAttached = false;
             this.mesh.traverse((child) => {
-                if (child.isBone && child.name.toLowerCase().includes('hand') && child.name.toLowerCase().includes('r')) {
+                if (!weaponAttached && child.isBone && child.name &&
+                    child.name.toLowerCase().includes('hand') &&
+                    child.name.toLowerCase().includes('r')) {
                     weapon.scale.setScalar(1.0);
                     child.add(weapon);
+                    weaponAttached = true;
                 }
             });
+
+            if (!weaponAttached) {
+                console.warn(`No hand bone found for ${this.skeletonType}, weapon not attached`);
+            }
         } catch (error) {
-            console.warn(`Could not load weapon for ${this.skeletonType}:`, error);
+            console.warn(`Could not load weapon for ${this.skeletonType}:`, error.message || error);
         }
+    }
+
+    async loadRigAnimations(loader) {
+        // Load animations from KayKit rig files
+        const animFiles = AssetManifest.animations.rigMedium;
+        if (!animFiles) return;
+
+        // Animation name mappings
+        const animMappings = {
+            'Idle': 'idle',
+            'Idle_A': 'idle',
+            'Walk': 'walk',
+            'Walking_A': 'walk',
+            'Run': 'run',
+            'Running_A': 'run',
+            'Death': 'death',
+            'Death_A': 'death',
+            'Hit_A': 'hit',
+            'Hit_B': 'hit',
+            '1H_Melee_Attack_Slice_Diagonal': 'attack',
+            '1H_Melee_Attack_Stab': 'attack',
+            'Block': 'block'
+        };
+
+        // Load movement and combat packs
+        const packsToLoad = ['movementBasic', 'general', 'combatMelee'];
+
+        for (const packName of packsToLoad) {
+            const path = animFiles[packName];
+            if (!path) continue;
+
+            try {
+                const gltf = await this.loadGLTF(loader, path);
+
+                for (const clip of gltf.animations) {
+                    let mappedName = animMappings[clip.name];
+
+                    // Fuzzy match if no direct mapping
+                    if (!mappedName) {
+                        const lowerName = clip.name.toLowerCase();
+                        if (lowerName.includes('idle')) mappedName = 'idle';
+                        else if (lowerName.includes('walk')) mappedName = 'walk';
+                        else if (lowerName.includes('run')) mappedName = 'run';
+                        else if (lowerName.includes('death')) mappedName = 'death';
+                        else if (lowerName.includes('hit')) mappedName = 'hit';
+                        else if (lowerName.includes('attack') || lowerName.includes('slice')) mappedName = 'attack';
+                        else if (lowerName.includes('block')) mappedName = 'block';
+                    }
+
+                    if (mappedName && !this.animations[mappedName]) {
+                        // Retarget the clip
+                        const retargetedClip = this.retargetClip(clip);
+                        const action = this.mixer.clipAction(retargetedClip);
+
+                        // Configure looping
+                        if (['idle', 'walk', 'run'].includes(mappedName)) {
+                            action.setLoop(THREE.LoopRepeat);
+                        } else {
+                            action.setLoop(THREE.LoopOnce);
+                            action.clampWhenFinished = true;
+                        }
+
+                        this.animations[mappedName] = action;
+                    }
+                }
+            } catch (error) {
+                console.warn(`Could not load animation pack ${packName}:`, error.message);
+            }
+        }
+
+        console.log(`Skeleton animations loaded: ${Object.keys(this.animations).join(', ')}`);
+    }
+
+    retargetClip(clip) {
+        // Clone clip and simplify track names for compatibility
+        const newTracks = [];
+
+        for (const track of clip.tracks) {
+            const match = track.name.match(/^(.+?)\.(.+)$/);
+            if (match) {
+                const bonePath = match[1];
+                const property = match[2];
+                const boneName = bonePath.split('/').pop();
+
+                // Try simplified bone name
+                const newTrack = track.clone();
+                newTrack.name = `${boneName}.${property}`;
+                newTracks.push(newTrack);
+            } else {
+                newTracks.push(track.clone());
+            }
+        }
+
+        return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);
     }
 
     createFallbackMesh() {

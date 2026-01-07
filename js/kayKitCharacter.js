@@ -202,6 +202,14 @@ export class KayKitCharacter {
             return;
         }
 
+        // Find the skeleton root in our model for retargeting
+        let skeletonRoot = null;
+        this.model.traverse((child) => {
+            if (child.isSkinnedMesh && child.skeleton) {
+                skeletonRoot = child.skeleton.bones[0]?.parent || this.model;
+            }
+        });
+
         console.log(`Loading ${Object.keys(animFiles).length} animation packs for ${rigKey}...`);
 
         // Load each animation file
@@ -209,10 +217,13 @@ export class KayKitCharacter {
             try {
                 const gltf = await this.loadGLTF(loader, path);
                 console.log(`  Pack "${name}": ${gltf.animations.length} clips found`);
-                // Log all clip names for debugging
-                gltf.animations.forEach(clip => {
+                // Log first few clip names for debugging
+                gltf.animations.slice(0, 5).forEach(clip => {
                     console.log(`    - ${clip.name}`);
                 });
+                if (gltf.animations.length > 5) {
+                    console.log(`    ... and ${gltf.animations.length - 5} more`);
+                }
                 return { name, clips: gltf.animations };
             } catch (error) {
                 console.warn(`Could not load animation pack ${name}:`, error.message);
@@ -252,7 +263,9 @@ export class KayKitCharacter {
 
                 // Create action if not already exists for this mapped name
                 if (!this.animations[mappedName]) {
-                    const action = this.mixer.clipAction(clip);
+                    // Retarget the clip to work with our model's skeleton
+                    const retargetedClip = this.retargetClip(clip);
+                    const action = this.mixer.clipAction(retargetedClip);
 
                     // Configure animation properties
                     if (this.isLoopingAnimation(mappedName)) {
@@ -274,6 +287,47 @@ export class KayKitCharacter {
         this.mixer.addEventListener('finished', (e) => {
             this.onAnimationFinished(e.action);
         });
+    }
+
+    retargetClip(clip) {
+        // KayKit animations use track names like "Armature/Bone.property"
+        // We need to ensure these match our model's structure
+        // Clone the clip and modify track names if needed
+        const newTracks = [];
+
+        for (const track of clip.tracks) {
+            // Parse track name: "Armature/BoneName.property" or just "BoneName.property"
+            let trackName = track.name;
+
+            // Try to find the bone in our model
+            const match = trackName.match(/^(.+?)\.(.+)$/);
+            if (match) {
+                const bonePath = match[1];
+                const property = match[2];
+                const boneName = bonePath.split('/').pop(); // Get just the bone name
+
+                // Check if bone exists in model
+                let boneFound = false;
+                this.model.traverse((child) => {
+                    if (child.name === boneName || child.name === bonePath) {
+                        boneFound = true;
+                    }
+                });
+
+                // If the full path doesn't work, try just the bone name
+                if (!boneFound) {
+                    // Create new track with simplified name
+                    const newTrack = track.clone();
+                    newTrack.name = `${boneName}.${property}`;
+                    newTracks.push(newTrack);
+                    continue;
+                }
+            }
+
+            newTracks.push(track.clone());
+        }
+
+        return new THREE.AnimationClip(clip.name, clip.duration, newTracks, clip.blendMode);
     }
 
     isLoopingAnimation(name) {
@@ -398,6 +452,25 @@ export class KayKitCharacter {
         const dodgeAnim = this.animations.dodge || this.animations.roll;
         if (dodgeAnim) {
             this.playAnimation(dodgeAnim === this.animations.dodge ? 'dodge' : 'roll', false, 0.1);
+        }
+    }
+
+    playPowerUp() {
+        // Play a special animation for power-up abilities
+        // Use interact or a combat animation if available
+        if (this.animations.interact) {
+            this.playAnimation('interact', false, 0.1);
+        } else if (this.animations.attack1) {
+            this.playAnimation('attack1', false, 0.1);
+        }
+    }
+
+    playSpellCast() {
+        // Play spell casting animation
+        if (this.animations.interact) {
+            this.playAnimation('interact', false, 0.1);
+        } else if (this.animations.attack1) {
+            this.playAnimation('attack1', false, 0.1);
         }
     }
 
