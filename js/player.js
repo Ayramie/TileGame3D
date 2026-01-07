@@ -174,7 +174,7 @@ export class Player {
         });
 
         const trapezoid = new THREE.Mesh(geometry, material);
-        trapezoid.rotation.x = -Math.PI / 2; // Lay flat, +Y becomes +Z
+        trapezoid.rotation.x = Math.PI / 2; // Lay flat, +Y becomes +Z (forward)
         trapezoid.position.y = 0.1;
         group.add(trapezoid);
 
@@ -195,7 +195,7 @@ export class Player {
             wireframe: true
         });
         const edge = new THREE.Mesh(edgeGeo, edgeMat);
-        edge.rotation.x = -Math.PI / 2;
+        edge.rotation.x = Math.PI / 2;
         edge.position.y = 0.12;
         group.add(edge);
 
@@ -269,10 +269,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse (negate angle for correct rotation direction)
+        // Point toward mouse
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz);
+        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
     showHeroicLeapIndicator(show) {
@@ -326,10 +326,10 @@ export class Player {
         this.cleaveIndicator.position.x = this.position.x;
         this.cleaveIndicator.position.z = this.position.z;
 
-        // Point toward mouse (negate angle for correct rotation direction)
+        // Point toward mouse (same as TileGame-3D)
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.cleaveIndicator.rotation.y = -Math.atan2(dx, dz);
+        this.cleaveIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
     async loadCharacter() {
