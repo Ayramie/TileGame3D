@@ -204,76 +204,65 @@ export class Game {
 
     async setupScene() {
         if (this.gameMode === 'horde') {
-            // Wide hallway horde mode
-            this.scene.background = new THREE.Color(0x1a1a2e); // Dark dungeon
-            this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.008);
+            // Winding dungeon hallway horde mode
+            this.scene.background = new THREE.Color(0x1a1a2e);
+            this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.006);
 
-            // Hallway dimensions
-            const hallwayLength = 120;
-            const hallwayWidth = 30;
-
-            // Create stone floor
-            const floorGeometry = new THREE.PlaneGeometry(hallwayWidth, hallwayLength);
-            const floorMaterial = new THREE.MeshLambertMaterial({
-                color: 0x4a4a5a // Stone gray
-            });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.y = 0;
-            floor.position.z = hallwayLength / 2 - 10; // Offset so spawn is at z=0
-            floor.receiveShadow = true;
-            this.scene.add(floor);
-
-            // Safe spawn area - different colored floor
-            const spawnGeometry = new THREE.PlaneGeometry(hallwayWidth - 2, 15);
-            const spawnMaterial = new THREE.MeshLambertMaterial({
-                color: 0x3a5a3a // Green-tinted safe zone
-            });
-            const spawnArea = new THREE.Mesh(spawnGeometry, spawnMaterial);
-            spawnArea.rotation.x = -Math.PI / 2;
-            spawnArea.position.y = 0.01;
-            spawnArea.position.z = -5;
-            spawnArea.receiveShadow = true;
-            this.scene.add(spawnArea);
-
-            // Left wall
-            const wallGeometry = new THREE.BoxGeometry(2, 6, hallwayLength);
             const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a4a });
-            const leftWall = new THREE.Mesh(wallGeometry, wallMaterial);
-            leftWall.position.set(-hallwayWidth / 2 - 1, 3, hallwayLength / 2 - 10);
-            leftWall.castShadow = true;
-            leftWall.receiveShadow = true;
-            this.scene.add(leftWall);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
+            const accentMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
 
-            // Right wall
-            const rightWall = new THREE.Mesh(wallGeometry, wallMaterial);
-            rightWall.position.set(hallwayWidth / 2 + 1, 3, hallwayLength / 2 - 10);
-            rightWall.castShadow = true;
-            rightWall.receiveShadow = true;
-            this.scene.add(rightWall);
+            // Define hallway segments: { x, z, width, length, rotation }
+            // Rotation 0 = along Z axis, PI/2 = along X axis
+            const segments = [
+                // Starting area (safe zone)
+                { x: 0, z: -5, width: 25, length: 20, rot: 0 },
+                // First straight section
+                { x: 0, z: 25, width: 20, length: 50, rot: 0 },
+                // Turn right - connecting piece
+                { x: 20, z: 55, width: 30, length: 30, rot: 0 },
+                // Right corridor
+                { x: 50, z: 55, width: 50, length: 20, rot: Math.PI / 2 },
+                // Turn left - large room
+                { x: 80, z: 30, width: 35, length: 35, rot: 0 },
+                // Continue forward
+                { x: 80, z: 80, width: 20, length: 40, rot: 0 },
+                // Final chamber
+                { x: 80, z: 120, width: 40, length: 40, rot: 0 }
+            ];
 
-            // Back wall (behind spawn)
-            const backWallGeometry = new THREE.BoxGeometry(hallwayWidth + 4, 6, 2);
-            const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-            backWall.position.set(0, 3, -12);
-            backWall.castShadow = true;
-            backWall.receiveShadow = true;
-            this.scene.add(backWall);
-
-            // Add torches along walls
-            for (let z = 0; z < hallwayLength - 20; z += 15) {
-                // Left wall torches
-                const torchLight1 = new THREE.PointLight(0xff6633, 0.8, 12);
-                torchLight1.position.set(-hallwayWidth / 2 + 1, 4, z);
-                this.scene.add(torchLight1);
-
-                // Right wall torches
-                const torchLight2 = new THREE.PointLight(0xff6633, 0.8, 12);
-                torchLight2.position.set(hallwayWidth / 2 - 1, 4, z);
-                this.scene.add(torchLight2);
+            // Build floor segments
+            for (const seg of segments) {
+                const floorGeo = new THREE.PlaneGeometry(seg.width, seg.length);
+                const floor = new THREE.Mesh(floorGeo, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.rotation.z = seg.rot;
+                floor.position.set(seg.x, 0, seg.z);
+                floor.receiveShadow = true;
+                this.scene.add(floor);
             }
 
-            this.isOutdoorMap = false; // Use dungeon lighting
+            // Safe spawn area overlay
+            const spawnGeo = new THREE.PlaneGeometry(20, 15);
+            const spawnMat = new THREE.MeshLambertMaterial({ color: 0x3a5a3a });
+            const spawnArea = new THREE.Mesh(spawnGeo, spawnMat);
+            spawnArea.rotation.x = -Math.PI / 2;
+            spawnArea.position.set(0, 0.01, -5);
+            this.scene.add(spawnArea);
+
+            // Build walls around the dungeon perimeter
+            this.buildDungeonWalls(wallMaterial);
+
+            // Add pillars in large rooms
+            this.addPillars(accentMaterial);
+
+            // Add torches with lights
+            this.addTorchLights();
+
+            // Add environmental props
+            this.addEnvironmentProps();
+
+            this.isOutdoorMap = false;
         } else {
             // Dungeon environment for dungeon and boss modes
             this.scene.background = new THREE.Color(0x1a1a2e);
@@ -405,66 +394,75 @@ export class Game {
                 this.enemies.push(guard);
             }
         } else if (this.gameMode === 'horde') {
-            // Skeleton horde - many enemies spread through hallway
-            // Safe zone is z < 5, so spawn enemies starting at z = 10
-            const hallwayWidth = 30;
+            // Skeleton horde - spread through winding dungeon
             const positions = [];
 
-            // First wave - near safe zone
+            // First corridor (x=0, z=10-45)
             positions.push(
-                { x: -8, z: 15, type: 'warrior' },
-                { x: 8, z: 15, type: 'warrior' },
-                { x: 0, z: 18, type: 'mage' },
-                { x: -4, z: 12, type: 'minion' },
-                { x: 4, z: 12, type: 'minion' }
+                { x: -5, z: 15, type: 'minion' },
+                { x: 5, z: 15, type: 'minion' },
+                { x: 0, z: 22, type: 'warrior' },
+                { x: -6, z: 30, type: 'rogue' },
+                { x: 6, z: 30, type: 'rogue' },
+                { x: 0, z: 38, type: 'mage' },
+                { x: -4, z: 42, type: 'minion' },
+                { x: 4, z: 42, type: 'minion' }
             );
 
-            // Second wave
+            // Turn section (around x=20, z=55)
             positions.push(
-                { x: -10, z: 30, type: 'warrior' },
-                { x: 10, z: 30, type: 'warrior' },
-                { x: 0, z: 35, type: 'mage' },
-                { x: -6, z: 28, type: 'rogue' },
-                { x: 6, z: 28, type: 'rogue' },
-                { x: -3, z: 32, type: 'minion' },
-                { x: 3, z: 32, type: 'minion' }
+                { x: 15, z: 55, type: 'warrior' },
+                { x: 25, z: 55, type: 'warrior' },
+                { x: 20, z: 60, type: 'mage' },
+                { x: 10, z: 58, type: 'minion' },
+                { x: 30, z: 52, type: 'rogue' }
             );
 
-            // Third wave
+            // Right corridor (x=35-70, z=45-65)
             positions.push(
-                { x: -12, z: 50, type: 'warrior' },
-                { x: 12, z: 50, type: 'warrior' },
-                { x: 0, z: 55, type: 'mage' },
-                { x: -8, z: 48, type: 'rogue' },
-                { x: 8, z: 48, type: 'rogue' },
-                { x: -5, z: 52, type: 'minion' },
-                { x: 5, z: 52, type: 'minion' },
-                { x: 0, z: 45, type: 'minion' }
+                { x: 40, z: 50, type: 'minion' },
+                { x: 50, z: 55, type: 'warrior' },
+                { x: 45, z: 60, type: 'rogue' },
+                { x: 55, z: 48, type: 'minion' },
+                { x: 60, z: 55, type: 'mage' },
+                { x: 65, z: 50, type: 'rogue' }
             );
 
-            // Fourth wave - further down
+            // Large room (x=65-95, z=18-42)
             positions.push(
-                { x: -10, z: 70, type: 'warrior' },
-                { x: 10, z: 70, type: 'warrior' },
-                { x: -5, z: 75, type: 'mage' },
-                { x: 5, z: 75, type: 'mage' },
-                { x: -8, z: 68, type: 'rogue' },
-                { x: 8, z: 68, type: 'rogue' },
-                { x: 0, z: 72, type: 'minion' },
-                { x: -3, z: 78, type: 'minion' },
-                { x: 3, z: 78, type: 'minion' }
+                { x: 70, z: 25, type: 'warrior' },
+                { x: 90, z: 25, type: 'warrior' },
+                { x: 80, z: 20, type: 'mage' },
+                { x: 75, z: 35, type: 'rogue' },
+                { x: 85, z: 35, type: 'rogue' },
+                { x: 80, z: 30, type: 'minion' },
+                { x: 72, z: 18, type: 'minion' },
+                { x: 88, z: 18, type: 'minion' }
             );
 
-            // Fifth wave - end of hallway
+            // Corridor to final chamber (x=75-85, z=55-95)
             positions.push(
-                { x: -12, z: 90, type: 'warrior' },
-                { x: 12, z: 90, type: 'warrior' },
-                { x: 0, z: 95, type: 'mage' },
-                { x: -6, z: 88, type: 'rogue' },
-                { x: 6, z: 88, type: 'rogue' },
-                { x: -9, z: 92, type: 'minion' },
-                { x: 9, z: 92, type: 'minion' },
-                { x: 0, z: 85, type: 'minion' }
+                { x: 78, z: 60, type: 'minion' },
+                { x: 82, z: 65, type: 'minion' },
+                { x: 80, z: 72, type: 'warrior' },
+                { x: 76, z: 80, type: 'rogue' },
+                { x: 84, z: 80, type: 'rogue' },
+                { x: 80, z: 88, type: 'mage' },
+                { x: 78, z: 95, type: 'minion' },
+                { x: 82, z: 95, type: 'minion' }
+            );
+
+            // Final chamber (x=65-95, z=105-135) - boss room
+            positions.push(
+                { x: 70, z: 110, type: 'warrior' },
+                { x: 90, z: 110, type: 'warrior' },
+                { x: 75, z: 118, type: 'rogue' },
+                { x: 85, z: 118, type: 'rogue' },
+                { x: 70, z: 125, type: 'mage' },
+                { x: 90, z: 125, type: 'mage' },
+                { x: 80, z: 130, type: 'warrior' }, // Mini-boss position
+                { x: 75, z: 132, type: 'minion' },
+                { x: 85, z: 132, type: 'minion' }
             );
 
             for (const pos of positions) {
@@ -874,6 +872,304 @@ export class Game {
             this.camera.updateProjectionMatrix();
         }
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Build walls for the winding dungeon
+    buildDungeonWalls(wallMaterial) {
+        const wallHeight = 6;
+        const wallThickness = 2;
+
+        // Wall segments: { x1, z1, x2, z2 } - start and end points
+        const wallSegments = [
+            // Starting area walls
+            { x1: -12, z1: -15, x2: -12, z2: 5 },      // Left back
+            { x1: 12, z1: -15, x2: 12, z2: 5 },        // Right back
+            { x1: -12, z1: -15, x2: 12, z2: -15 },     // Back wall
+
+            // First corridor left wall
+            { x1: -10, z1: 5, x2: -10, z2: 50 },
+            // First corridor right wall
+            { x1: 10, z1: 5, x2: 10, z2: 40 },
+
+            // Turn section
+            { x1: -10, z1: 50, x2: 5, z2: 70 },        // Left wall continues
+            { x1: 10, z1: 40, x2: 35, z2: 40 },        // Inner corner
+
+            // Right corridor walls
+            { x1: 5, z1: 70, x2: 75, z2: 70 },         // Top wall
+            { x1: 35, z1: 40, x2: 75, z2: 40 },        // Bottom wall continues
+
+            // Large room walls
+            { x1: 60, z1: 12, x2: 60, z2: 40 },        // Left wall
+            { x1: 100, z1: 12, x2: 100, z2: 48 },      // Right wall
+            { x1: 60, z1: 12, x2: 100, z2: 12 },       // Bottom wall
+
+            // Corridor to final chamber
+            { x1: 70, z1: 48, x2: 70, z2: 100 },       // Left wall
+            { x1: 90, z1: 70, x2: 90, z2: 100 },       // Right wall
+
+            // Final chamber
+            { x1: 60, z1: 100, x2: 60, z2: 140 },      // Left wall
+            { x1: 100, z1: 100, x2: 100, z2: 140 },    // Right wall
+            { x1: 60, z1: 140, x2: 100, z2: 140 },     // End wall
+        ];
+
+        for (const seg of wallSegments) {
+            const dx = seg.x2 - seg.x1;
+            const dz = seg.z2 - seg.z1;
+            const length = Math.sqrt(dx * dx + dz * dz);
+            const angle = Math.atan2(dx, dz);
+
+            const wallGeo = new THREE.BoxGeometry(wallThickness, wallHeight, length + wallThickness);
+            const wall = new THREE.Mesh(wallGeo, wallMaterial);
+            wall.position.set(
+                (seg.x1 + seg.x2) / 2,
+                wallHeight / 2,
+                (seg.z1 + seg.z2) / 2
+            );
+            wall.rotation.y = angle;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            this.scene.add(wall);
+        }
+    }
+
+    // Add decorative pillars
+    addPillars(material) {
+        const pillarPositions = [
+            // Large room pillars
+            { x: 68, z: 22 }, { x: 92, z: 22 },
+            { x: 68, z: 38 }, { x: 92, z: 38 },
+            // Final chamber pillars
+            { x: 68, z: 108 }, { x: 92, z: 108 },
+            { x: 68, z: 132 }, { x: 92, z: 132 },
+            // Corridor accent pillars
+            { x: -8, z: 20 }, { x: 8, z: 20 },
+            { x: -8, z: 35 }, { x: 8, z: 35 },
+        ];
+
+        for (const pos of pillarPositions) {
+            // Pillar base
+            const baseGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.5, 8);
+            const base = new THREE.Mesh(baseGeo, material);
+            base.position.set(pos.x, 0.25, pos.z);
+            base.castShadow = true;
+            this.scene.add(base);
+
+            // Pillar shaft
+            const shaftGeo = new THREE.CylinderGeometry(0.8, 1.0, 5, 8);
+            const shaft = new THREE.Mesh(shaftGeo, material);
+            shaft.position.set(pos.x, 3, pos.z);
+            shaft.castShadow = true;
+            this.scene.add(shaft);
+
+            // Pillar capital
+            const capGeo = new THREE.CylinderGeometry(1.3, 0.8, 0.6, 8);
+            const cap = new THREE.Mesh(capGeo, material);
+            cap.position.set(pos.x, 5.8, pos.z);
+            cap.castShadow = true;
+            this.scene.add(cap);
+        }
+    }
+
+    // Add torch lights throughout the dungeon
+    addTorchLights() {
+        const torchPositions = [
+            // Starting area
+            { x: -10, z: -10 }, { x: 10, z: -10 },
+            // First corridor
+            { x: -8, z: 10 }, { x: 8, z: 10 },
+            { x: -8, z: 30 }, { x: 8, z: 30 },
+            { x: -8, z: 45 },
+            // Turn area
+            { x: 20, z: 55 }, { x: 40, z: 55 },
+            // Right corridor
+            { x: 55, z: 42 }, { x: 55, z: 68 },
+            // Large room
+            { x: 62, z: 15 }, { x: 98, z: 15 },
+            { x: 62, z: 35 }, { x: 98, z: 35 },
+            { x: 80, z: 25 }, // Center
+            // Corridor
+            { x: 72, z: 60 }, { x: 88, z: 60 },
+            { x: 72, z: 85 }, { x: 88, z: 85 },
+            // Final chamber
+            { x: 62, z: 105 }, { x: 98, z: 105 },
+            { x: 62, z: 135 }, { x: 98, z: 135 },
+            { x: 80, z: 120 }, // Center
+        ];
+
+        const torchMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3020 });
+        const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xff6622 });
+
+        for (const pos of torchPositions) {
+            // Torch holder
+            const holderGeo = new THREE.CylinderGeometry(0.1, 0.15, 0.8, 6);
+            const holder = new THREE.Mesh(holderGeo, torchMaterial);
+            holder.position.set(pos.x, 3.5, pos.z);
+            this.scene.add(holder);
+
+            // Flame visual
+            const flameGeo = new THREE.ConeGeometry(0.2, 0.4, 6);
+            const flame = new THREE.Mesh(flameGeo, flameMaterial);
+            flame.position.set(pos.x, 4.1, pos.z);
+            this.scene.add(flame);
+
+            // Point light
+            const light = new THREE.PointLight(0xff6633, 0.8, 15);
+            light.position.set(pos.x, 4.2, pos.z);
+            this.scene.add(light);
+        }
+    }
+
+    // Add environmental props like barrels, crates, bones, etc.
+    addEnvironmentProps() {
+        const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
+        const metalMaterial = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const boneMaterial = new THREE.MeshLambertMaterial({ color: 0xddddcc });
+        const clothMaterial = new THREE.MeshLambertMaterial({ color: 0x443322 });
+
+        // Barrel positions
+        const barrels = [
+            { x: -8, z: -8 }, { x: -7, z: -9 },
+            { x: 8, z: 15 }, { x: 9, z: 14 },
+            { x: 25, z: 60 }, { x: 26, z: 58 },
+            { x: 65, z: 18 }, { x: 66, z: 20 },
+            { x: 95, z: 130 }, { x: 93, z: 132 },
+        ];
+
+        for (const pos of barrels) {
+            const barrelGeo = new THREE.CylinderGeometry(0.6, 0.7, 1.2, 12);
+            const barrel = new THREE.Mesh(barrelGeo, woodMaterial);
+            barrel.position.set(pos.x, 0.6, pos.z);
+            barrel.rotation.y = Math.random() * Math.PI;
+            barrel.castShadow = true;
+            this.scene.add(barrel);
+
+            // Metal bands
+            const bandGeo = new THREE.TorusGeometry(0.65, 0.05, 8, 16);
+            const band1 = new THREE.Mesh(bandGeo, metalMaterial);
+            band1.position.set(pos.x, 0.3, pos.z);
+            band1.rotation.x = Math.PI / 2;
+            this.scene.add(band1);
+
+            const band2 = new THREE.Mesh(bandGeo, metalMaterial);
+            band2.position.set(pos.x, 0.9, pos.z);
+            band2.rotation.x = Math.PI / 2;
+            this.scene.add(band2);
+        }
+
+        // Crate positions
+        const crates = [
+            { x: 7, z: -7 }, { x: 6, z: -8 },
+            { x: -6, z: 25 },
+            { x: 45, z: 45 }, { x: 46, z: 43 },
+            { x: 75, z: 110 }, { x: 77, z: 112 },
+        ];
+
+        for (const pos of crates) {
+            const size = 0.8 + Math.random() * 0.4;
+            const crateGeo = new THREE.BoxGeometry(size, size, size);
+            const crate = new THREE.Mesh(crateGeo, woodMaterial);
+            crate.position.set(pos.x, size / 2, pos.z);
+            crate.rotation.y = Math.random() * Math.PI / 4;
+            crate.castShadow = true;
+            this.scene.add(crate);
+        }
+
+        // Bone piles
+        const bonePiles = [
+            { x: -5, z: 40 }, { x: 30, z: 65 },
+            { x: 70, z: 30 }, { x: 85, z: 125 },
+        ];
+
+        for (const pos of bonePiles) {
+            // Skull
+            const skullGeo = new THREE.SphereGeometry(0.25, 8, 6);
+            const skull = new THREE.Mesh(skullGeo, boneMaterial);
+            skull.position.set(pos.x, 0.2, pos.z);
+            skull.scale.set(1, 0.9, 0.8);
+            this.scene.add(skull);
+
+            // Scattered bones
+            for (let i = 0; i < 4; i++) {
+                const boneGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.4 + Math.random() * 0.3, 6);
+                const bone = new THREE.Mesh(boneGeo, boneMaterial);
+                bone.position.set(
+                    pos.x + (Math.random() - 0.5) * 1.5,
+                    0.1,
+                    pos.z + (Math.random() - 0.5) * 1.5
+                );
+                bone.rotation.x = Math.PI / 2;
+                bone.rotation.z = Math.random() * Math.PI;
+                this.scene.add(bone);
+            }
+        }
+
+        // Weapon racks / stands
+        const weaponRacks = [
+            { x: -9, z: 0 }, { x: 9, z: 0 },
+            { x: 80, z: 14 },
+        ];
+
+        for (const pos of weaponRacks) {
+            // Rack frame
+            const frameGeo = new THREE.BoxGeometry(2, 2, 0.3);
+            const frame = new THREE.Mesh(frameGeo, woodMaterial);
+            frame.position.set(pos.x, 1.5, pos.z);
+            frame.castShadow = true;
+            this.scene.add(frame);
+
+            // Weapons on rack (simple shapes)
+            const swordGeo = new THREE.BoxGeometry(0.1, 1.2, 0.05);
+            const sword = new THREE.Mesh(swordGeo, metalMaterial);
+            sword.position.set(pos.x - 0.4, 1.5, pos.z + 0.2);
+            sword.rotation.z = 0.1;
+            this.scene.add(sword);
+
+            const axeGeo = new THREE.BoxGeometry(0.15, 0.8, 0.05);
+            const axe = new THREE.Mesh(axeGeo, metalMaterial);
+            axe.position.set(pos.x + 0.4, 1.5, pos.z + 0.2);
+            axe.rotation.z = -0.1;
+            this.scene.add(axe);
+        }
+
+        // Tattered banners
+        const bannerPositions = [
+            { x: -9, z: 15 }, { x: 9, z: 15 },
+            { x: 80, z: 105 },
+        ];
+
+        for (const pos of bannerPositions) {
+            // Banner pole
+            const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 3, 6);
+            const pole = new THREE.Mesh(poleGeo, woodMaterial);
+            pole.position.set(pos.x, 4, pos.z);
+            this.scene.add(pole);
+
+            // Banner cloth
+            const bannerGeo = new THREE.PlaneGeometry(1.2, 1.8);
+            const banner = new THREE.Mesh(bannerGeo, clothMaterial);
+            banner.position.set(pos.x, 3.5, pos.z + 0.1);
+            banner.rotation.y = Math.random() * 0.3 - 0.15;
+            this.scene.add(banner);
+        }
+
+        // Chains hanging from ceiling
+        const chainPositions = [
+            { x: 0, z: 45 }, { x: 50, z: 55 },
+            { x: 80, z: 90 },
+        ];
+
+        for (const pos of chainPositions) {
+            const chainLength = 2 + Math.random() * 2;
+            for (let i = 0; i < chainLength * 3; i++) {
+                const linkGeo = new THREE.TorusGeometry(0.1, 0.03, 6, 8);
+                const link = new THREE.Mesh(linkGeo, metalMaterial);
+                link.position.set(pos.x, 6 - i * 0.15, pos.z);
+                link.rotation.x = (i % 2) * Math.PI / 2;
+                this.scene.add(link);
+            }
+        }
     }
 
     start() {
