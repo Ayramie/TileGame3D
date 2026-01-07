@@ -11,7 +11,7 @@ export class Hunter {
         this.className = 'Hunter';
 
         // Stats - Hunter is mobile with medium health
-        this.maxHealth = 200;
+        this.maxHealth = 400;
         this.health = this.maxHealth;
         this.moveSpeed = 8;
         this.jumpForce = 12;
@@ -610,9 +610,8 @@ export class Hunter {
                     this.game.effects.createDamageNumber(proj.target.position, proj.damage);
                 }
 
-                if (this.game && this.game.particles) {
-                    this.game.particles.arrowHit(proj.mesh.position);
-                }
+                // Small impact spark
+                this.createArrowHitSpark(proj.mesh.position.clone());
 
                 this.scene.remove(proj.mesh);
                 proj.mesh.geometry.dispose();
@@ -651,12 +650,47 @@ export class Hunter {
             this.createArrowWaveProjectile(dir, ability.damage, ability.range);
         }
 
-        // Visual effect
-        if (this.game && this.game.particles) {
-            this.game.particles.arrowWave(this.position, forward);
-        }
+        // Visual effect - green burst at player
+        this.createArrowWaveBurst(forward);
 
         return true;
+    }
+
+    createArrowWaveBurst(forward) {
+        const burstPos = this.position.clone();
+        burstPos.y = 1;
+
+        // Create expanding ring
+        const ringGeo = new THREE.RingGeometry(0.5, 1, 16);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0x88ff44,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.copy(burstPos);
+        ring.rotation.x = -Math.PI / 2;
+        this.scene.add(ring);
+
+        // Animate
+        let elapsed = 0;
+        const duration = 0.3;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            ring.scale.setScalar(1 + progress * 3);
+            ringMat.opacity = 0.8 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(ring);
+                ring.geometry.dispose();
+                ring.material.dispose();
+            }
+        };
+        animate();
     }
 
     createArrowWaveProjectile(direction, damage, range) {
@@ -755,10 +789,8 @@ export class Hunter {
 
         animateDash();
 
-        // Trail effect
-        if (this.game && this.game.particles) {
-            this.game.particles.spinDashTrail(startPos, endPos);
-        }
+        // Create spinning trail effect
+        this.createSpinDashTrail(startPos, endPos);
 
         // Screen shake
         if (this.game) {
@@ -766,6 +798,55 @@ export class Hunter {
         }
 
         return true;
+    }
+
+    createSpinDashTrail(startPos, endPos) {
+        const direction = new THREE.Vector3().subVectors(endPos, startPos);
+        const distance = direction.length();
+        direction.normalize();
+
+        // Create multiple trail rings along path
+        const ringCount = 6;
+        for (let i = 0; i < ringCount; i++) {
+            const delay = i * 0.05;
+            setTimeout(() => {
+                const t = i / (ringCount - 1);
+                const pos = startPos.clone().lerp(endPos, t);
+                pos.y = 0.5;
+
+                const ringGeo = new THREE.RingGeometry(0.3, 0.8, 12);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: 0xffff44,
+                    transparent: true,
+                    opacity: 0.7,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.copy(pos);
+                ring.rotation.x = -Math.PI / 2;
+                this.scene.add(ring);
+
+                // Animate ring expanding and fading
+                let elapsed = 0;
+                const duration = 0.4;
+                const animate = () => {
+                    elapsed += 0.016;
+                    const progress = elapsed / duration;
+                    ring.scale.setScalar(1 + progress * 2);
+                    ring.rotation.z += 0.2;
+                    ringMat.opacity = 0.7 * (1 - progress);
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        this.scene.remove(ring);
+                        ring.geometry.dispose();
+                        ring.material.dispose();
+                    }
+                };
+                animate();
+            }, delay * 1000);
+        }
     }
 
     createSpinArrow(direction, damage) {
@@ -833,10 +914,8 @@ export class Hunter {
         this.position.x = Math.max(-bounds, Math.min(bounds, this.position.x));
         this.position.z = Math.max(-bounds, Math.min(bounds, this.position.z));
 
-        // Visual effect
-        if (this.game && this.game.particles) {
-            this.game.particles.shotgunBlast(this.position, forward);
-        }
+        // Visual effect - orange muzzle flash and smoke
+        this.createShotgunBlastEffect(forward);
 
         // Screen shake
         if (this.game) {
@@ -844,6 +923,82 @@ export class Hunter {
         }
 
         return true;
+    }
+
+    createShotgunBlastEffect(forward) {
+        const blastPos = this.position.clone();
+        blastPos.y = 1;
+        blastPos.addScaledVector(forward, 0.5);
+
+        // Muzzle flash - bright orange cone
+        const flashGeo = new THREE.ConeGeometry(0.8, 1.5, 8);
+        const flashMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa44,
+            transparent: true,
+            opacity: 0.9
+        });
+        const flash = new THREE.Mesh(flashGeo, flashMat);
+        flash.position.copy(blastPos);
+        flash.lookAt(blastPos.clone().addScaledVector(forward, 1));
+        flash.rotation.x += Math.PI / 2;
+        this.scene.add(flash);
+
+        // Smoke puffs
+        for (let i = 0; i < 5; i++) {
+            const smokeGeo = new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 8, 6);
+            const smokeMat = new THREE.MeshBasicMaterial({
+                color: 0x888888,
+                transparent: true,
+                opacity: 0.5
+            });
+            const smoke = new THREE.Mesh(smokeGeo, smokeMat);
+            const offset = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.5,
+                Math.random() * 0.3,
+                (Math.random() - 0.5) * 0.5
+            );
+            smoke.position.copy(blastPos).add(offset);
+            this.scene.add(smoke);
+
+            // Animate smoke
+            const smokeVel = forward.clone().multiplyScalar(2 + Math.random());
+            smokeVel.y = 1 + Math.random();
+            let elapsed = 0;
+            const duration = 0.5;
+            const animateSmoke = () => {
+                elapsed += 0.016;
+                const progress = elapsed / duration;
+                smoke.position.addScaledVector(smokeVel, 0.016);
+                smoke.scale.setScalar(1 + progress);
+                smokeMat.opacity = 0.5 * (1 - progress);
+                if (progress < 1) {
+                    requestAnimationFrame(animateSmoke);
+                } else {
+                    this.scene.remove(smoke);
+                    smoke.geometry.dispose();
+                    smoke.material.dispose();
+                }
+            };
+            animateSmoke();
+        }
+
+        // Animate flash
+        let elapsed = 0;
+        const duration = 0.15;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            flash.scale.setScalar(1 + progress * 0.5);
+            flashMat.opacity = 0.9 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(flash);
+                flash.geometry.dispose();
+                flash.material.dispose();
+            }
+        };
+        animate();
     }
 
     createShotgunBolt(direction, damage, range) {
@@ -872,25 +1027,23 @@ export class Hunter {
         });
     }
 
-    // R - Trap: Place trap that explodes when enemy gets close
-    useTrap() {
+    // R - Trap: Throw trap to target position
+    useTrap(targetPosition = null) {
         const ability = this.abilities.trap;
         if (ability.cooldownRemaining > 0) return false;
 
         ability.cooldownRemaining = ability.cooldown;
 
-        if (this.useAnimatedCharacter) {
-            this.character.playAttack(2);
-        }
-
-        this.createTrap();
+        // No animation - instant throw
+        this.createTrap(targetPosition);
 
         return true;
     }
 
-    createTrap() {
+    createTrap(targetPosition = null) {
         const ability = this.abilities.trap;
-        const trapPos = this.position.clone();
+        // If target position provided, throw to that location, otherwise place at player position
+        const trapPos = targetPosition ? new THREE.Vector3(targetPosition.x, 0.1, targetPosition.z) : this.position.clone();
         trapPos.y = 0.1;
 
         // Trap visual - spiky bear trap look
@@ -952,10 +1105,42 @@ export class Hunter {
             isArmed: false
         });
 
-        // Placement sound/particle
-        if (this.game && this.game.particles) {
-            this.game.particles.trapPlace(trapPos);
-        }
+        // Placement effect - quick dust puff
+        this.createTrapPlaceEffect(trapPos);
+    }
+
+    createTrapPlaceEffect(pos) {
+        // Ground dust ring
+        const dustGeo = new THREE.RingGeometry(0.2, 0.8, 12);
+        const dustMat = new THREE.MeshBasicMaterial({
+            color: 0x886644,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const dust = new THREE.Mesh(dustGeo, dustMat);
+        dust.position.set(pos.x, 0.1, pos.z);
+        dust.rotation.x = -Math.PI / 2;
+        this.scene.add(dust);
+
+        // Animate
+        let elapsed = 0;
+        const duration = 0.3;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            dust.scale.setScalar(1 + progress * 2);
+            dustMat.opacity = 0.6 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(dust);
+                dust.geometry.dispose();
+                dust.material.dispose();
+            }
+        };
+        animate();
     }
 
     updateTraps(deltaTime) {
@@ -1048,14 +1233,101 @@ export class Hunter {
         // Remove trap mesh
         this.scene.remove(trap.mesh);
 
-        // Particles
-        if (this.game && this.game.particles) {
-            this.game.particles.trapExplosion(trap.position, trap.radius);
-        }
+        // Extra explosion debris
+        this.createTrapExplosionDebris(trap.position, trap.radius);
 
         // Screen shake
         if (this.game) {
             this.game.addScreenShake(0.5);
+        }
+    }
+
+    createTrapExplosionDebris(pos, radius) {
+        // Scatter metal shards flying outward
+        const shardCount = 12;
+        for (let i = 0; i < shardCount; i++) {
+            const angle = (i / shardCount) * Math.PI * 2;
+            const shardGeo = new THREE.BoxGeometry(0.1, 0.05, 0.2);
+            const shardMat = new THREE.MeshBasicMaterial({
+                color: 0x666666,
+                transparent: true,
+                opacity: 1
+            });
+            const shard = new THREE.Mesh(shardGeo, shardMat);
+            shard.position.set(pos.x, 0.5, pos.z);
+            shard.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            this.scene.add(shard);
+
+            const vel = new THREE.Vector3(
+                Math.cos(angle) * (3 + Math.random() * 2),
+                2 + Math.random() * 3,
+                Math.sin(angle) * (3 + Math.random() * 2)
+            );
+
+            let elapsed = 0;
+            const duration = 0.6;
+            const animate = () => {
+                elapsed += 0.016;
+                const progress = elapsed / duration;
+
+                // Gravity
+                vel.y -= 0.3;
+
+                shard.position.addScaledVector(vel, 0.016);
+                shard.rotation.x += 0.2;
+                shard.rotation.z += 0.15;
+                shardMat.opacity = 1 - progress;
+
+                if (progress < 1 && shard.position.y > 0) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.scene.remove(shard);
+                    shard.geometry.dispose();
+                    shard.material.dispose();
+                }
+            };
+            animate();
+        }
+
+        // Fire sparks
+        for (let i = 0; i < 8; i++) {
+            const sparkGeo = new THREE.SphereGeometry(0.08, 4, 4);
+            const sparkMat = new THREE.MeshBasicMaterial({
+                color: 0xff6644,
+                transparent: true,
+                opacity: 1
+            });
+            const spark = new THREE.Mesh(sparkGeo, sparkMat);
+            spark.position.set(
+                pos.x + (Math.random() - 0.5) * radius,
+                0.3 + Math.random() * 0.5,
+                pos.z + (Math.random() - 0.5) * radius
+            );
+            this.scene.add(spark);
+
+            const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                3 + Math.random() * 2,
+                (Math.random() - 0.5) * 4
+            );
+
+            let elapsed = 0;
+            const duration = 0.4;
+            const animate = () => {
+                elapsed += 0.016;
+                const progress = elapsed / duration;
+                vel.y -= 0.2;
+                spark.position.addScaledVector(vel, 0.016);
+                sparkMat.opacity = 1 - progress;
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.scene.remove(spark);
+                    spark.geometry.dispose();
+                    spark.material.dispose();
+                }
+            };
+            animate();
         }
     }
 
@@ -1080,10 +1352,8 @@ export class Hunter {
 
         this.createGiantArrowProjectile(forward);
 
-        // Cast particles
-        if (this.game && this.game.particles) {
-            this.game.particles.giantArrowCharge(this.position);
-        }
+        // Charge effect - red energy gathering
+        this.createGiantArrowChargeEffect();
 
         return true;
     }
@@ -1170,17 +1440,15 @@ export class Hunter {
                             this.game.effects.createDamageNumber(enemy.position, arrow.damage);
                         }
 
-                        // Impact particles
-                        if (this.game && this.game.particles) {
-                            this.game.particles.giantArrowHit(enemy.position);
-                        }
+                        // Impact effect
+                        this.createGiantArrowHitEffect(enemy.position.clone());
                     }
                 }
             }
 
-            // Trail particles
-            if (this.game && this.game.particles && Math.random() < 0.3) {
-                this.game.particles.giantArrowTrail(arrow.mesh.position);
+            // Trail effect - occasional red sparks
+            if (Math.random() < 0.3) {
+                this.createGiantArrowTrailSpark(arrow.mesh.position.clone());
             }
 
             // Check max range
@@ -1286,9 +1554,8 @@ export class Hunter {
             this.game.effects.createDamageNumber(this.position, ability.healAmount, true);
         }
 
-        if (this.game && this.game.particles) {
-            this.game.particles.healEffect(this.position);
-        }
+        // Green heal sparkles
+        this.createHealEffect();
 
         return true;
     }
@@ -1300,8 +1567,10 @@ export class Hunter {
             this.character.playImpact();
         }
 
-        if (this.game && this.game.particles) {
-            this.game.particles.playerHit(this.position);
+        // Red hit flash
+        this.createPlayerHitEffect();
+
+        if (this.game) {
             this.game.addScreenShake(Math.min(amount / 20, 0.5));
         }
 
@@ -1325,6 +1594,212 @@ export class Hunter {
                 this.character.playAnimation('idle', true);
             }
         }, 2000);
+    }
+
+    // Effect helper methods
+    createArrowHitSpark(pos) {
+        const sparkGeo = new THREE.SphereGeometry(0.15, 6, 4);
+        const sparkMat = new THREE.MeshBasicMaterial({
+            color: 0xffff88,
+            transparent: true,
+            opacity: 1
+        });
+        const spark = new THREE.Mesh(sparkGeo, sparkMat);
+        spark.position.copy(pos);
+        this.scene.add(spark);
+
+        let elapsed = 0;
+        const duration = 0.15;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            spark.scale.setScalar(1 + progress);
+            sparkMat.opacity = 1 - progress;
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(spark);
+                spark.geometry.dispose();
+                spark.material.dispose();
+            }
+        };
+        animate();
+    }
+
+    createGiantArrowChargeEffect() {
+        const pos = this.position.clone();
+        pos.y = 1;
+
+        // Red energy particles converging
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const startPos = pos.clone();
+            startPos.x += Math.cos(angle) * 2;
+            startPos.z += Math.sin(angle) * 2;
+
+            const particleGeo = new THREE.SphereGeometry(0.1, 4, 4);
+            const particleMat = new THREE.MeshBasicMaterial({
+                color: 0xff4444,
+                transparent: true,
+                opacity: 0.8
+            });
+            const particle = new THREE.Mesh(particleGeo, particleMat);
+            particle.position.copy(startPos);
+            this.scene.add(particle);
+
+            let elapsed = 0;
+            const duration = 0.25;
+            const animate = () => {
+                elapsed += 0.016;
+                const progress = elapsed / duration;
+                particle.position.lerpVectors(startPos, pos, progress);
+                particle.scale.setScalar(1 - progress * 0.5);
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                }
+            };
+            animate();
+        }
+    }
+
+    createGiantArrowHitEffect(pos) {
+        pos.y = 1;
+
+        // Red burst
+        const burstGeo = new THREE.SphereGeometry(0.5, 8, 6);
+        const burstMat = new THREE.MeshBasicMaterial({
+            color: 0xff4444,
+            transparent: true,
+            opacity: 0.8
+        });
+        const burst = new THREE.Mesh(burstGeo, burstMat);
+        burst.position.copy(pos);
+        this.scene.add(burst);
+
+        let elapsed = 0;
+        const duration = 0.2;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            burst.scale.setScalar(1 + progress * 2);
+            burstMat.opacity = 0.8 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(burst);
+                burst.geometry.dispose();
+                burst.material.dispose();
+            }
+        };
+        animate();
+    }
+
+    createGiantArrowTrailSpark(pos) {
+        const sparkGeo = new THREE.SphereGeometry(0.08, 4, 4);
+        const sparkMat = new THREE.MeshBasicMaterial({
+            color: 0xff6644,
+            transparent: true,
+            opacity: 0.8
+        });
+        const spark = new THREE.Mesh(sparkGeo, sparkMat);
+        spark.position.copy(pos);
+        spark.position.y += (Math.random() - 0.5) * 0.3;
+        this.scene.add(spark);
+
+        let elapsed = 0;
+        const duration = 0.3;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            spark.position.y -= 0.02;
+            sparkMat.opacity = 0.8 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(spark);
+                spark.geometry.dispose();
+                spark.material.dispose();
+            }
+        };
+        animate();
+    }
+
+    createHealEffect() {
+        const pos = this.position.clone();
+
+        // Rising green sparkles
+        for (let i = 0; i < 8; i++) {
+            const sparkGeo = new THREE.SphereGeometry(0.08, 4, 4);
+            const sparkMat = new THREE.MeshBasicMaterial({
+                color: 0x44ff44,
+                transparent: true,
+                opacity: 1
+            });
+            const spark = new THREE.Mesh(sparkGeo, sparkMat);
+            spark.position.set(
+                pos.x + (Math.random() - 0.5) * 1,
+                0.5 + Math.random() * 0.5,
+                pos.z + (Math.random() - 0.5) * 1
+            );
+            this.scene.add(spark);
+
+            let elapsed = 0;
+            const duration = 0.6;
+            const animate = () => {
+                elapsed += 0.016;
+                const progress = elapsed / duration;
+                spark.position.y += 0.03;
+                sparkMat.opacity = 1 - progress;
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    this.scene.remove(spark);
+                    spark.geometry.dispose();
+                    spark.material.dispose();
+                }
+            };
+            animate();
+        }
+    }
+
+    createPlayerHitEffect() {
+        const pos = this.position.clone();
+        pos.y = 1;
+
+        // Red flash ring
+        const ringGeo = new THREE.RingGeometry(0.3, 0.8, 12);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xff4444,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.copy(pos);
+        ring.rotation.x = -Math.PI / 2;
+        this.scene.add(ring);
+
+        let elapsed = 0;
+        const duration = 0.2;
+        const animate = () => {
+            elapsed += 0.016;
+            const progress = elapsed / duration;
+            ring.scale.setScalar(1 + progress * 2);
+            ringMat.opacity = 0.8 * (1 - progress);
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(ring);
+                ring.geometry.dispose();
+                ring.material.dispose();
+            }
+        };
+        animate();
     }
 
     // Cleanup

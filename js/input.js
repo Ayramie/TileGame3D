@@ -138,11 +138,16 @@ export class InputManager {
                 break;
 
             case 'r':
-                // R ability - Heroic Leap (Warrior) / Backstep (Mage) / Trap (Hunter)
+                // R ability - Heroic Leap (Warrior) / Blink (Mage) / Trap (Hunter)
                 if (this.game.selectedClass === 'mage') {
-                    this.game.player.useBackstep();
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    this.game.player.useBackstep(direction);
                 } else if (this.game.selectedClass === 'hunter') {
-                    this.game.player.useTrap();
+                    // Throw trap instantly to mouse position
+                    this.game.player.useTrap(this.mouseWorldPos.clone());
                 } else {
                     if (this.game.player.abilities.heroicLeap.cooldownRemaining <= 0) {
                         this.aimingAbility = 'r';

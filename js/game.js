@@ -186,7 +186,7 @@ export class Game {
             document.querySelector('#ability-q .name').textContent = 'Blizzard';
             document.querySelector('#ability-f .name').textContent = 'Flame Wave';
             document.querySelector('#ability-e .name').textContent = 'Frost Nova';
-            document.querySelector('#ability-r .name').textContent = 'Backstep';
+            document.querySelector('#ability-r .name').textContent = 'Blink';
             document.querySelector('#ability-c .name').textContent = 'Frozen Orb';
             if (cSlot) cSlot.style.display = '';
         } else if (this.selectedClass === 'hunter') {

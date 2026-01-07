@@ -1149,24 +1149,32 @@ export class Mage {
         orb.mesh.material.dispose();
     }
 
-    // R - Backstep: Dash backward
-    useBackstep() {
+    // R - Blink: Dash toward mouse direction
+    useBackstep(direction = null) {
         const ability = this.abilities.backstep;
         if (ability.cooldownRemaining > 0) return false;
 
         ability.cooldownRemaining = ability.cooldown;
 
-        // Calculate backward direction
-        const backDir = new THREE.Vector3(
-            -Math.sin(this.rotation),
-            0,
-            -Math.cos(this.rotation)
-        );
+        // Calculate dash direction - toward mouse if provided, else backward
+        let dashDir;
+        if (direction) {
+            dashDir = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            // Face the dash direction
+            this.rotation = Math.atan2(dashDir.x, dashDir.z);
+        } else {
+            // Fallback to backward
+            dashDir = new THREE.Vector3(
+                -Math.sin(this.rotation),
+                0,
+                -Math.cos(this.rotation)
+            );
+        }
 
         const startPos = this.position.clone();
 
-        // Move backward
-        this.position.addScaledVector(backDir, ability.distance);
+        // Move in dash direction
+        this.position.addScaledVector(dashDir, ability.distance);
 
         // Keep in bounds
         const bounds = 95;
