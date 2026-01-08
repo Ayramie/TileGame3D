@@ -351,6 +351,11 @@ export class Inventory {
 
         // Class-specific starter gear could be added here
         // For now, players start with no equipment
+
+        // Testing: Add some raw fish for cooking
+        this.addItemById('fish_small_trout', 3);
+        this.addItemById('fish_bass', 2);
+        this.addItemById('fish_golden_carp', 1);
     }
 
     _notifyChange() {
