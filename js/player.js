@@ -1106,29 +1106,36 @@ export class Player {
 
         // Clamp to max range
         let finalTarget = targetPos.clone();
+        const leapDist = Math.min(dist, ability.range);
         if (dist > ability.range) {
             const dir = new THREE.Vector3(dx, 0, dz).normalize();
             finalTarget = this.position.clone().add(dir.multiplyScalar(ability.range));
         }
 
-        // Check if target position is inside a wall - if so, find valid landing spot
-        if (this.game && this.game.checkWallCollision && this.game.checkWallCollision(finalTarget.x, finalTarget.z, 0.5)) {
-            // Try to find a valid position by stepping back toward player
+        // Check for walls along the entire leap path (can't leap over walls)
+        if (this.game && this.game.checkWallCollision) {
             const dir = new THREE.Vector3(dx, 0, dz).normalize();
-            let testDist = Math.min(dist, ability.range);
-            let found = false;
-            while (testDist > 1) {
-                testDist -= 1;
+            const stepSize = 0.5;
+            let maxValidDist = 0;
+
+            // Step along path and find furthest valid position before hitting a wall
+            for (let testDist = stepSize; testDist <= leapDist; testDist += stepSize) {
                 const testPos = this.position.clone().add(dir.clone().multiplyScalar(testDist));
-                if (!this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
-                    finalTarget = testPos;
-                    found = true;
+                if (this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
+                    // Hit a wall - stop here
                     break;
                 }
+                maxValidDist = testDist;
             }
-            if (!found) {
-                // Can't find valid landing spot
+
+            // If we can't move at all, cancel the leap
+            if (maxValidDist < 1) {
                 return false;
+            }
+
+            // Update final target to furthest valid position
+            if (maxValidDist < leapDist) {
+                finalTarget = this.position.clone().add(dir.clone().multiplyScalar(maxValidDist));
             }
         }
 
