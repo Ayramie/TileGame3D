@@ -632,6 +632,11 @@ export class Hunter {
         // Visual effect - green burst at player
         this.createArrowWaveBurst(forward);
 
+        // Particle effect
+        if (this.game && this.game.particles && this.game.particles.arrowWaveEffect) {
+            this.game.particles.arrowWaveEffect(this.position, forward, ability.range);
+        }
+
         return true;
     }
 
@@ -795,6 +800,21 @@ export class Hunter {
         // Create spinning trail effect
         this.createSpinDashTrail(startPos, endPos);
 
+        // Particle effect during dash
+        if (this.game && this.game.particles && this.game.particles.spinDashEffect) {
+            // Spawn particles at intervals along dash path
+            const steps = 5;
+            for (let i = 0; i < steps; i++) {
+                const t = i / steps;
+                const pos = new THREE.Vector3().lerpVectors(startPos, endPos, t);
+                setTimeout(() => {
+                    if (this.game && this.game.particles) {
+                        this.game.particles.spinDashEffect(pos);
+                    }
+                }, t * dashDuration * 1000);
+            }
+        }
+
         // Screen shake
         if (this.game) {
             this.game.addScreenShake(0.4);
@@ -934,6 +954,11 @@ export class Hunter {
 
         // Visual effect - orange muzzle flash and smoke
         this.createShotgunBlastEffect(forward);
+
+        // Particle effect
+        if (this.game && this.game.particles && this.game.particles.shotgunBlast) {
+            this.game.particles.shotgunBlast(this.position, forward);
+        }
 
         // Screen shake
         if (this.game) {
@@ -1125,6 +1150,11 @@ export class Hunter {
 
         // Placement effect - quick dust puff
         this.createTrapPlaceEffect(trapPos);
+
+        // Particle effect
+        if (this.game && this.game.particles && this.game.particles.trapPlace) {
+            this.game.particles.trapPlace(trapPos);
+        }
     }
 
     createTrapPlaceEffect(pos) {
@@ -1193,6 +1223,11 @@ export class Hunter {
     }
 
     explodeTrap(trap) {
+        // Particle effect
+        if (this.game && this.game.particles && this.game.particles.trapTrigger) {
+            this.game.particles.trapTrigger(trap.position);
+        }
+
         // Deal damage to all enemies in radius
         if (this.game && this.game.enemies) {
             for (const enemy of this.game.enemies) {
@@ -1475,8 +1510,17 @@ export class Hunter {
                 this.createGiantArrowTrailSpark(arrow.mesh.position.clone());
             }
 
+            // Particle trail effect
+            if (this.game && this.game.particles && this.game.particles.giantArrowTrail) {
+                this.game.particles.giantArrowTrail(arrow.mesh.position);
+            }
+
             // Check max range
             if (arrow.distanceTraveled >= arrow.maxRange) {
+                // End-of-range impact explosion
+                if (this.game && this.game.particles && this.game.particles.giantArrowImpact) {
+                    this.game.particles.giantArrowImpact(arrow.mesh.position);
+                }
                 // Dispose all child meshes properly
                 arrow.mesh.traverse((child) => {
                     if (child.isMesh) {
@@ -1520,6 +1564,11 @@ export class Hunter {
                 proj.mesh.position.addScaledVector(dir, proj.speed * deltaTime);
                 proj.mesh.lookAt(targetPos);
                 proj.mesh.rotation.x += Math.PI / 2;
+
+                // Arrow trail particles
+                if (this.game && this.game.particles && this.game.particles.arrowTrail) {
+                    this.game.particles.arrowTrail(proj.mesh.position);
+                }
 
                 if (dist < 0.5) {
                     proj.target.takeDamage(proj.damage, this);
