@@ -963,7 +963,7 @@ export class Game {
                     // Fish bites!
                     mg.state = 'bite';
                     mg.biteWindow = 2.0; // 2 seconds to react
-                    statusText.textContent = '!! FISH ON !! Click!';
+                    statusText.textContent = '!! FISH ON !! Press F!';
                     statusText.className = 'alert';
 
                     // Play splash effect
@@ -974,9 +974,9 @@ export class Game {
                 break;
 
             case 'bite':
-                // Player must click quickly
+                // Player must press F quickly
                 mg.biteWindow -= deltaTime;
-                statusText.textContent = `!! FISH ON !! Click! (${mg.biteWindow.toFixed(1)}s)`;
+                statusText.textContent = `!! FISH ON !! Press F! (${mg.biteWindow.toFixed(1)}s)`;
 
                 if (mg.biteWindow <= 0) {
                     this.stopFishing('The fish got away!');
@@ -987,7 +987,7 @@ export class Game {
                 // Active reeling minigame - show elements
                 if (catchZone) catchZone.style.opacity = '1';
                 if (fishEl) fishEl.style.opacity = '1';
-                statusText.textContent = 'Hold Click to reel!';
+                statusText.textContent = 'Hold F to reel!';
                 statusText.className = '';
 
                 // Catch zone physics (player controlled)
