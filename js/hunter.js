@@ -722,8 +722,17 @@ export class Hunter {
             elapsed += 0.016;
             const progress = Math.min(elapsed / dashDuration, 1);
 
-            // Move player
+            // Move player with wall collision check
+            const oldX = this.position.x;
+            const oldZ = this.position.z;
             this.position.lerpVectors(startPos, endPos, progress);
+
+            // Wall collision check
+            if (this.game && this.game.resolveWallCollision) {
+                const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+                this.position.x = resolved.x;
+                this.position.z = resolved.z;
+            }
 
             // Spin the player
             this.rotation += 0.5;
@@ -873,9 +882,18 @@ export class Hunter {
             this.createShotgunBolt(dir, ability.damage, ability.range);
         }
 
-        // Knockback player backwards
+        // Knockback player backwards with wall collision check
         const backDir = forward.clone().multiplyScalar(-1);
+        const oldX = this.position.x;
+        const oldZ = this.position.z;
         this.position.addScaledVector(backDir, ability.knockback);
+
+        // Wall collision check for knockback
+        if (this.game && this.game.resolveWallCollision) {
+            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+            this.position.x = resolved.x;
+            this.position.z = resolved.z;
+        }
 
         // Keep in bounds
         const bounds = 95;

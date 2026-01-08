@@ -1195,9 +1195,18 @@ export class Mage {
         }
 
         const startPos = this.position.clone();
+        const oldX = this.position.x;
+        const oldZ = this.position.z;
 
         // Move in dash direction
         this.position.addScaledVector(dashDir, ability.distance);
+
+        // Wall collision check for dash
+        if (this.game && this.game.resolveWallCollision) {
+            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+            this.position.x = resolved.x;
+            this.position.z = resolved.z;
+        }
 
         // Keep in bounds
         const bounds = 95;

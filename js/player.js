@@ -974,7 +974,16 @@ export class Player {
         if (progress < 1) {
             // Move player forward during dash
             const moveAmount = (ability.dashDistance / ability.dashDuration) * deltaTime;
+            const oldX = this.position.x;
+            const oldZ = this.position.z;
             this.position.add(ability.dashDirection.clone().multiplyScalar(moveAmount));
+
+            // Wall collision check for dash
+            if (this.game && this.game.resolveWallCollision) {
+                const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
+                this.position.x = resolved.x;
+                this.position.z = resolved.z;
+            }
 
             // Spin the player rapidly while dashing (3 full rotations during dash)
             const spinSpeed = Math.PI * 6; // 3 rotations per dashDuration
@@ -1095,6 +1104,27 @@ export class Player {
         if (dist > ability.range) {
             const dir = new THREE.Vector3(dx, 0, dz).normalize();
             finalTarget = this.position.clone().add(dir.multiplyScalar(ability.range));
+        }
+
+        // Check if target position is inside a wall - if so, find valid landing spot
+        if (this.game && this.game.checkWallCollision && this.game.checkWallCollision(finalTarget.x, finalTarget.z, 0.5)) {
+            // Try to find a valid position by stepping back toward player
+            const dir = new THREE.Vector3(dx, 0, dz).normalize();
+            let testDist = Math.min(dist, ability.range);
+            let found = false;
+            while (testDist > 1) {
+                testDist -= 1;
+                const testPos = this.position.clone().add(dir.clone().multiplyScalar(testDist));
+                if (!this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
+                    finalTarget = testPos;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Can't find valid landing spot
+                return false;
+            }
         }
 
         ability.isActive = true;
