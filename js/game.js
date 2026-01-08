@@ -1110,36 +1110,44 @@ export class Game {
 
         // Wall segments: { x1, z1, x2, z2 } - start and end points
         // Store for collision detection
+        // Floor layout reference:
+        // 1. Starting: x[-12,12] z[-15,5]
+        // 2. First corridor: x[-10,10] z[0,50]
+        // 3. Turn: x[5,35] z[40,70]
+        // 4. Right corridor: x[25,75] z[45,65]
+        // 5. Large room: x[63,98] z[13,48]
+        // 6. Forward corridor: x[70,90] z[60,100]
+        // 7. Final chamber: x[60,100] z[100,140]
         this.wallSegments = [
             // Starting area walls
-            { x1: -12, z1: -15, x2: -12, z2: 5 },      // Left back
-            { x1: 12, z1: -15, x2: 12, z2: 5 },        // Right back
+            { x1: -12, z1: -15, x2: -12, z2: 0 },      // Left wall
+            { x1: 12, z1: -15, x2: 12, z2: 0 },        // Right wall
             { x1: -12, z1: -15, x2: 12, z2: -15 },     // Back wall
 
-            // First corridor left wall
-            { x1: -10, z1: 5, x2: -10, z2: 50 },
-            // First corridor right wall
-            { x1: 10, z1: 5, x2: 10, z2: 40 },
+            // First corridor walls (x=-10 to 10, z=0 to 50)
+            { x1: -10, z1: 0, x2: -10, z2: 50 },       // Left wall
+            { x1: 10, z1: 0, x2: 10, z2: 40 },         // Right wall (ends at turn)
 
-            // Turn section - use axis-aligned segments instead of diagonal
-            { x1: -10, z1: 50, x2: -10, z2: 70 },      // Left wall continues vertical
-            { x1: -10, z1: 70, x2: 5, z2: 70 },        // Left wall horizontal segment
-            { x1: 10, z1: 40, x2: 35, z2: 40 },        // Inner corner
+            // Turn section (x=5 to 35, z=40 to 70)
+            { x1: -10, z1: 50, x2: 5, z2: 50 },        // Close gap at corridor end
+            { x1: 5, z1: 50, x2: 5, z2: 70 },          // Left wall of turn
+            { x1: 5, z1: 70, x2: 35, z2: 70 },         // Top wall of turn
+            { x1: 10, z1: 40, x2: 35, z2: 40 },        // Bottom wall of turn
 
-            // Right corridor walls
-            { x1: 5, z1: 70, x2: 75, z2: 70 },         // Top wall
+            // Right corridor (x=25 to 75, z=45 to 65)
+            { x1: 35, z1: 70, x2: 75, z2: 70 },        // Top wall continues
             { x1: 35, z1: 40, x2: 75, z2: 40 },        // Bottom wall continues
 
-            // Large room walls
-            { x1: 60, z1: 12, x2: 60, z2: 40 },        // Left wall
-            { x1: 100, z1: 12, x2: 100, z2: 48 },      // Right wall
-            { x1: 60, z1: 12, x2: 100, z2: 12 },       // Bottom wall
+            // Large room (x=63 to 98, z=13 to 48)
+            { x1: 63, z1: 13, x2: 63, z2: 40 },        // Left wall
+            { x1: 98, z1: 13, x2: 98, z2: 48 },        // Right wall
+            { x1: 63, z1: 13, x2: 98, z2: 13 },        // Bottom wall
 
-            // Corridor to final chamber
+            // Forward corridor (x=70 to 90, z=60 to 100)
             { x1: 70, z1: 48, x2: 70, z2: 100 },       // Left wall
-            { x1: 90, z1: 70, x2: 90, z2: 100 },       // Right wall
+            { x1: 90, z1: 65, x2: 90, z2: 100 },       // Right wall
 
-            // Final chamber
+            // Final chamber (x=60 to 100, z=100 to 140)
             { x1: 60, z1: 100, x2: 60, z2: 140 },      // Left wall
             { x1: 100, z1: 100, x2: 100, z2: 140 },    // Right wall
             { x1: 60, z1: 140, x2: 100, z2: 140 },     // End wall
@@ -1177,7 +1185,8 @@ export class Game {
             const wallCenterZ = (seg.z1 + seg.z2) / 2;
             const dx = seg.x2 - seg.x1;
             const dz = seg.z2 - seg.z1;
-            const wallLength = Math.sqrt(dx * dx + dz * dz) + wallThickness;
+            // Don't add wallThickness to collision length - only use actual segment length
+            const wallLength = Math.sqrt(dx * dx + dz * dz);
             const angle = Math.atan2(dx, dz);
 
             // Transform point to wall's local space
