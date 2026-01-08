@@ -1600,22 +1600,23 @@ export class Game {
 
                 // Calculate catch accuracy - how close is food X to pan X?
                 const catchDistance = Math.abs(mg.foodX - mg.panX);
+                console.log(`Catch: foodX=${mg.foodX.toFixed(1)}, panX=${mg.panX.toFixed(1)}, distance=${catchDistance.toFixed(1)}`);
 
-                // Pan catching zone - must be precise!
+                // Pan catching zone - the pan is wide so be generous
                 let flipScore = 0;
                 let caught = false;
 
-                if (catchDistance < 5) {
+                if (catchDistance < 8) {
                     // Perfect catch - right in the center
                     flipScore = 100;
                     caught = true;
-                } else if (catchDistance < 10) {
-                    // Good catch
-                    flipScore = Math.floor(90 - catchDistance * 4);
-                    caught = true;
                 } else if (catchDistance < 15) {
+                    // Good catch
+                    flipScore = Math.floor(100 - catchDistance * 3);
+                    caught = true;
+                } else if (catchDistance < 22) {
                     // Barely caught it
-                    flipScore = Math.floor(60 - catchDistance * 2);
+                    flipScore = Math.floor(70 - catchDistance * 2);
                     caught = true;
                 } else {
                     // Missed! Food fell off the pan
