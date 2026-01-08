@@ -1525,13 +1525,15 @@ export class Game {
             flipsRequired: 3 + Math.floor(Math.random() * 3), // 3-5 flips
             flipsCompleted: 0,
             totalScore: 0,
-            panX: 50, // Pan position (0-100)
-            panY: 50,
+            panX: 50, // Pan position (0-100, 20-80 clamped)
+            foodX: 50, // Food X position (independent of pan when in air)
             foodY: 0, // Food height above pan (0 = on pan)
-            foodVelocityY: 0,
+            foodVelocityX: 0, // Horizontal velocity
+            foodVelocityY: 0, // Vertical velocity
             foodRotation: 0,
             isFlipping: false,
-            flipStartTime: 0
+            flipStartTime: 0,
+            lastPanX: 50 // Track pan movement for momentum
         };
 
         // Set food icon based on fish type
@@ -1571,45 +1573,73 @@ export class Game {
         const panContainer = document.getElementById('cooking-pan-container');
 
         if (mg.isFlipping) {
-            // Food is in the air
-            mg.foodVelocityY -= 800 * deltaTime; // Gravity
+            // Food is in the air - apply physics
+            mg.foodVelocityY -= 1200 * deltaTime; // Gravity (stronger for snappier feel)
             mg.foodY += mg.foodVelocityY * deltaTime;
-            mg.foodRotation += 720 * deltaTime; // Spin faster
+            mg.foodX += mg.foodVelocityX * deltaTime; // Horizontal movement
+            mg.foodRotation += 540 * deltaTime; // Spin
+
+            // Keep food X within bounds (10-90)
+            mg.foodX = Math.max(10, Math.min(90, mg.foodX));
 
             // Update food position visually
             if (foodEl) {
-                // foodY is in pixels from the pan
+                // Position food based on its own X coordinate
+                const xOffset = (mg.foodX - 50) * 2; // Convert to pixel offset
+                foodEl.style.left = `calc(50% + ${xOffset}px)`;
                 foodEl.style.bottom = `calc(100% + ${mg.foodY}px)`;
                 foodEl.style.transform = `translateX(-50%) rotate(${mg.foodRotation}deg)`;
             }
 
-            // Check if food has landed
+            // Check if food has come back down to pan level
             if (mg.foodY <= 0 && mg.foodVelocityY < 0) {
                 mg.isFlipping = false;
                 mg.foodY = 0;
                 mg.foodVelocityY = 0;
+                mg.foodVelocityX = 0;
 
-                // Calculate score based on how centered the pan is
-                // panX is 20-80, centered at 50
-                const centeredness = 100 - Math.abs(mg.panX - 50) * 3.33;
-                const flipScore = Math.max(0, Math.floor(centeredness));
+                // Calculate catch accuracy - how close is food X to pan X?
+                const catchDistance = Math.abs(mg.foodX - mg.panX);
+
+                // Pan catching zone is about 15 units wide (centered on panX)
+                let flipScore = 0;
+                let caught = false;
+
+                if (catchDistance < 8) {
+                    // Perfect catch - food landed right on the pan
+                    flipScore = 100 - catchDistance * 2;
+                    caught = true;
+                } else if (catchDistance < 15) {
+                    // Good catch - close enough
+                    flipScore = Math.max(40, 80 - catchDistance * 3);
+                    caught = true;
+                } else {
+                    // Missed! Food fell off the pan
+                    flipScore = 0;
+                    caught = false;
+                }
 
                 mg.totalScore += flipScore;
                 mg.flipsCompleted++;
 
+                // Snap food to pan position after catch
+                mg.foodX = mg.panX;
+
                 // Show feedback rating
                 const ratingEl = document.getElementById('cooking-rating-value');
                 if (ratingEl) {
-                    let rating = 'Good';
-                    let ratingClass = 'good';
+                    let rating = 'Dropped!';
+                    let ratingClass = 'poor';
                     if (flipScore >= 90) { rating = 'PERFECT!'; ratingClass = 'perfect'; }
                     else if (flipScore >= 70) { rating = 'Great!'; ratingClass = 'great'; }
-                    else if (flipScore < 40) { rating = 'Oops!'; ratingClass = 'poor'; }
+                    else if (flipScore >= 40) { rating = 'Good'; ratingClass = 'good'; }
+                    else if (caught) { rating = 'Close!'; ratingClass = 'okay'; }
                     ratingEl.textContent = rating;
                     ratingEl.className = ratingClass;
                 }
 
                 if (foodEl) {
+                    foodEl.style.left = '50%';
                     foodEl.style.bottom = '100%';
                     foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
                 }
@@ -1622,7 +1652,9 @@ export class Game {
                 }
             }
         } else {
-            // Waiting for flip
+            // Waiting for flip - food follows pan
+            mg.foodX = mg.panX;
+
             if (statusText) {
                 statusText.textContent = 'Flick up to flip!';
             }
@@ -1630,10 +1662,12 @@ export class Game {
 
         // Update pan position based on mouse (pan moves horizontally)
         if (panContainer) {
-            // panX ranges from 20 to 80, translate to left offset
-            const offset = (mg.panX - 50) * 1.5; // Convert to pixel offset
+            // panX ranges from 20 to 80, translate to pixel offset
+            const offset = (mg.panX - 50) * 2;
             panContainer.style.transform = `translateX(${offset}px)`;
         }
+
+        // Update food position when not flipping (follows pan)
         if (foodEl && !mg.isFlipping) {
             foodEl.style.left = '50%';
         }
@@ -1681,12 +1715,18 @@ export class Game {
         if (!this.campfire?.minigame) return;
         const mg = this.campfire.minigame;
 
+        // Store previous pan position for momentum calculation
+        const prevPanX = mg.panX;
+
         // Move pan with mouse X
         const rect = document.getElementById('cooking-game-area')?.getBoundingClientRect();
         if (rect) {
             const relativeX = (mouseX - rect.left) / rect.width;
             mg.panX = Math.max(20, Math.min(80, relativeX * 100));
         }
+
+        // Track pan movement delta for momentum transfer
+        mg.panDeltaX = mg.panX - prevPanX;
     }
 
     handleCookingFlick(velocity) {
@@ -1696,7 +1736,11 @@ export class Game {
         // Trigger flip if velocity is high enough
         if (velocity > 1.5) {
             mg.isFlipping = true;
-            mg.foodVelocityY = Math.min(400, velocity * 100); // Launch velocity based on flick speed
+            // Launch velocity based on flick speed
+            mg.foodVelocityY = Math.min(350, velocity * 80);
+            // Add horizontal momentum based on recent pan movement
+            // panDeltaX is how much the pan moved recently
+            mg.foodVelocityX = (mg.panDeltaX || 0) * 8;
             mg.flipStartTime = performance.now();
         }
     }

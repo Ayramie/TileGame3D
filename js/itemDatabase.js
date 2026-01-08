@@ -542,7 +542,7 @@ export const ITEMS = {
         name: 'Grilled Trout',
         type: ItemType.CONSUMABLE,
         rarity: ItemRarity.COMMON,
-        icon: 'fish_cooked',
+        icon: 'fish_common',
         description: 'Restores 30 HP',
         stackable: true,
         maxStack: 20,
@@ -560,7 +560,7 @@ export const ITEMS = {
         name: 'Grilled Bass',
         type: ItemType.CONSUMABLE,
         rarity: ItemRarity.COMMON,
-        icon: 'fish_cooked',
+        icon: 'fish_common',
         description: 'Restores 40 HP',
         stackable: true,
         maxStack: 20,
@@ -578,7 +578,7 @@ export const ITEMS = {
         name: 'Golden Carp Fillet',
         type: ItemType.CONSUMABLE,
         rarity: ItemRarity.UNCOMMON,
-        icon: 'fish_cooked_uncommon',
+        icon: 'fish_uncommon',
         description: 'Restores 60 HP',
         stackable: true,
         maxStack: 20,
@@ -596,7 +596,7 @@ export const ITEMS = {
         name: 'Rainbow Trout Steak',
         type: ItemType.CONSUMABLE,
         rarity: ItemRarity.RARE,
-        icon: 'fish_cooked_rare',
+        icon: 'fish_rare',
         description: 'Restores 100 HP',
         stackable: true,
         maxStack: 20,
@@ -614,7 +614,7 @@ export const ITEMS = {
         name: 'Legendary Koi Feast',
         type: ItemType.CONSUMABLE,
         rarity: ItemRarity.EPIC,
-        icon: 'fish_cooked_epic',
+        icon: 'fish_epic',
         description: 'Restores 150 HP and grants +10% damage for 30s',
         stackable: true,
         maxStack: 10,
@@ -748,12 +748,6 @@ export function getItemIcon(item) {
         'fish_uncommon': '🐠',
         'fish_rare': '🐡',
         'fish_epic': '🎏',
-
-        // Fish (cooked)
-        'fish_cooked': '🍖',
-        'fish_cooked_uncommon': '🍗',
-        'fish_cooked_rare': '🥩',
-        'fish_cooked_epic': '🍱',
 
         // Quest
         'quest_crown': '👑'
