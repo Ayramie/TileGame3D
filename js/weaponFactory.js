@@ -49,8 +49,8 @@ export class WeaponFactory {
         return {
             mesh: group,
             // KayKit hand bones: grip weapon so blade points forward from character
-            offset: new THREE.Vector3(0, 0.05, 0),
-            rotation: new THREE.Euler(Math.PI / 2, 0, Math.PI)
+            offset: new THREE.Vector3(0, 0, 0.1),
+            rotation: new THREE.Euler(0, 0, 0)
         };
     }
 
@@ -126,7 +126,7 @@ export class WeaponFactory {
             mesh: group,
             // KayKit hand bones: crossbow held horizontally, aiming forward
             offset: new THREE.Vector3(0, 0, 0.15),
-            rotation: new THREE.Euler(0, 0, Math.PI / 2)
+            rotation: new THREE.Euler(0, Math.PI, Math.PI / 2)
         };
     }
 
