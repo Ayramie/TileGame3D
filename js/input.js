@@ -99,9 +99,24 @@ export class InputManager {
                 break;
 
             case 'f':
-                // Check if near fishing lake first
-                if (this.game.fishingLake?.isNearLake || this.game.fishingLake?.isFishing) {
-                    this.game.toggleFishing();
+                // Check if currently fishing (minigame active)
+                if (this.game.fishingLake?.isFishing) {
+                    const mg = this.game.fishingLake.minigame;
+                    if (mg?.state === 'waiting') {
+                        // Can cancel during waiting phase
+                        this.game.stopFishing();
+                    } else if (mg?.state === 'bite') {
+                        // Hook the fish!
+                        this.game.fishingAction();
+                    } else if (mg?.state === 'reeling') {
+                        // Start reeling (handled by keydown/keyup)
+                        this.game.setReeling(true);
+                    }
+                    break;
+                }
+                // Check if near fishing lake to start fishing
+                if (this.game.fishingLake?.isNearLake) {
+                    this.game.startFishing();
                     break;
                 }
                 // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
@@ -216,6 +231,12 @@ export class InputManager {
 
         if (key in this.keys) {
             this.keys[key] = false;
+        }
+
+        // Stop reeling when F is released
+        if (key === 'f' && this.game.fishingLake?.minigame?.state === 'reeling') {
+            this.game.setReeling(false);
+            return;
         }
 
         // Fire aimed abilities on key release

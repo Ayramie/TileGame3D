@@ -770,4 +770,172 @@ body {
     color: #aaddff;
     font-size: 18px;
     font-weight: bold;
+    transition: all 0.2s ease;
 }
+
+#fishing-text.bite-alert {
+    color: #ffcc00;
+    font-size: 22px;
+    text-shadow: 0 0 10px #ffcc00;
+    animation: pulse 0.3s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Fishing Minigame */
+#fishing-minigame {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 20px);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    width: 300px;
+    z-index: 200;
+}
+
+#fishing-minigame.visible {
+    display: flex;
+}
+
+/* Progress Bar */
+#fishing-progress-bar {
+    height: 20px;
+    background: rgba(20, 30, 50, 0.9);
+    border: 2px solid #44aa44;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+#progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #44aa44, #66dd66);
+    border-radius: 8px;
+    transition: width 0.1s ease;
+}
+
+#progress-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Reel Bar (fish position) */
+#fishing-reel-bar {
+    height: 30px;
+    background: rgba(20, 40, 60, 0.9);
+    border: 2px solid #3388cc;
+    border-radius: 15px;
+    position: relative;
+    display: none;
+}
+
+#fishing-reel-bar.active {
+    display: block;
+}
+
+#catch-zone {
+    position: absolute;
+    left: 35%;
+    width: 30%;
+    height: 100%;
+    background: rgba(68, 170, 68, 0.4);
+    border-left: 2px solid #44aa44;
+    border-right: 2px solid #44aa44;
+    border-radius: 0;
+}
+
+#fish-marker {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    background: #ffaa00;
+    border: 2px solid #ffcc44;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.6);
+    transition: left 0.05s linear;
+}
+
+#fish-marker::before {
+    content: '🐟';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+}
+
+/* Tension Bar */
+#fishing-tension-bar {
+    height: 16px;
+    background: rgba(20, 30, 50, 0.9);
+    border: 2px solid #cc4444;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+#tension-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4488cc, #66aaee);
+    border-radius: 6px;
+    transition: width 0.1s ease, background 0.2s ease;
+}
+
+#tension-fill.danger {
+    background: linear-gradient(90deg, #cc4444, #ff6666);
+}
+
+#tension-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Fishing Message */
+#fishing-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(20, 30, 50, 0.95);
+    border: 2px solid #4a4a6a;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 250;
+    pointer-events: none;
+}
+
+#fishing-message.visible {
+    opacity: 1;
+}
+
+#fishing-message.rarity-common { color: #aaaaaa; border-color: #aaaaaa; }
+#fishing-message.rarity-uncommon { color: #44ff44; border-color: #44ff44; }
+#fishing-message.rarity-rare { color: #4488ff; border-color: #4488ff; }
+#fishing-message.rarity-epic { color: #aa44ff; border-color: #aa44ff; }

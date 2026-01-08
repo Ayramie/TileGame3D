@@ -3185,4 +3185,65 @@ export class ParticleSystem {
             texture: 'glow'
         });
     }
+
+    // Water splash effect for fishing
+    splashEffect(position) {
+        // Layer 1: Central water burst upward
+        this.spawn({ x: position.x, y: position.y + 0.1, z: position.z }, {
+            count: 15,
+            spread: 0.4,
+            speed: 6,
+            life: 0.6,
+            size: 0.3,
+            endSize: 0.05,
+            gravity: -15,
+            upwardBias: 8,
+            color: 0x66aadd,
+            endColor: 0x88ccff,
+            texture: 'soft'
+        });
+
+        // Layer 2: Water droplets
+        this.spawn({ x: position.x, y: position.y + 0.3, z: position.z }, {
+            count: 20,
+            spread: 0.6,
+            speed: 8,
+            life: 0.8,
+            size: 0.15,
+            endSize: 0.03,
+            gravity: -20,
+            upwardBias: 10,
+            color: 0x88ddff,
+            endColor: 0xaaeeff,
+            texture: 'soft'
+        });
+
+        // Layer 3: Ripple ring expanding
+        this.spawn({ x: position.x, y: position.y + 0.05, z: position.z }, {
+            count: 2,
+            spread: 0.1,
+            speed: 0,
+            life: 0.8,
+            size: 0.3,
+            endSize: 3.0,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0x88ccff,
+            endColor: 0x4488aa,
+            texture: 'ring'
+        });
+
+        // Layer 4: Sparkle mist
+        this.spawn({ x: position.x, y: position.y + 0.5, z: position.z }, {
+            count: 8,
+            spread: 0.8,
+            speed: 2,
+            life: 0.5,
+            size: 0.12,
+            gravity: -5,
+            upwardBias: 3,
+            color: 0xccffff,
+            texture: 'spark'
+        });
+    }
 }

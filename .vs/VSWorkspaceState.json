@@ -1,7 +1,11 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\assets",
+    "\\assets\\kaykit",
+    "\\assets\\kaykit\\equipment",
+    "\\assets\\kaykit\\equipment\\magic"
   ],
-  "SelectedNode": "\\C:\\Users\\alex\\Source\\Repos\\TileGame3D",
+  "SelectedNode": "\\assets\\kaykit",
   "PreviewInSolutionExplorer": false
 }

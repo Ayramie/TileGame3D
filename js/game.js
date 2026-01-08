@@ -891,14 +891,32 @@ export class Game {
 
         const fishingPrompt = document.getElementById('fishing-prompt');
         const fishingStatus = document.getElementById('fishing-status');
+        const fishingMinigame = document.getElementById('fishing-minigame');
 
         // Check if near lake
         this.fishingLake.isNearLake = distance < this.fishingLake.interactionRange;
 
+        // Cancel fishing if player moves
         if (this.fishingLake.isFishing) {
-            // Currently fishing
+            const lastPos = this.fishingLake.playerStartPos;
+            if (lastPos) {
+                const moved = Math.abs(this.player.position.x - lastPos.x) > 0.1 ||
+                             Math.abs(this.player.position.z - lastPos.z) > 0.1;
+                if (moved) {
+                    this.stopFishing('You moved!');
+                    return;
+                }
+            }
+        }
+
+        if (this.fishingLake.isFishing) {
+            // Currently fishing - update minigame
             fishingPrompt?.classList.remove('visible');
             fishingStatus?.classList.add('visible');
+            fishingMinigame?.classList.add('visible');
+
+            // Update minigame
+            this.updateFishingMinigame(deltaTime);
 
             // Animate water while fishing (simple wobble)
             if (this.fishingLake.waterMesh) {
@@ -909,10 +927,159 @@ export class Game {
             // Near lake, show prompt
             fishingPrompt?.classList.add('visible');
             fishingStatus?.classList.remove('visible');
+            fishingMinigame?.classList.remove('visible');
         } else {
             // Not near lake
             fishingPrompt?.classList.remove('visible');
             fishingStatus?.classList.remove('visible');
+            fishingMinigame?.classList.remove('visible');
+        }
+    }
+
+    // Fishing minigame states: 'waiting', 'bite', 'reeling', 'success', 'fail'
+    updateFishingMinigame(deltaTime) {
+        const mg = this.fishingLake.minigame;
+        if (!mg) return;
+
+        const fishingText = document.getElementById('fishing-text');
+        const catchZone = document.getElementById('catch-zone');
+        const fishMarker = document.getElementById('fish-marker');
+        const tensionFill = document.getElementById('tension-fill');
+
+        switch (mg.state) {
+            case 'waiting':
+                // Waiting for a bite
+                mg.biteTimer -= deltaTime;
+                fishingText.textContent = 'Waiting for a bite...';
+
+                // Hide reeling UI
+                catchZone?.parentElement?.classList.remove('active');
+
+                if (mg.biteTimer <= 0) {
+                    // Fish bites!
+                    mg.state = 'bite';
+                    mg.biteWindow = 1.5; // 1.5 seconds to react
+                    fishingText.textContent = '! FISH ON! Press F !';
+                    fishingText.classList.add('bite-alert');
+
+                    // Play splash effect
+                    if (this.particles) {
+                        this.particles.splashEffect(this.fishingLake.waterMesh.position);
+                    }
+                }
+                break;
+
+            case 'bite':
+                // Player must press F quickly
+                mg.biteWindow -= deltaTime;
+
+                if (mg.biteWindow <= 0) {
+                    // Too slow!
+                    this.stopFishing('The fish got away!');
+                }
+                break;
+
+            case 'reeling':
+                // Active reeling minigame
+                fishingText.textContent = 'Hold F to reel in!';
+                fishingText.classList.remove('bite-alert');
+                catchZone?.parentElement?.classList.add('active');
+
+                // Fish moves erratically
+                mg.fishPos += mg.fishDirection * mg.fishSpeed * deltaTime;
+
+                // Bounce fish off edges
+                if (mg.fishPos <= 0) {
+                    mg.fishPos = 0;
+                    mg.fishDirection = 1;
+                    mg.fishSpeed = 30 + Math.random() * 40;
+                } else if (mg.fishPos >= 100) {
+                    mg.fishPos = 100;
+                    mg.fishDirection = -1;
+                    mg.fishSpeed = 30 + Math.random() * 40;
+                }
+
+                // Random direction changes
+                if (Math.random() < deltaTime * 2) {
+                    mg.fishDirection *= -1;
+                    mg.fishSpeed = 30 + Math.random() * 40;
+                }
+
+                // Update fish marker position
+                if (fishMarker) {
+                    fishMarker.style.left = `${mg.fishPos}%`;
+                }
+
+                // Check if fish is in catch zone (40-60%)
+                const inZone = mg.fishPos >= 35 && mg.fishPos <= 65;
+
+                // Tension changes based on reeling
+                if (mg.isReeling) {
+                    if (inZone) {
+                        mg.tension += deltaTime * 25; // Good progress
+                        mg.progress += deltaTime * 20;
+                    } else {
+                        mg.tension += deltaTime * 40; // Too much tension when fish not in zone
+                        mg.progress += deltaTime * 5; // Slow progress
+                    }
+                } else {
+                    mg.tension -= deltaTime * 30; // Tension decreases when not reeling
+                    mg.progress -= deltaTime * 8; // Slight progress loss
+                }
+
+                // Clamp values
+                mg.tension = Math.max(0, Math.min(100, mg.tension));
+                mg.progress = Math.max(0, Math.min(100, mg.progress));
+
+                // Update tension bar
+                if (tensionFill) {
+                    tensionFill.style.width = `${mg.tension}%`;
+                    if (mg.tension > 80) {
+                        tensionFill.classList.add('danger');
+                    } else {
+                        tensionFill.classList.remove('danger');
+                    }
+                }
+
+                // Update progress bar
+                const progressFill = document.getElementById('progress-fill');
+                if (progressFill) {
+                    progressFill.style.width = `${mg.progress}%`;
+                }
+
+                // Check win/lose conditions
+                if (mg.tension >= 100) {
+                    this.stopFishing('Line snapped!');
+                } else if (mg.progress >= 100) {
+                    this.catchFish();
+                }
+                break;
+        }
+    }
+
+    // Called when F is pressed during fishing
+    fishingAction() {
+        if (!this.fishingLake?.isFishing) return;
+
+        const mg = this.fishingLake.minigame;
+        if (!mg) return;
+
+        if (mg.state === 'bite') {
+            // Successfully hooked the fish!
+            mg.state = 'reeling';
+            mg.fishPos = 50;
+            mg.fishDirection = Math.random() > 0.5 ? 1 : -1;
+            mg.fishSpeed = 40;
+            mg.tension = 20;
+            mg.progress = 0;
+            mg.isReeling = false;
+        }
+    }
+
+    // Called when F is held during reeling
+    setReeling(isReeling) {
+        if (this.fishingLake?.minigame?.state === 'reeling') {
+            this.fishingLake.minigame.isReeling = isReeling;
         }
     }
 
@@ -931,7 +1098,23 @@ export class Game {
         if (!this.fishingLake || this.fishingLake.isFishing) return;
 
         this.fishingLake.isFishing = true;
-        console.log('Started fishing...');
+        this.fishingLake.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+
+        // Initialize minigame state
+        this.fishingLake.minigame = {
+            state: 'waiting',
+            biteTimer: 2 + Math.random() * 3, // 2-5 seconds until bite
+            biteWindow: 0,
+            fishPos: 50,
+            fishDirection: 1,
+            fishSpeed: 40,
+            tension: 0,
+            progress: 0,
+            isReeling: false
+        };
 
         // Face the water
         const dx = this.fishingLake.position.x - this.player.position.x;
@@ -939,15 +1122,76 @@ export class Game {
         this.player.rotation = Math.atan2(dx, dz);
     }
 
-    stopFishing() {
+    stopFishing(message = null) {
         if (!this.fishingLake || !this.fishingLake.isFishing) return;
 
         this.fishingLake.isFishing = false;
-        console.log('Stopped fishing.');
+        this.fishingLake.minigame = null;
+        this.fishingLake.playerStartPos = null;
+
+        // Reset UI
+        const fishingText = document.getElementById('fishing-text');
+        if (fishingText) {
+            fishingText.classList.remove('bite-alert');
+        }
+
+        if (message) {
+            this.showFishingMessage(message);
+        }
 
         // Reset water position
         if (this.fishingLake.waterMesh) {
             this.fishingLake.waterMesh.position.y = 0.05;
+        }
+    }
+
+    catchFish() {
+        // Determine fish caught based on luck
+        const fishTypes = [
+            { name: 'Small Trout', rarity: 'common', weight: 50 },
+            { name: 'Bass', rarity: 'common', weight: 30 },
+            { name: 'Golden Carp', rarity: 'uncommon', weight: 15 },
+            { name: 'Rainbow Trout', rarity: 'rare', weight: 4 },
+            { name: 'Legendary Koi', rarity: 'epic', weight: 1 }
+        ];
+
+        const totalWeight = fishTypes.reduce((sum, f) => sum + f.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let caughtFish = fishTypes[0];
+
+        for (const fish of fishTypes) {
+            roll -= fish.weight;
+            if (roll <= 0) {
+                caughtFish = fish;
+                break;
+            }
+        }
+
+        this.stopFishing();
+        this.showFishingMessage(`Caught: ${caughtFish.name}!`, caughtFish.rarity);
+
+        // Splash effect
+        if (this.particles) {
+            this.particles.splashEffect(this.fishingLake.waterMesh.position);
+        }
+
+        // Add fish to inventory (if we had fish items)
+        // For now just show the message and add some gold
+        if (this.player.inventory) {
+            const goldAmount = caughtFish.rarity === 'epic' ? 50 :
+                              caughtFish.rarity === 'rare' ? 20 :
+                              caughtFish.rarity === 'uncommon' ? 10 : 5;
+            this.player.inventory.addGold(goldAmount);
+        }
+    }
+
+    showFishingMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('fishing-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2000);
         }
     }
 
@@ -1282,10 +1526,18 @@ export class Game {
         // 6. Forward corridor: x[70,90] z[60,100]
         // 7. Final chamber: x[60,100] z[100,140]
         this.wallSegments = [
-            // Starting area walls
-            { x1: -12, z1: -15, x2: -12, z2: 0 },      // Left wall
+            // Starting area walls (left wall split for fishing lake corridor)
+            { x1: -12, z1: -15, x2: -12, z2: -12 },    // Left wall bottom section
+            { x1: -12, z1: 3, x2: -12, z2: 0 },        // Left wall top section (gap from z=-12 to z=3)
             { x1: 12, z1: -15, x2: 12, z2: 0 },        // Right wall
             { x1: -12, z1: -15, x2: 12, z2: -15 },     // Back wall
+
+            // Fishing lake area walls
+            { x1: -12, z1: -12, x2: -27, z2: -12 },    // Corridor bottom wall
+            { x1: -12, z1: 3, x2: -27, z2: 3 },        // Corridor top wall
+            { x1: -27, z1: -14, x2: -44, z2: -14 },    // Lake bottom wall
+            { x1: -27, z1: 4, x2: -44, z2: 4 },        // Lake top wall
+            { x1: -44, z1: -14, x2: -44, z2: 4 },      // Lake back wall
 
             // First corridor walls (x=-10 to 10, z=0 to 50)
             { x1: -10, z1: 0, x2: -10, z2: 50 },       // Left wall
