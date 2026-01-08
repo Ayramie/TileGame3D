@@ -1740,8 +1740,8 @@ export class Game {
         // Trigger flip if velocity is high enough
         if (velocity > 1.5) {
             mg.isFlipping = true;
-            // Launch with consistent height for predictable timing
-            mg.foodVelocityY = 300;
+            // Launch high for more air time
+            mg.foodVelocityY = 450;
 
             // Random horizontal velocity - food flies unpredictably!
             // Range: -40 to +40 units per second

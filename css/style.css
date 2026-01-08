@@ -1433,11 +1433,11 @@ body {
 }
 
 #cooking-pan {
-    width: 140px;
-    height: 30px;
-    background: linear-gradient(180deg, #444, #222);
-    border: 3px solid #555;
-    border-radius: 10px 10px 50% 50%;
+    width: 180px;
+    height: 35px;
+    background: linear-gradient(180deg, #555, #333);
+    border: 3px solid #666;
+    border-radius: 12px 12px 50% 50%;
     position: relative;
     transform-origin: center bottom;
     transition: transform 0.05s ease;
