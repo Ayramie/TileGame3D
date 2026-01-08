@@ -171,8 +171,8 @@ export class InventoryUI {
 
             if (item) {
                 slotEl.classList.add('has-item');
-                slotEl.classList.add(`rarity-${item.item.rarity.name}`);
-                icon.textContent = getItemIcon(item.item);
+                slotEl.classList.add(`rarity-${item.definition.rarity.name}`);
+                icon.textContent = getItemIcon(item.definition);
                 quantity.textContent = item.quantity > 1 ? item.quantity : '';
             } else {
                 icon.textContent = '';
@@ -200,8 +200,8 @@ export class InventoryUI {
 
             if (equipped) {
                 slotEl.classList.add('has-item');
-                slotEl.classList.add(`rarity-${equipped.rarity.name}`);
-                icon.textContent = getItemIcon(equipped);
+                slotEl.classList.add(`rarity-${equipped.definition.rarity.name}`);
+                icon.textContent = getItemIcon(equipped.definition);
             } else {
                 icon.textContent = '';
             }
@@ -220,17 +220,17 @@ export class InventoryUI {
 
             if (hotbarItem) {
                 const invSlot = inventory.slots[hotbarItem.inventorySlot];
-                if (invSlot && invSlot.item) {
+                if (invSlot && invSlot.definition) {
                     slotEl.classList.add('has-item');
-                    slotEl.classList.add(`rarity-${invSlot.item.rarity.name}`);
-                    itemEl.textContent = getItemIcon(invSlot.item);
+                    slotEl.classList.add(`rarity-${invSlot.definition.rarity.name}`);
+                    itemEl.textContent = getItemIcon(invSlot.definition);
                     quantityEl.textContent = invSlot.quantity > 1 ? invSlot.quantity : '';
 
                     // Check cooldown
-                    const cooldown = inventory.itemCooldowns[invSlot.item.id];
+                    const cooldown = inventory.itemCooldowns[invSlot.definition.id];
                     if (cooldown && cooldown > 0) {
                         slotEl.classList.add('on-cooldown');
-                        const cooldownPercent = (cooldown / invSlot.item.cooldown) * 100;
+                        const cooldownPercent = (cooldown / invSlot.definition.cooldown) * 100;
                         cooldownEl.style.height = `${cooldownPercent}%`;
                     } else {
                         cooldownEl.style.height = '0%';
@@ -272,14 +272,14 @@ export class InventoryUI {
         if (!item) return;
 
         // Use consumables, equip equipment
-        if (item.item.type === ItemType.CONSUMABLE) {
+        if (item.definition.type === ItemType.CONSUMABLE) {
             if (inventory.useItem(slotIndex, this.game.player)) {
                 // Particle effect
                 if (this.game.particles && this.game.particles.itemUse) {
                     this.game.particles.itemUse(this.game.player.position, 0x44ff44);
                 }
             }
-        } else if (item.item.equipSlot) {
+        } else if (item.definition.equipSlot) {
             inventory.equipItem(slotIndex);
         }
 
@@ -291,7 +291,7 @@ export class InventoryUI {
         if (!inventory) return;
 
         const item = inventory.slots[slotIndex];
-        if (!item || item.item.type !== ItemType.CONSUMABLE) return;
+        if (!item || item.definition.type !== ItemType.CONSUMABLE) return;
 
         // Find first empty hotbar slot
         for (let i = 0; i < 5; i++) {
@@ -333,7 +333,7 @@ export class InventoryUI {
 
         const item = inventory.slots[slotIndex];
         if (item) {
-            this.showTooltip(item.item, event);
+            this.showTooltip(item.definition, event);
         } else {
             this.hideTooltip();
         }
@@ -345,7 +345,7 @@ export class InventoryUI {
 
         const item = inventory.equipment[slotName];
         if (item) {
-            this.showTooltip(item, event);
+            this.showTooltip(item.definition, event);
         } else {
             this.hideTooltip();
         }
@@ -358,8 +358,8 @@ export class InventoryUI {
         const hotbarItem = inventory.hotbar[slotIndex];
         if (hotbarItem) {
             const invSlot = inventory.slots[hotbarItem.inventorySlot];
-            if (invSlot && invSlot.item) {
-                this.showTooltip(invSlot.item, event);
+            if (invSlot && invSlot.definition) {
+                this.showTooltip(invSlot.definition, event);
                 return;
             }
         }
