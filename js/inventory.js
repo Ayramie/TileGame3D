@@ -206,18 +206,12 @@ export class Inventory {
 
     // Use hotbar item
     useHotbarItem(hotbarSlot, player) {
-        const itemId = this.hotbar[hotbarSlot];
-        if (!itemId) return null;
+        const hotbarEntry = this.hotbar[hotbarSlot];
+        if (!hotbarEntry) return null;
 
-        // Check cooldown first
-        if (this.itemCooldowns[itemId] > 0) return null;
-
-        // Find item in inventory
-        const slotIndex = this.slots.findIndex(
-            s => s && s.definition.id === itemId
-        );
-
-        if (slotIndex === -1) return null;  // No items left
+        const slotIndex = hotbarEntry.inventorySlot;
+        const stack = this.slots[slotIndex];
+        if (!stack) return null;
 
         return this.useItem(slotIndex, player);
     }

@@ -273,10 +273,26 @@ export class InventoryUI {
 
         // Use consumables, equip equipment
         if (item.definition.type === ItemType.CONSUMABLE) {
-            if (inventory.useItem(slotIndex, this.game.player)) {
-                // Particle effect
-                if (this.game.particles && this.game.particles.itemUse) {
-                    this.game.particles.itemUse(this.game.player.position, 0x44ff44);
+            const result = inventory.useItem(slotIndex, this.game.player);
+            if (result) {
+                const playerPos = this.game.player.position;
+
+                if (result.type === 'heal') {
+                    if (this.game.particles && this.game.particles.healEffect) {
+                        this.game.particles.healEffect(playerPos);
+                    }
+                    if (this.game.effects) {
+                        this.game.effects.createDamageNumber(
+                            { x: playerPos.x, y: playerPos.y + 1.5, z: playerPos.z },
+                            `+${result.amount}`,
+                            false,
+                            0x44ff44
+                        );
+                    }
+                } else if (result.type === 'buff') {
+                    if (this.game.particles && this.game.particles.buffApplied) {
+                        this.game.particles.buffApplied(playerPos, 0x44aaff);
+                    }
                 }
             }
         } else if (item.definition.equipSlot) {
@@ -318,11 +334,37 @@ export class InventoryUI {
         const inventory = this.getInventory();
         if (!inventory) return;
 
-        if (inventory.useHotbarItem(slotIndex, this.game.player)) {
-            // Particle effect
-            if (this.game.particles && this.game.particles.itemUse) {
-                this.game.particles.itemUse(this.game.player.position, 0x44ff44);
+        const result = inventory.useHotbarItem(slotIndex, this.game.player);
+        if (result) {
+            const playerPos = this.game.player.position;
+
+            // Show effect based on result type
+            if (result.type === 'heal') {
+                // Heal particle effect
+                if (this.game.particles && this.game.particles.healEffect) {
+                    this.game.particles.healEffect(playerPos);
+                }
+                // Floating heal number
+                if (this.game.effects) {
+                    this.game.effects.createDamageNumber(
+                        { x: playerPos.x, y: playerPos.y + 1.5, z: playerPos.z },
+                        `+${result.amount}`,
+                        false,
+                        0x44ff44  // Green color for healing
+                    );
+                }
+            } else if (result.type === 'buff') {
+                // Buff particle effect
+                if (this.game.particles && this.game.particles.buffApplied) {
+                    this.game.particles.buffApplied(playerPos, 0x44aaff);
+                }
+            } else {
+                // Generic item use effect
+                if (this.game.particles && this.game.particles.itemUse) {
+                    this.game.particles.itemUse(playerPos, 0x44ff44);
+                }
             }
+
             this.refreshHotbar(inventory);
         }
     }
