@@ -964,11 +964,47 @@ body {
 #fishing-message.rarity-epic { color: #aa44ff; border-color: #aa44ff; }
 
 /* QTE Fishing Minigame */
+#qte-timer-display {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#qte-time-remaining {
+    font-size: 48px;
+    font-weight: bold;
+    color: #88ddff;
+    text-shadow: 0 0 15px rgba(100, 200, 255, 0.5);
+}
+
+#qte-time-remaining.warning {
+    color: #ffaa44;
+    text-shadow: 0 0 15px rgba(255, 170, 68, 0.5);
+}
+
+#qte-time-remaining.danger {
+    color: #ff4444;
+    text-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+    animation: pulse-danger 0.5s infinite;
+}
+
+@keyframes pulse-danger {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+#qte-time-label {
+    display: block;
+    font-size: 12px;
+    color: #6688aa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 #qte-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
 }
 
 #qte-key-display {
@@ -1044,11 +1080,59 @@ body {
     stroke: #ff4444;
 }
 
+/* Key Queue Display */
+#qte-key-queue {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.queue-key {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(145deg, #2a3a5a, #1a2a4a);
+    border: 2px solid #3a5a7a;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #88aacc;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.queue-key:first-child {
+    font-size: 28px;
+    width: 50px;
+    height: 50px;
+    color: #aaccee;
+    border-color: #4a6a8a;
+}
+
+.queue-key:nth-child(n+3) {
+    opacity: 0.7;
+}
+
+.queue-key:nth-child(n+4) {
+    opacity: 0.5;
+}
+
+.queue-key:nth-child(5) {
+    opacity: 0.3;
+}
+
 #qte-feedback {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
     height: 24px;
     font-size: 18px;
     font-weight: bold;
     text-align: center;
+    white-space: nowrap;
 }
 
 #qte-feedback.perfect {
@@ -1066,6 +1150,25 @@ body {
 
 #qte-feedback.miss {
     color: #ff4444;
+}
+
+/* Fish caught display */
+#qte-fish-caught {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+#qte-fish-icon {
+    font-size: 28px;
+}
+
+#qte-fish-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #44ddff;
+    text-shadow: 0 0 10px rgba(68, 221, 255, 0.5);
 }
 
 #qte-score-area {
@@ -1110,27 +1213,6 @@ body {
     font-size: 24px;
     font-weight: bold;
     color: #88ddff;
-}
-
-#qte-progress-bar {
-    width: 100%;
-    height: 12px;
-    background: #1a2a3a;
-    border: 2px solid #3a5a7a;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-#qte-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #44aaff, #88ddff);
-    transition: width 0.2s ease;
-}
-
-#qte-keys-remaining {
-    font-size: 12px;
-    color: #6688aa;
 }
 
 /* Hide old bar elements when using QTE */
