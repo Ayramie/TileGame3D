@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { KayKitCharacter } from './kayKitCharacter.js';
+import { WeaponFactory } from './weaponFactory.js';
 
 export class Mage {
     constructor(scene, game) {
@@ -195,6 +196,10 @@ export class Mage {
             if (success) {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Mage character model');
+
+                // Attach staff weapon
+                const weapon = WeaponFactory.createWeaponForClass('mage');
+                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
             } else {
                 this.group.visible = true;
             }
@@ -1195,18 +1200,21 @@ export class Mage {
         }
 
         const startPos = this.position.clone();
-        const oldX = this.position.x;
-        const oldZ = this.position.z;
+        let dashDist = ability.distance;
 
-        // Move in dash direction
-        this.position.addScaledVector(dashDir, ability.distance);
-
-        // Wall collision check for dash
-        if (this.game && this.game.resolveWallCollision) {
-            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
-            this.position.x = resolved.x;
-            this.position.z = resolved.z;
+        // Find valid dash endpoint
+        if (this.game && this.game.checkWallCollision) {
+            while (dashDist > 0.5) {
+                const testPos = startPos.clone().addScaledVector(dashDir, dashDist);
+                if (!this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
+                    break;
+                }
+                dashDist -= 0.5;
+            }
         }
+
+        // Apply validated dash
+        this.position.addScaledVector(dashDir, dashDist);
 
         // Keep in bounds
         const bounds = 95;

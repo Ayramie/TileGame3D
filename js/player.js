@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { KayKitCharacter } from './kayKitCharacter.js';
+import { WeaponFactory } from './weaponFactory.js';
 
 export class Player {
     constructor(scene, game) {
@@ -347,6 +348,10 @@ export class Player {
             if (success) {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Knight character model');
+
+                // Attach sword weapon
+                const weapon = WeaponFactory.createWeaponForClass('warrior');
+                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
             } else {
                 // Show fallback if loading failed
                 this.group.visible = true;

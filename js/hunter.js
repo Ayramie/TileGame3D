@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { KayKitCharacter } from './kayKitCharacter.js';
+import { WeaponFactory } from './weaponFactory.js';
 
 export class Hunter {
     constructor(scene, game) {
@@ -259,6 +260,10 @@ export class Hunter {
             if (success) {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Ranger character model for Hunter');
+
+                // Attach crossbow weapon
+                const weapon = WeaponFactory.createWeaponForClass('hunter');
+                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
             } else {
                 this.group.visible = true;
             }
@@ -705,33 +710,48 @@ export class Hunter {
         }
 
         const startPos = this.position.clone();
-        const endPos = startPos.clone().addScaledVector(dashDir, ability.dashDistance);
+        let endPos = startPos.clone().addScaledVector(dashDir, ability.dashDistance);
 
         // Keep in bounds
         const bounds = 95;
         endPos.x = Math.max(-bounds, Math.min(bounds, endPos.x));
         endPos.z = Math.max(-bounds, Math.min(bounds, endPos.z));
 
+        // Validate endpoint - find valid position if endpoint is in wall
+        if (this.game && this.game.checkWallCollision && this.game.checkWallCollision(endPos.x, endPos.z, 0.5)) {
+            // Step back to find valid position
+            let testDist = ability.dashDistance;
+            while (testDist > 0.5) {
+                testDist -= 0.5;
+                const testPos = startPos.clone().addScaledVector(dashDir, testDist);
+                if (!this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
+                    endPos = testPos;
+                    break;
+                }
+            }
+        }
+
         // Animate the dash and fire arrows
         const dashDuration = 0.4;
         let elapsed = 0;
         let arrowsFired = 0;
         const arrowInterval = dashDuration / ability.arrowsPerSpin;
+        let lastPos = startPos.clone();
 
         const animateDash = () => {
             elapsed += 0.016;
             const progress = Math.min(elapsed / dashDuration, 1);
 
-            // Move player with wall collision check
-            const oldX = this.position.x;
-            const oldZ = this.position.z;
-            this.position.lerpVectors(startPos, endPos, progress);
+            // Move player - lerp to validated endpoint
+            const targetPos = new THREE.Vector3().lerpVectors(startPos, endPos, progress);
 
-            // Wall collision check
-            if (this.game && this.game.resolveWallCollision) {
-                const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
-                this.position.x = resolved.x;
-                this.position.z = resolved.z;
+            // Additional per-frame wall check for walls crossed during dash
+            if (this.game && this.game.checkWallCollision && this.game.checkWallCollision(targetPos.x, targetPos.z, 0.5)) {
+                // Stop at last valid position
+                // Don't update position
+            } else {
+                this.position.copy(targetPos);
+                lastPos.copy(targetPos);
             }
 
             // Spin the player
@@ -884,16 +904,22 @@ export class Hunter {
 
         // Knockback player backwards with wall collision check
         const backDir = forward.clone().multiplyScalar(-1);
-        const oldX = this.position.x;
-        const oldZ = this.position.z;
-        this.position.addScaledVector(backDir, ability.knockback);
+        const startPos = this.position.clone();
+        let knockbackDist = ability.knockback;
 
-        // Wall collision check for knockback
-        if (this.game && this.game.resolveWallCollision) {
-            const resolved = this.game.resolveWallCollision(oldX, oldZ, this.position.x, this.position.z, 0.5);
-            this.position.x = resolved.x;
-            this.position.z = resolved.z;
+        // Find valid knockback endpoint
+        if (this.game && this.game.checkWallCollision) {
+            while (knockbackDist > 0.5) {
+                const testPos = startPos.clone().addScaledVector(backDir, knockbackDist);
+                if (!this.game.checkWallCollision(testPos.x, testPos.z, 0.5)) {
+                    break;
+                }
+                knockbackDist -= 0.5;
+            }
         }
+
+        // Apply validated knockback
+        this.position.addScaledVector(backDir, knockbackDist);
 
         // Keep in bounds
         const bounds = 95;

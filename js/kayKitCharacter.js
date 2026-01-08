@@ -512,6 +512,49 @@ export class KayKitCharacter {
         return this.bones[boneName] || null;
     }
 
+    // Attach a weapon mesh to a bone
+    attachWeapon(weaponMesh, boneName = 'handR', offset = null, rotation = null) {
+        const bone = this.bones[boneName];
+        if (!bone) {
+            console.warn(`Bone ${boneName} not found for weapon attachment`);
+            // Fallback: attach to model root with offset
+            if (this.model) {
+                weaponMesh.position.set(0.3, 1.0, 0.1);
+                this.model.add(weaponMesh);
+                this.weapon = weaponMesh;
+                return true;
+            }
+            return false;
+        }
+
+        // Apply offset if provided
+        if (offset) {
+            weaponMesh.position.copy(offset);
+        } else {
+            weaponMesh.position.set(0, 0, 0);
+        }
+
+        // Apply rotation if provided
+        if (rotation) {
+            weaponMesh.rotation.set(rotation.x, rotation.y, rotation.z);
+        }
+
+        bone.add(weaponMesh);
+        this.weapon = weaponMesh;
+        console.log(`Weapon attached to ${boneName}`);
+        return true;
+    }
+
+    // Remove weapon
+    detachWeapon() {
+        if (this.weapon && this.weapon.parent) {
+            this.weapon.parent.remove(this.weapon);
+            if (this.weapon.geometry) this.weapon.geometry.dispose();
+            if (this.weapon.material) this.weapon.material.dispose();
+            this.weapon = null;
+        }
+    }
+
     dispose() {
         if (this.mixer) {
             this.mixer.stopAllAction();
