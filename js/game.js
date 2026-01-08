@@ -41,6 +41,7 @@ export class Game {
         this.respawnDelay = 10; // Seconds before respawn
         this.worldItems = null; // World item manager for loot drops
         this.fishingLake = null; // Fishing lake position and state
+        this.campfire = null; // Campfire position and state
 
         // Dungeon builder
         this.dungeonBuilder = null;
@@ -294,7 +295,11 @@ export class Game {
                 // Fishing lake corridor (branches off starting area to the left)
                 { x: -22, z: -5, width: 10, length: 15, rot: Math.PI / 2 },
                 // Fishing lake shore
-                { x: -35, z: -5, width: 18, length: 18, rot: 0 }
+                { x: -35, z: -5, width: 18, length: 18, rot: 0 },
+                // Campfire corridor (branches off starting area to the right)
+                { x: 22, z: -5, width: 10, length: 15, rot: Math.PI / 2 },
+                // Campfire clearing
+                { x: 35, z: -5, width: 16, length: 16, rot: 0 }
             ];
 
             // Build floor segments
@@ -338,6 +343,57 @@ export class Game {
                 interactionRange: 6,
                 isFishing: false,
                 bobberMesh: null
+            };
+
+            // Campfire setup
+            const campfireGroup = new THREE.Group();
+            campfireGroup.position.set(35, 0, -5);
+
+            // Stone ring around fire
+            const ringGeo = new THREE.TorusGeometry(1.2, 0.3, 8, 16);
+            const ringMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.15;
+            campfireGroup.add(ring);
+
+            // Logs
+            const logGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.5, 8);
+            const logMat = new THREE.MeshLambertMaterial({ color: 0x4a3525 });
+            for (let i = 0; i < 4; i++) {
+                const log = new THREE.Mesh(logGeo, logMat);
+                log.rotation.z = Math.PI / 2;
+                log.rotation.y = (i * Math.PI) / 4;
+                log.position.y = 0.2;
+                campfireGroup.add(log);
+            }
+
+            // Fire glow (emissive sphere)
+            const fireGeo = new THREE.SphereGeometry(0.6, 8, 8);
+            const fireMat = new THREE.MeshBasicMaterial({
+                color: 0xff6622,
+                transparent: true,
+                opacity: 0.8
+            });
+            const fireMesh = new THREE.Mesh(fireGeo, fireMat);
+            fireMesh.position.y = 0.5;
+            campfireGroup.add(fireMesh);
+
+            // Fire light
+            const fireLight = new THREE.PointLight(0xff6622, 2, 15);
+            fireLight.position.y = 1;
+            campfireGroup.add(fireLight);
+
+            this.scene.add(campfireGroup);
+
+            // Store campfire info
+            this.campfire = {
+                position: { x: 35, z: -5 },
+                mesh: campfireGroup,
+                fireMesh: fireMesh,
+                fireLight: fireLight,
+                interactionRange: 5,
+                isCooking: false
             };
 
             // Build walls around the dungeon perimeter
@@ -877,6 +933,9 @@ export class Game {
         // Update fishing lake interaction
         this.updateFishing(deltaTime);
 
+        // Update campfire interaction
+        this.updateCampfire(deltaTime);
+
         // Update UI
         this.updateUI();
     }
@@ -1303,6 +1362,404 @@ export class Game {
         }
     }
 
+    // ==================== CAMPFIRE / COOKING ====================
+
+    updateCampfire(deltaTime) {
+        if (!this.campfire || !this.player) return;
+
+        const dx = this.player.position.x - this.campfire.position.x;
+        const dz = this.player.position.z - this.campfire.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if near campfire
+        this.campfire.isNearCampfire = distance < this.campfire.interactionRange;
+
+        // Cancel cooking if player moves away
+        if (this.campfire.isCooking) {
+            const startPos = this.campfire.playerStartPos;
+            const movedDistance = Math.sqrt(
+                Math.pow(this.player.position.x - startPos.x, 2) +
+                Math.pow(this.player.position.z - startPos.z, 2)
+            );
+            if (movedDistance > 1.5) {
+                this.stopCooking('Moved away from campfire');
+            }
+        }
+
+        // Show/hide prompt
+        const cookingPrompt = document.getElementById('cooking-prompt');
+        const cookingPopup = document.getElementById('cooking-popup');
+
+        if (this.campfire.isCooking) {
+            cookingPrompt?.classList.remove('visible');
+
+            // Update cooking minigame
+            this.updateCookingMinigame(deltaTime);
+
+            // Animate fire
+            const time = performance.now() / 1000;
+            if (this.campfire.fireMesh) {
+                this.campfire.fireMesh.scale.y = 1 + Math.sin(time * 5) * 0.2;
+                this.campfire.fireLight.intensity = 2 + Math.sin(time * 7) * 0.5;
+            }
+        } else if (this.campfire.isNearCampfire) {
+            // Check if player has raw fish
+            const hasRawFish = this.playerHasRawFish();
+            if (hasRawFish) {
+                cookingPrompt?.classList.add('visible');
+            } else {
+                cookingPrompt?.classList.remove('visible');
+            }
+            cookingPopup?.classList.remove('visible');
+
+            // Animate fire gently
+            const time = performance.now() / 1000;
+            if (this.campfire.fireMesh) {
+                this.campfire.fireMesh.scale.y = 1 + Math.sin(time * 3) * 0.1;
+            }
+        } else {
+            cookingPrompt?.classList.remove('visible');
+            cookingPopup?.classList.remove('visible');
+        }
+    }
+
+    playerHasRawFish() {
+        if (!this.player.inventory) return false;
+        const rawFishIds = ['fish_small_trout', 'fish_bass', 'fish_golden_carp', 'fish_rainbow_trout', 'fish_legendary_koi'];
+        for (const fishId of rawFishIds) {
+            if (this.player.inventory.getItemCount(fishId) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    getRawFishInInventory() {
+        if (!this.player.inventory) return [];
+        const rawFishIds = ['fish_small_trout', 'fish_bass', 'fish_golden_carp', 'fish_rainbow_trout', 'fish_legendary_koi'];
+        const result = [];
+        for (const fishId of rawFishIds) {
+            const count = this.player.inventory.getItemCount(fishId);
+            if (count > 0) {
+                result.push({ id: fishId, count: count });
+            }
+        }
+        return result;
+    }
+
+    startCooking() {
+        if (!this.campfire || this.campfire.isCooking) return;
+        if (!this.playerHasRawFish()) return;
+
+        // Show food selection popup
+        this.showFoodSelection();
+    }
+
+    showFoodSelection() {
+        const selectionPopup = document.getElementById('cooking-selection');
+        const selectionGrid = document.getElementById('cooking-selection-grid');
+        const closeBtn = document.getElementById('cooking-selection-close');
+        if (!selectionPopup || !selectionGrid) return;
+
+        // Clear existing options
+        selectionGrid.innerHTML = '';
+
+        // Add fish options with icons
+        const fishInInventory = this.getRawFishInInventory();
+        const fishIcons = {
+            'fish_small_trout': '🐟',
+            'fish_bass': '🐟',
+            'fish_golden_carp': '🐠',
+            'fish_rainbow_trout': '🐡',
+            'fish_legendary_koi': '🎏'
+        };
+        const fishRarities = {
+            'fish_small_trout': 'common',
+            'fish_bass': 'common',
+            'fish_golden_carp': 'uncommon',
+            'fish_rainbow_trout': 'rare',
+            'fish_legendary_koi': 'epic'
+        };
+
+        for (const fish of fishInInventory) {
+            const div = document.createElement('div');
+            div.className = `cooking-fish-option rarity-${fishRarities[fish.id] || 'common'}`;
+            div.dataset.fishId = fish.id;
+            div.innerHTML = `
+                <span class="fish-icon">${fishIcons[fish.id] || '🐟'}</span>
+                <span class="fish-qty">${fish.count}</span>
+            `;
+            div.onclick = () => this.selectFishToCook(fish.id);
+            selectionGrid.appendChild(div);
+        }
+
+        // Setup close button
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                selectionPopup.classList.remove('visible');
+            };
+        }
+
+        selectionPopup.classList.add('visible');
+    }
+
+    selectFishToCook(fishId) {
+        // Hide selection popup
+        const selectionPopup = document.getElementById('cooking-selection');
+        selectionPopup?.classList.remove('visible');
+
+        // Remove fish from inventory
+        if (!this.player.inventory.removeItemById(fishId, 1)) {
+            return; // Failed to remove
+        }
+
+        // Start cooking minigame
+        this.campfire.isCooking = true;
+        this.campfire.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+        this.campfire.minigame = {
+            state: 'cooking',
+            fishId: fishId,
+            flipsRequired: 3 + Math.floor(Math.random() * 3), // 3-5 flips
+            flipsCompleted: 0,
+            totalScore: 0,
+            panX: 50, // Pan position (0-100)
+            panY: 50,
+            foodY: 0, // Food height above pan (0 = on pan)
+            foodVelocityY: 0,
+            foodRotation: 0,
+            isFlipping: false,
+            flipStartTime: 0
+        };
+
+        // Set food icon based on fish type
+        const fishIcons = {
+            'fish_small_trout': '🐟',
+            'fish_bass': '🐟',
+            'fish_golden_carp': '🐠',
+            'fish_rainbow_trout': '🐡',
+            'fish_legendary_koi': '🎏'
+        };
+        const foodEl = document.getElementById('cooking-food');
+        if (foodEl) {
+            foodEl.textContent = fishIcons[fishId] || '🐟';
+            foodEl.style.bottom = '100%';
+            foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
+        }
+
+        // Show cooking popup
+        const cookingPopup = document.getElementById('cooking-popup');
+        cookingPopup?.classList.add('visible');
+
+        // Face the fire
+        const dx = this.campfire.position.x - this.player.position.x;
+        const dz = this.campfire.position.z - this.player.position.z;
+        this.player.rotation = Math.atan2(dx, dz);
+
+        // Update flip counter
+        this.updateCookingUI();
+    }
+
+    updateCookingMinigame(deltaTime) {
+        const mg = this.campfire?.minigame;
+        if (!mg) return;
+
+        const statusText = document.getElementById('cooking-status-text');
+        const foodEl = document.getElementById('cooking-food');
+        const panContainer = document.getElementById('cooking-pan-container');
+
+        if (mg.isFlipping) {
+            // Food is in the air
+            mg.foodVelocityY -= 800 * deltaTime; // Gravity
+            mg.foodY += mg.foodVelocityY * deltaTime;
+            mg.foodRotation += 720 * deltaTime; // Spin faster
+
+            // Update food position visually
+            if (foodEl) {
+                // foodY is in pixels from the pan
+                foodEl.style.bottom = `calc(100% + ${mg.foodY}px)`;
+                foodEl.style.transform = `translateX(-50%) rotate(${mg.foodRotation}deg)`;
+            }
+
+            // Check if food has landed
+            if (mg.foodY <= 0 && mg.foodVelocityY < 0) {
+                mg.isFlipping = false;
+                mg.foodY = 0;
+                mg.foodVelocityY = 0;
+
+                // Calculate score based on how centered the pan is
+                // panX is 20-80, centered at 50
+                const centeredness = 100 - Math.abs(mg.panX - 50) * 3.33;
+                const flipScore = Math.max(0, Math.floor(centeredness));
+
+                mg.totalScore += flipScore;
+                mg.flipsCompleted++;
+
+                // Show feedback rating
+                const ratingEl = document.getElementById('cooking-rating-value');
+                if (ratingEl) {
+                    let rating = 'Good';
+                    let ratingClass = 'good';
+                    if (flipScore >= 90) { rating = 'PERFECT!'; ratingClass = 'perfect'; }
+                    else if (flipScore >= 70) { rating = 'Great!'; ratingClass = 'great'; }
+                    else if (flipScore < 40) { rating = 'Oops!'; ratingClass = 'poor'; }
+                    ratingEl.textContent = rating;
+                    ratingEl.className = ratingClass;
+                }
+
+                if (foodEl) {
+                    foodEl.style.bottom = '100%';
+                    foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
+                }
+
+                // Check if done
+                if (mg.flipsCompleted >= mg.flipsRequired) {
+                    setTimeout(() => this.finishCooking(), 500);
+                } else {
+                    this.updateCookingUI();
+                }
+            }
+        } else {
+            // Waiting for flip
+            if (statusText) {
+                statusText.textContent = 'Flick up to flip!';
+            }
+        }
+
+        // Update pan position based on mouse (pan moves horizontally)
+        if (panContainer) {
+            // panX ranges from 20 to 80, translate to left offset
+            const offset = (mg.panX - 50) * 1.5; // Convert to pixel offset
+            panContainer.style.transform = `translateX(${offset}px)`;
+        }
+        if (foodEl && !mg.isFlipping) {
+            foodEl.style.left = '50%';
+        }
+    }
+
+    updateCookingUI() {
+        const mg = this.campfire?.minigame;
+        if (!mg) return;
+
+        // Update flip counter
+        const flipCounter = document.getElementById('cooking-flips-value');
+        if (flipCounter) {
+            flipCounter.textContent = `${mg.flipsCompleted} / ${mg.flipsRequired}`;
+        }
+
+        // Update quality bar
+        const avgScore = mg.flipsCompleted > 0 ? mg.totalScore / mg.flipsCompleted : 0;
+        const qualityFill = document.getElementById('cooking-quality-fill');
+        if (qualityFill) {
+            qualityFill.style.width = `${avgScore}%`;
+            qualityFill.className = '';
+            if (avgScore >= 80) qualityFill.classList.add('perfect');
+            else if (avgScore >= 60) qualityFill.classList.add('great');
+            else if (avgScore >= 40) qualityFill.classList.add('good');
+        }
+
+        // Update rating text
+        const ratingEl = document.getElementById('cooking-rating-value');
+        if (ratingEl) {
+            let rating = 'Ready...';
+            let ratingClass = '';
+            if (mg.flipsCompleted > 0) {
+                if (avgScore >= 80) { rating = 'Perfect!'; ratingClass = 'perfect'; }
+                else if (avgScore >= 60) { rating = 'Great!'; ratingClass = 'great'; }
+                else if (avgScore >= 40) { rating = 'Good'; ratingClass = 'good'; }
+                else if (avgScore >= 20) { rating = 'Okay'; ratingClass = 'okay'; }
+                else { rating = 'Poor'; ratingClass = 'poor'; }
+            }
+            ratingEl.textContent = rating;
+            ratingEl.className = ratingClass;
+        }
+    }
+
+    handleCookingMouseMove(mouseX, mouseY) {
+        if (!this.campfire?.minigame) return;
+        const mg = this.campfire.minigame;
+
+        // Move pan with mouse X
+        const rect = document.getElementById('cooking-game-area')?.getBoundingClientRect();
+        if (rect) {
+            const relativeX = (mouseX - rect.left) / rect.width;
+            mg.panX = Math.max(20, Math.min(80, relativeX * 100));
+        }
+    }
+
+    handleCookingFlick(velocity) {
+        const mg = this.campfire?.minigame;
+        if (!mg || mg.isFlipping) return;
+
+        // Trigger flip if velocity is high enough
+        if (velocity > 1.5) {
+            mg.isFlipping = true;
+            mg.foodVelocityY = Math.min(400, velocity * 100); // Launch velocity based on flick speed
+            mg.flipStartTime = performance.now();
+        }
+    }
+
+    finishCooking() {
+        const mg = this.campfire?.minigame;
+        if (!mg) return;
+
+        const avgScore = mg.totalScore / mg.flipsRequired;
+        const fishId = mg.fishId;
+
+        // Determine cooked fish quality based on score
+        const cookedFishMap = {
+            'fish_small_trout': 'cooked_small_trout',
+            'fish_bass': 'cooked_bass',
+            'fish_golden_carp': 'cooked_golden_carp',
+            'fish_rainbow_trout': 'cooked_rainbow_trout',
+            'fish_legendary_koi': 'cooked_legendary_koi'
+        };
+
+        const cookedFishId = cookedFishMap[fishId];
+
+        this.stopCooking();
+
+        // Add cooked fish to inventory
+        if (cookedFishId && this.player.inventory) {
+            this.player.inventory.addItemById(cookedFishId, 1);
+        }
+
+        // Show result
+        const quality = avgScore >= 80 ? 'Perfectly' : avgScore >= 50 ? 'Well' : 'Poorly';
+        this.showCookingMessage(`${quality} cooked! (Score: ${Math.floor(avgScore)})`,
+            avgScore >= 80 ? 'epic' : avgScore >= 50 ? 'uncommon' : 'common');
+    }
+
+    stopCooking(message = null) {
+        if (!this.campfire) return;
+
+        this.campfire.isCooking = false;
+        this.campfire.minigame = null;
+        this.campfire.playerStartPos = null;
+
+        // Hide popups
+        const cookingPopup = document.getElementById('cooking-popup');
+        const selectionPopup = document.getElementById('cooking-selection');
+        cookingPopup?.classList.remove('visible');
+        selectionPopup?.classList.remove('visible');
+
+        if (message) {
+            this.showCookingMessage(message);
+        }
+    }
+
+    showCookingMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('cooking-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+        }
+    }
+
     // Called when F is pressed during fishing
     fishingAction() {
         if (!this.fishingLake?.isFishing) return;
@@ -1662,6 +2119,22 @@ export class Game {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('~', fishPos.x, fishPos.y);
             }
+
+            // Draw campfire area on minimap
+            if (this.campfire) {
+                // Draw campfire clearing
+                ctx.fillStyle = 'rgba(80, 50, 30, 0.5)';
+                const campPos = toMinimap(this.campfire.position.x - 5, this.campfire.position.z - 5);
+                ctx.fillRect(campPos.x, campPos.y, 10 * scale, 10 * scale);
+
+                // Draw campfire icon
+                ctx.fillStyle = '#ff6622';
+                const firePos = toMinimap(this.campfire.position.x, this.campfire.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔥', firePos.x, firePos.y);
+            }
         } else {
             // Simple square for other modes
             const p = toMinimap(-15, -15);
@@ -1722,7 +2195,9 @@ export class Game {
             // Starting area walls (left wall split for fishing lake corridor)
             { x1: -12, z1: -15, x2: -12, z2: -12 },    // Left wall bottom section
             { x1: -12, z1: 3, x2: -12, z2: 0 },        // Left wall top section (gap from z=-12 to z=3)
-            { x1: 12, z1: -15, x2: 12, z2: 0 },        // Right wall
+            // Right wall split for campfire corridor
+            { x1: 12, z1: -15, x2: 12, z2: -12 },      // Right wall bottom section
+            { x1: 12, z1: 3, x2: 12, z2: 0 },          // Right wall top section (gap from z=-12 to z=3)
             { x1: -12, z1: -15, x2: 12, z2: -15 },     // Back wall
 
             // Fishing lake area walls
@@ -1731,6 +2206,13 @@ export class Game {
             { x1: -27, z1: -14, x2: -44, z2: -14 },    // Lake bottom wall
             { x1: -27, z1: 4, x2: -44, z2: 4 },        // Lake top wall
             { x1: -44, z1: -14, x2: -44, z2: 4 },      // Lake back wall
+
+            // Campfire area walls
+            { x1: 12, z1: -12, x2: 27, z2: -12 },      // Corridor bottom wall
+            { x1: 12, z1: 3, x2: 27, z2: 3 },          // Corridor top wall
+            { x1: 27, z1: -13, x2: 43, z2: -13 },      // Campfire bottom wall
+            { x1: 27, z1: 3, x2: 43, z2: 3 },          // Campfire top wall
+            { x1: 43, z1: -13, x2: 43, z2: 3 },        // Campfire back wall
 
             // First corridor walls (x=-10 to 10, z=0 to 50)
             { x1: -10, z1: 0, x2: -10, z2: 50 },       // Left wall

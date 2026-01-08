@@ -27,6 +27,11 @@ export class InputManager {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
 
+        // Mouse velocity tracking for cooking flicks
+        this.mouseVelocityY = 0;
+        this.lastMouseMoveTime = 0;
+        this.prevMouseY = 0;
+
         // Mouse world position (for ability aiming)
         this.mouseWorldPos = new THREE.Vector3();
         this.raycaster = new THREE.Raycaster();
@@ -119,6 +124,15 @@ export class InputManager {
                     break;
                 } else if (this.game.fishingLake?.minigame?.state === 'qte') {
                     // Ignore F during QTE (use WASD)
+                    break;
+                }
+
+                // Check for campfire cooking interaction
+                if (this.game.campfire?.isNearCampfire && !this.game.campfire?.isCooking) {
+                    this.game.startCooking();
+                    break;
+                } else if (this.game.campfire?.isCooking) {
+                    // Ignore F during cooking
                     break;
                 }
 
@@ -412,6 +426,27 @@ export class InputManager {
     onMouseMove(e) {
         const deltaX = e.clientX - this.lastMouseX;
         const deltaY = e.clientY - this.lastMouseY;
+
+        // Track mouse velocity for cooking flicks
+        const now = performance.now();
+        const dt = now - this.lastMouseMoveTime;
+        if (dt > 0) {
+            // Velocity is negative when moving up (clientY decreases going up)
+            this.mouseVelocityY = (e.clientY - this.prevMouseY) / Math.max(dt, 1);
+        }
+        this.prevMouseY = e.clientY;
+        this.lastMouseMoveTime = now;
+
+        // Handle cooking minigame mouse movement
+        if (this.game.campfire?.isCooking && this.game.campfire?.minigame) {
+            this.game.handleCookingMouseMove(e.clientX, e.clientY);
+
+            // Check for upward flick (fast upward mouse movement)
+            // velocityY negative = upward movement
+            if (this.mouseVelocityY < -1.5) {
+                this.game.handleCookingFlick(-this.mouseVelocityY);
+            }
+        }
 
         // Track if we're dragging
         if ((this.leftMouseDown || this.rightMouseDown) && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {

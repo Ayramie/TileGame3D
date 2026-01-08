@@ -475,14 +475,14 @@ export const ITEMS = {
         stats: { damage: 5, maxHealth: 20 }
     },
 
-    // === FISH ===
+    // === RAW FISH ===
     fish_small_trout: {
         id: 'fish_small_trout',
-        name: 'Small Trout',
+        name: 'Raw Small Trout',
         type: ItemType.MATERIAL,
         rarity: ItemRarity.COMMON,
         icon: 'fish_common',
-        description: 'A small freshwater fish',
+        description: 'A small freshwater fish. Cook it at a campfire!',
         stackable: true,
         maxStack: 99,
         value: 5
@@ -490,11 +490,11 @@ export const ITEMS = {
 
     fish_bass: {
         id: 'fish_bass',
-        name: 'Bass',
+        name: 'Raw Bass',
         type: ItemType.MATERIAL,
         rarity: ItemRarity.COMMON,
         icon: 'fish_common',
-        description: 'A common bass',
+        description: 'A common bass. Cook it at a campfire!',
         stackable: true,
         maxStack: 99,
         value: 8
@@ -502,11 +502,11 @@ export const ITEMS = {
 
     fish_golden_carp: {
         id: 'fish_golden_carp',
-        name: 'Golden Carp',
+        name: 'Raw Golden Carp',
         type: ItemType.MATERIAL,
         rarity: ItemRarity.UNCOMMON,
         icon: 'fish_uncommon',
-        description: 'A beautiful golden-scaled carp',
+        description: 'A beautiful golden-scaled carp. Cook it at a campfire!',
         stackable: true,
         maxStack: 99,
         value: 20
@@ -514,11 +514,11 @@ export const ITEMS = {
 
     fish_rainbow_trout: {
         id: 'fish_rainbow_trout',
-        name: 'Rainbow Trout',
+        name: 'Raw Rainbow Trout',
         type: ItemType.MATERIAL,
         rarity: ItemRarity.RARE,
         icon: 'fish_rare',
-        description: 'A prized rainbow trout with shimmering scales',
+        description: 'A prized rainbow trout. Cook it at a campfire!',
         stackable: true,
         maxStack: 99,
         value: 50
@@ -526,14 +526,108 @@ export const ITEMS = {
 
     fish_legendary_koi: {
         id: 'fish_legendary_koi',
-        name: 'Legendary Koi',
+        name: 'Raw Legendary Koi',
         type: ItemType.MATERIAL,
         rarity: ItemRarity.EPIC,
         icon: 'fish_epic',
-        description: 'An ancient koi said to bring great fortune',
+        description: 'An ancient koi. Cook it at a campfire!',
         stackable: true,
         maxStack: 99,
         value: 150
+    },
+
+    // === COOKED FISH (Consumables) ===
+    cooked_small_trout: {
+        id: 'cooked_small_trout',
+        name: 'Grilled Trout',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.COMMON,
+        icon: 'fish_cooked',
+        description: 'Restores 30 HP',
+        stackable: true,
+        maxStack: 20,
+        value: 15,
+        cooldown: 1.0,
+        useEffect: (player) => {
+            const healAmount = 30;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            return { type: 'heal', amount: healAmount };
+        }
+    },
+
+    cooked_bass: {
+        id: 'cooked_bass',
+        name: 'Grilled Bass',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.COMMON,
+        icon: 'fish_cooked',
+        description: 'Restores 40 HP',
+        stackable: true,
+        maxStack: 20,
+        value: 20,
+        cooldown: 1.0,
+        useEffect: (player) => {
+            const healAmount = 40;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            return { type: 'heal', amount: healAmount };
+        }
+    },
+
+    cooked_golden_carp: {
+        id: 'cooked_golden_carp',
+        name: 'Golden Carp Fillet',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'fish_cooked_uncommon',
+        description: 'Restores 60 HP',
+        stackable: true,
+        maxStack: 20,
+        value: 50,
+        cooldown: 1.0,
+        useEffect: (player) => {
+            const healAmount = 60;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            return { type: 'heal', amount: healAmount };
+        }
+    },
+
+    cooked_rainbow_trout: {
+        id: 'cooked_rainbow_trout',
+        name: 'Rainbow Trout Steak',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.RARE,
+        icon: 'fish_cooked_rare',
+        description: 'Restores 100 HP',
+        stackable: true,
+        maxStack: 20,
+        value: 120,
+        cooldown: 1.0,
+        useEffect: (player) => {
+            const healAmount = 100;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            return { type: 'heal', amount: healAmount };
+        }
+    },
+
+    cooked_legendary_koi: {
+        id: 'cooked_legendary_koi',
+        name: 'Legendary Koi Feast',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.EPIC,
+        icon: 'fish_cooked_epic',
+        description: 'Restores 150 HP and grants +10% damage for 30s',
+        stackable: true,
+        maxStack: 10,
+        value: 300,
+        cooldown: 1.0,
+        useEffect: (player) => {
+            const healAmount = 150;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            if (player.applyBuff) {
+                player.applyBuff('damage', { multiplier: 1.1, duration: 30 });
+            }
+            return { type: 'heal', amount: healAmount };
+        }
     },
 
     // === MATERIALS ===
@@ -649,11 +743,17 @@ export function getItemIcon(item) {
         'mat_essence': '✨',
         'mat_key': '🔑',
 
-        // Fish
+        // Fish (raw)
         'fish_common': '🐟',
         'fish_uncommon': '🐠',
         'fish_rare': '🐡',
         'fish_epic': '🎏',
+
+        // Fish (cooked)
+        'fish_cooked': '🍖',
+        'fish_cooked_uncommon': '🍗',
+        'fish_cooked_rare': '🥩',
+        'fish_cooked_epic': '🍱',
 
         // Quest
         'quest_crown': '👑'
