@@ -75,6 +75,25 @@ export const ITEMS = {
         }
     },
 
+    infinite_health_potion: {
+        id: 'infinite_health_potion',
+        name: 'Infinite Health Potion',
+        type: ItemType.CONSUMABLE,
+        rarity: ItemRarity.EPIC,
+        icon: 'potion_red_infinite',
+        description: 'Restores 100 HP. Infinite charges.',
+        stackable: false,
+        maxStack: 1,
+        value: 0,
+        cooldown: 10.0,
+        infinite: true,  // Does not consume on use
+        useEffect: (player) => {
+            const healAmount = 100;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            return { type: 'heal', amount: healAmount };
+        }
+    },
+
     speed_potion: {
         id: 'speed_potion',
         name: 'Speed Potion',
@@ -525,6 +544,7 @@ export function getItemIcon(item) {
         // Consumables
         'potion_red': '🧪',
         'potion_red_large': '🧪',
+        'potion_red_infinite': '🏺',
         'potion_speed': '💨',
         'potion_strength': '💪',
 

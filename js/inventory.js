@@ -132,8 +132,10 @@ export class Inventory {
             this.itemCooldowns[item.id] = item.cooldown;
         }
 
-        // Consume item
-        this.removeItem(slotIndex, 1);
+        // Consume item (unless infinite)
+        if (!item.infinite) {
+            this.removeItem(slotIndex, 1);
+        }
 
         return result;
     }
@@ -342,11 +344,16 @@ export class Inventory {
 
     // Give starter items for a class
     giveStarterItems(className) {
-        // Everyone gets some health potions
-        this.addItemById('health_potion_small', 5);
+        // Everyone gets the infinite health potion
+        this.addItemById('infinite_health_potion', 1);
 
-        // Assign to hotbar slot 1
-        this.hotbar[0] = 'health_potion_small';
+        // Find the slot where infinite potion was added and assign to hotbar slot 1
+        for (let i = 0; i < this.slots.length; i++) {
+            if (this.slots[i] && this.slots[i].definition.id === 'infinite_health_potion') {
+                this.hotbar[0] = { inventorySlot: i };
+                break;
+            }
+        }
 
         // Class-specific starter gear could be added here
         // For now, players start with no equipment
