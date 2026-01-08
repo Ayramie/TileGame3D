@@ -1393,8 +1393,8 @@ export class Game {
         if (this.campfire.isCooking) {
             cookingPrompt?.classList.remove('visible');
 
-            // Update cooking minigame
-            this.updateCookingMinigame(deltaTime);
+            // Update auto-cooking
+            this.updateAutoCook(deltaTime);
 
             // Animate fire
             const time = performance.now() / 1000;
@@ -1508,293 +1508,112 @@ export class Game {
         const selectionPopup = document.getElementById('cooking-selection');
         selectionPopup?.classList.remove('visible');
 
-        // Remove fish from inventory
-        if (!this.player.inventory.removeItemById(fishId, 1)) {
-            return; // Failed to remove
-        }
+        // Count how many of this fish we have
+        const fishCount = this.player.inventory.getItemCount(fishId);
+        if (fishCount <= 0) return;
 
-        // Start cooking minigame
+        // Start auto-cooking
         this.campfire.isCooking = true;
         this.campfire.playerStartPos = {
             x: this.player.position.x,
             z: this.player.position.z
         };
-        this.campfire.minigame = {
-            state: 'cooking',
+        this.campfire.autoCook = {
             fishId: fishId,
-            flipsRequired: 3 + Math.floor(Math.random() * 3), // 3-5 flips
-            flipsCompleted: 0,
-            totalScore: 0,
-            panX: 50, // Pan position (0-100, 20-80 clamped)
-            foodX: 50, // Food X position (independent of pan when in air)
-            foodY: 0, // Food height above pan (0 = on pan)
-            foodVelocityX: 0, // Horizontal velocity
-            foodVelocityY: 0, // Vertical velocity
-            foodRotation: 0,
-            isFlipping: false,
-            flipStartTime: 0,
-            lastPanX: 50 // Track pan movement for momentum
+            remaining: fishCount,
+            total: fishCount,
+            timer: 0,
+            cookTime: 2.0 // 2 seconds per fish
         };
-
-        // Set food icon based on fish type
-        const fishIcons = {
-            'fish_small_trout': '🐟',
-            'fish_bass': '🐟',
-            'fish_golden_carp': '🐠',
-            'fish_rainbow_trout': '🐡',
-            'fish_legendary_koi': '🎏'
-        };
-        const foodEl = document.getElementById('cooking-food');
-        if (foodEl) {
-            foodEl.textContent = fishIcons[fishId] || '🐟';
-            foodEl.style.bottom = '100%';
-            foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
-        }
-
-        // Show cooking popup
-        const cookingPopup = document.getElementById('cooking-popup');
-        cookingPopup?.classList.add('visible');
 
         // Face the fire
         const dx = this.campfire.position.x - this.player.position.x;
         const dz = this.campfire.position.z - this.player.position.z;
         this.player.rotation = Math.atan2(dx, dz);
 
-        // Update flip counter
-        this.updateCookingUI();
+        // Show cooking popup with progress
+        const cookingPopup = document.getElementById('cooking-popup');
+        cookingPopup?.classList.add('visible');
+
+        this.updateAutoCookUI();
     }
 
-    updateCookingMinigame(deltaTime) {
-        const mg = this.campfire?.minigame;
-        if (!mg) return;
+    updateAutoCook(deltaTime) {
+        const ac = this.campfire?.autoCook;
+        if (!ac) return;
 
-        const statusText = document.getElementById('cooking-status-text');
-        const foodEl = document.getElementById('cooking-food');
-        const panContainer = document.getElementById('cooking-pan-container');
+        ac.timer += deltaTime;
 
-        if (mg.isFlipping) {
-            // Food is in the air - apply physics
-            mg.foodVelocityY -= 1200 * deltaTime; // Gravity (stronger for snappier feel)
-            mg.foodY += mg.foodVelocityY * deltaTime;
-            mg.foodX += mg.foodVelocityX * deltaTime; // Horizontal movement
-            mg.foodRotation += 540 * deltaTime; // Spin
-
-            // Keep food X within bounds (10-90)
-            mg.foodX = Math.max(10, Math.min(90, mg.foodX));
-
-            // Update food position visually
-            if (foodEl) {
-                // Position food based on its own X coordinate
-                const xOffset = (mg.foodX - 50) * 2;
-                foodEl.style.left = `calc(50% + ${xOffset}px)`;
-                foodEl.style.bottom = `${50 + mg.foodY}px`;
-                foodEl.style.transform = `translateX(-50%) rotate(${mg.foodRotation}deg)`;
-            }
-
-            // Check if food has come back down to pan level
-            if (mg.foodY <= 0 && mg.foodVelocityY < 0) {
-                mg.isFlipping = false;
-                mg.foodY = 0;
-                mg.foodVelocityY = 0;
-                mg.foodVelocityX = 0;
-
-                // Calculate catch accuracy - how close is food X to pan X?
-                const catchDistance = Math.abs(mg.foodX - mg.panX);
-                console.log(`Catch: foodX=${mg.foodX.toFixed(1)}, panX=${mg.panX.toFixed(1)}, distance=${catchDistance.toFixed(1)}`);
-
-                // Pan catching zone - the pan is wide so be generous
-                let flipScore = 0;
-                let caught = false;
-
-                if (catchDistance < 8) {
-                    // Perfect catch - right in the center
-                    flipScore = 100;
-                    caught = true;
-                } else if (catchDistance < 15) {
-                    // Good catch
-                    flipScore = Math.floor(100 - catchDistance * 3);
-                    caught = true;
-                } else if (catchDistance < 22) {
-                    // Barely caught it
-                    flipScore = Math.floor(70 - catchDistance * 2);
-                    caught = true;
-                } else {
-                    // Missed! Food fell off the pan
-                    flipScore = 0;
-                    caught = false;
-                }
-
-                mg.totalScore += flipScore;
-                mg.flipsCompleted++;
-
-                // Snap food to pan position after catch
-                mg.foodX = mg.panX;
-
-                // Show feedback rating
-                const ratingEl = document.getElementById('cooking-rating-value');
-                if (ratingEl) {
-                    let rating = 'Dropped!';
-                    let ratingClass = 'poor';
-                    if (flipScore >= 90) { rating = 'PERFECT!'; ratingClass = 'perfect'; }
-                    else if (flipScore >= 70) { rating = 'Great!'; ratingClass = 'great'; }
-                    else if (flipScore >= 40) { rating = 'Good'; ratingClass = 'good'; }
-                    else if (caught) { rating = 'Close!'; ratingClass = 'okay'; }
-                    ratingEl.textContent = rating;
-                    ratingEl.className = ratingClass;
-                }
-
-                // Food position will be updated in the main loop to follow pan
-
-                // Check if done
-                if (mg.flipsCompleted >= mg.flipsRequired) {
-                    setTimeout(() => this.finishCooking(), 500);
-                } else {
-                    this.updateCookingUI();
-                }
-            }
-        } else {
-            // Waiting for flip - food follows pan
-            mg.foodX = mg.panX;
-
-            if (statusText) {
-                statusText.textContent = 'Flick up to flip!';
-            }
-        }
-
-        // Update pan position (translate the pan element, not container)
-        const panEl = document.getElementById('cooking-pan');
-        if (panEl) {
-            const panOffset = (mg.panX - 50) * 2;
-            panEl.style.transform = `translateX(${panOffset}px)`;
-        }
-
-        // Update food position
-        if (foodEl) {
-            if (mg.isFlipping) {
-                // Food moves independently while in air
-                const foodOffset = (mg.foodX - 50) * 2;
-                foodEl.style.left = `calc(50% + ${foodOffset}px)`;
-            } else {
-                // Food follows pan when not flipping
-                const panOffset = (mg.panX - 50) * 2;
-                foodEl.style.left = `calc(50% + ${panOffset}px)`;
-                foodEl.style.bottom = '50px';
-                foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
-            }
-        }
-    }
-
-    updateCookingUI() {
-        const mg = this.campfire?.minigame;
-        if (!mg) return;
-
-        // Update flip counter
-        const flipCounter = document.getElementById('cooking-flips-value');
-        if (flipCounter) {
-            flipCounter.textContent = `${mg.flipsCompleted} / ${mg.flipsRequired}`;
-        }
-
-        // Update quality bar
-        const avgScore = mg.flipsCompleted > 0 ? mg.totalScore / mg.flipsCompleted : 0;
+        // Update progress bar
+        const progress = ac.timer / ac.cookTime;
         const qualityFill = document.getElementById('cooking-quality-fill');
         if (qualityFill) {
-            qualityFill.style.width = `${avgScore}%`;
-            qualityFill.className = '';
-            if (avgScore >= 80) qualityFill.classList.add('perfect');
-            else if (avgScore >= 60) qualityFill.classList.add('great');
-            else if (avgScore >= 40) qualityFill.classList.add('good');
+            qualityFill.style.width = `${progress * 100}%`;
         }
 
-        // Update rating text
+        // Check if current fish is done
+        if (ac.timer >= ac.cookTime) {
+            ac.timer = 0;
+
+            // Remove raw fish and add cooked fish
+            const cookedFishMap = {
+                'fish_small_trout': 'cooked_small_trout',
+                'fish_bass': 'cooked_bass',
+                'fish_golden_carp': 'cooked_golden_carp',
+                'fish_rainbow_trout': 'cooked_rainbow_trout',
+                'fish_legendary_koi': 'cooked_legendary_koi'
+            };
+
+            if (this.player.inventory.removeItemById(ac.fishId, 1)) {
+                const cookedId = cookedFishMap[ac.fishId];
+                if (cookedId) {
+                    this.player.inventory.addItemById(cookedId, 1);
+                }
+            }
+
+            ac.remaining--;
+            this.updateAutoCookUI();
+
+            // Check if all done
+            if (ac.remaining <= 0) {
+                const total = ac.total;
+                this.stopCooking();
+                this.showCookingMessage(`Cooked ${total} fish!`, 'uncommon');
+            }
+        }
+    }
+
+    updateAutoCookUI() {
+        const ac = this.campfire?.autoCook;
+        if (!ac) return;
+
+        const flipsValue = document.getElementById('cooking-flips-value');
+        if (flipsValue) {
+            const cooked = ac.total - ac.remaining;
+            flipsValue.textContent = `${cooked} / ${ac.total}`;
+        }
+
+        const statusText = document.getElementById('cooking-status-text');
+        if (statusText) {
+            statusText.textContent = `Cooking... ${ac.remaining} remaining`;
+        }
+
         const ratingEl = document.getElementById('cooking-rating-value');
         if (ratingEl) {
-            let rating = 'Ready...';
-            let ratingClass = '';
-            if (mg.flipsCompleted > 0) {
-                if (avgScore >= 80) { rating = 'Perfect!'; ratingClass = 'perfect'; }
-                else if (avgScore >= 60) { rating = 'Great!'; ratingClass = 'great'; }
-                else if (avgScore >= 40) { rating = 'Good'; ratingClass = 'good'; }
-                else if (avgScore >= 20) { rating = 'Okay'; ratingClass = 'okay'; }
-                else { rating = 'Poor'; ratingClass = 'poor'; }
-            }
-            ratingEl.textContent = rating;
-            ratingEl.className = ratingClass;
-        }
-    }
-
-    handleCookingMouseMove(mouseX, mouseY) {
-        if (!this.campfire?.minigame) return;
-        const mg = this.campfire.minigame;
-
-        // Store previous pan position for momentum calculation
-        const prevPanX = mg.panX;
-
-        // Move pan with mouse X
-        const rect = document.getElementById('cooking-game-area')?.getBoundingClientRect();
-        if (rect) {
-            const relativeX = (mouseX - rect.left) / rect.width;
-            mg.panX = Math.max(20, Math.min(80, relativeX * 100));
-        }
-
-        // Track pan movement delta for momentum transfer
-        mg.panDeltaX = mg.panX - prevPanX;
-    }
-
-    handleCookingFlick(velocity) {
-        const mg = this.campfire?.minigame;
-        if (!mg || mg.isFlipping) return;
-
-        // Trigger flip if velocity is high enough
-        if (velocity > 1.5) {
-            mg.isFlipping = true;
-            // Launch high for more air time
-            mg.foodVelocityY = 450;
-
-            // Random horizontal velocity - food flies unpredictably!
-            // Range: -40 to +40 units per second
-            const randomDrift = (Math.random() - 0.5) * 80;
-            mg.foodVelocityX = randomDrift;
-
-            mg.flipStartTime = performance.now();
+            ratingEl.textContent = 'Cooking...';
+            ratingEl.className = '';
         }
     }
 
     finishCooking() {
-        const mg = this.campfire?.minigame;
-        if (!mg) return;
-
-        const avgScore = mg.totalScore / mg.flipsRequired;
-        const fishId = mg.fishId;
-
-        // Determine cooked fish quality based on score
-        const cookedFishMap = {
-            'fish_small_trout': 'cooked_small_trout',
-            'fish_bass': 'cooked_bass',
-            'fish_golden_carp': 'cooked_golden_carp',
-            'fish_rainbow_trout': 'cooked_rainbow_trout',
-            'fish_legendary_koi': 'cooked_legendary_koi'
-        };
-
-        const cookedFishId = cookedFishMap[fishId];
-
-        this.stopCooking();
-
-        // Add cooked fish to inventory
-        if (cookedFishId && this.player.inventory) {
-            this.player.inventory.addItemById(cookedFishId, 1);
-        }
-
-        // Show result
-        const quality = avgScore >= 80 ? 'Perfectly' : avgScore >= 50 ? 'Well' : 'Poorly';
-        this.showCookingMessage(`${quality} cooked! (Score: ${Math.floor(avgScore)})`,
-            avgScore >= 80 ? 'epic' : avgScore >= 50 ? 'uncommon' : 'common');
+        // Not used in auto-cook mode
     }
 
     stopCooking(message = null) {
         if (!this.campfire) return;
 
         this.campfire.isCooking = false;
-        this.campfire.minigame = null;
+        this.campfire.autoCook = null;
         this.campfire.playerStartPos = null;
 
         // Hide popups
@@ -1802,6 +1621,12 @@ export class Game {
         const selectionPopup = document.getElementById('cooking-selection');
         cookingPopup?.classList.remove('visible');
         selectionPopup?.classList.remove('visible');
+
+        // Reset progress bar
+        const qualityFill = document.getElementById('cooking-quality-fill');
+        if (qualityFill) {
+            qualityFill.style.width = '0%';
+        }
 
         if (message) {
             this.showCookingMessage(message);
