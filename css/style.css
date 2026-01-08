@@ -1429,7 +1429,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    transition: transform 0.05s ease-out;
 }
 
 #cooking-pan {
@@ -1439,8 +1438,8 @@ body {
     border: 3px solid #666;
     border-radius: 12px 12px 50% 50%;
     position: relative;
-    transform-origin: center bottom;
-    transition: transform 0.05s ease;
+    transform-origin: center center;
+    transition: transform 0.03s ease-out;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
@@ -1459,7 +1458,7 @@ body {
 #cooking-food {
     position: absolute;
     left: 50%;
-    bottom: 100%;
+    bottom: 50px;
     transform: translateX(-50%);
     width: 80px;
     height: 80px;
@@ -1469,6 +1468,7 @@ body {
     justify-content: center;
     transition: none;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+    z-index: 10;
 }
 
 #cooking-food.flipping {

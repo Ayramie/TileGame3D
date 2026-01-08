@@ -1585,9 +1585,9 @@ export class Game {
             // Update food position visually
             if (foodEl) {
                 // Position food based on its own X coordinate
-                const xOffset = (mg.foodX - 50) * 2; // Convert to pixel offset
+                const xOffset = (mg.foodX - 50) * 2;
                 foodEl.style.left = `calc(50% + ${xOffset}px)`;
-                foodEl.style.bottom = `calc(100% + ${mg.foodY}px)`;
+                foodEl.style.bottom = `${50 + mg.foodY}px`;
                 foodEl.style.transform = `translateX(-50%) rotate(${mg.foodRotation}deg)`;
             }
 
@@ -1642,11 +1642,7 @@ export class Game {
                     ratingEl.className = ratingClass;
                 }
 
-                if (foodEl) {
-                    foodEl.style.left = '50%';
-                    foodEl.style.bottom = '100%';
-                    foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
-                }
+                // Food position will be updated in the main loop to follow pan
 
                 // Check if done
                 if (mg.flipsCompleted >= mg.flipsRequired) {
@@ -1664,16 +1660,26 @@ export class Game {
             }
         }
 
-        // Update pan position based on mouse (pan moves horizontally)
-        if (panContainer) {
-            // panX ranges from 20 to 80, translate to pixel offset
-            const offset = (mg.panX - 50) * 2;
-            panContainer.style.transform = `translateX(${offset}px)`;
+        // Update pan position (translate the pan element, not container)
+        const panEl = document.getElementById('cooking-pan');
+        if (panEl) {
+            const panOffset = (mg.panX - 50) * 2;
+            panEl.style.transform = `translateX(${panOffset}px)`;
         }
 
-        // Update food position when not flipping (follows pan)
-        if (foodEl && !mg.isFlipping) {
-            foodEl.style.left = '50%';
+        // Update food position
+        if (foodEl) {
+            if (mg.isFlipping) {
+                // Food moves independently while in air
+                const foodOffset = (mg.foodX - 50) * 2;
+                foodEl.style.left = `calc(50% + ${foodOffset}px)`;
+            } else {
+                // Food follows pan when not flipping
+                const panOffset = (mg.panX - 50) * 2;
+                foodEl.style.left = `calc(50% + ${panOffset}px)`;
+                foodEl.style.bottom = '50px';
+                foodEl.style.transform = 'translateX(-50%) rotate(0deg)';
+            }
         }
     }
 
