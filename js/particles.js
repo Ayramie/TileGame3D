@@ -500,237 +500,421 @@ export class ParticleSystem {
     // === Effect Presets ===
 
     slimeHit(position, intensity = 1) {
-        // Bright green splatter
+        // Layer 1: Core flash (bright white-green glow)
         this.spawn(position, {
-            count: Math.floor(15 * intensity),
+            count: Math.floor(3 * intensity),
+            spread: 0.1,
+            speed: 0.5,
+            life: 0.2,
+            size: 0.8 * intensity,
+            endSize: 0.1,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xaaffaa,
+            endColor: 0x66ff66,
+            texture: 'glow'
+        });
+        // Layer 2: Main slime splatter
+        this.spawn(position, {
+            count: Math.floor(18 * intensity),
             spread: 0.4,
-            speed: 7,
-            life: 0.8,
-            size: 0.5,
+            speed: 8,
+            life: 0.9,
+            size: 0.55,
             endSize: 0.05,
-            gravity: -12,
-            upwardBias: 5,
+            gravity: -14,
+            upwardBias: 6,
             color: 0x66ff66,
             endColor: 0x22aa22,
             texture: 'soft'
         });
-        // Bright sparks
+        // Layer 3: Bright sparks
         this.spawn(position, {
-            count: Math.floor(8 * intensity),
+            count: Math.floor(10 * intensity),
             spread: 0.2,
-            speed: 10,
+            speed: 12,
             life: 0.4,
             size: 0.25,
-            gravity: -8,
-            upwardBias: 3,
-            color: 0xaaffaa,
+            gravity: -10,
+            upwardBias: 4,
+            color: 0xccffcc,
             texture: 'spark'
+        });
+        // Layer 4: Lingering magic sparkles
+        this.spawn(position, {
+            count: Math.floor(6 * intensity),
+            spread: 0.5,
+            speed: 3,
+            life: 0.7,
+            size: 0.2,
+            gravity: -5,
+            upwardBias: 2,
+            color: 0x88ff88,
+            texture: 'star',
+            rotationSpeed: 3
         });
     }
 
     purpleSlimeHit(position, intensity = 1) {
+        // Layer 1: Void flash (dark purple core)
         this.spawn(position, {
-            count: Math.floor(18 * intensity),
+            count: Math.floor(3 * intensity),
+            spread: 0.1,
+            speed: 0.5,
+            life: 0.25,
+            size: 0.9 * intensity,
+            endSize: 0.1,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xdd88ff,
+            endColor: 0x8844cc,
+            texture: 'glow'
+        });
+        // Layer 2: Main splatter (dark tendrils)
+        this.spawn(position, {
+            count: Math.floor(20 * intensity),
             spread: 0.5,
-            speed: 8,
-            life: 0.9,
+            speed: 9,
+            life: 1.0,
             size: 0.6,
             endSize: 0.05,
-            gravity: -10,
-            upwardBias: 6,
+            gravity: -12,
+            upwardBias: 7,
             color: 0xcc66ff,
             endColor: 0x6622aa,
             texture: 'soft'
         });
-        // Magic sparkles
+        // Layer 3: Arcane symbols (magic sparkles)
         this.spawn(position, {
-            count: Math.floor(10 * intensity),
+            count: Math.floor(12 * intensity),
             spread: 0.3,
-            speed: 12,
+            speed: 14,
             life: 0.5,
             size: 0.3,
-            gravity: -5,
+            gravity: -6,
             upwardBias: 4,
             color: 0xffaaff,
-            texture: 'star',
-            rotationSpeed: 5
+            texture: 'magic',
+            rotationSpeed: 6
+        });
+        // Layer 4: Ring burst (expanding void)
+        this.spawn(position, {
+            count: Math.floor(4 * intensity),
+            spread: 0.2,
+            speed: 6,
+            life: 0.4,
+            size: 0.5,
+            endSize: 1.2,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.85,
+            color: 0x9944dd,
+            endColor: 0x441188,
+            texture: 'ring'
         });
     }
 
     fireExplosion(position, radius = 3) {
-        // Orange/red fire core
+        // Layer 1: Core flash (white-yellow glow, immediate)
         this.spawn(position, {
-            count: 30,
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.3,
+            size: radius * 1.2,
+            endSize: radius * 0.3,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffee,
+            endColor: 0xffaa44,
+            texture: 'glow'
+        });
+        // Layer 2: Expanding fireball (ember texture)
+        this.spawn(position, {
+            count: 28,
             spread: radius * 0.3,
             speed: 10,
-            life: 0.7,
-            size: 0.8,
+            life: 0.8,
+            size: 0.7,
             endSize: 0.1,
-            gravity: 5,
+            gravity: 4,
             upwardBias: 8,
             color: 0xff6600,
             endColor: 0xff2200,
-            texture: 'soft'
+            texture: 'ember'
         });
-        // Yellow bright center
+        // Layer 3: Flying embers (high velocity sparks)
         this.spawn(position, {
-            count: 15,
+            count: 24,
             spread: radius * 0.2,
-            speed: 6,
-            life: 0.5,
-            size: 0.6,
-            gravity: 4,
-            upwardBias: 6,
-            color: 0xffff44,
-            endColor: 0xff8800,
-            texture: 'soft'
-        });
-        // Hot sparks
-        this.spawn(position, {
-            count: 20,
-            spread: radius * 0.2,
-            speed: 15,
-            life: 0.6,
-            size: 0.2,
-            gravity: -10,
+            speed: 16,
+            life: 0.7,
+            size: 0.25,
+            gravity: -12,
             upwardBias: 10,
             color: 0xffffaa,
             texture: 'spark'
         });
-        // Smoke
+        // Layer 4: Rising smoke (normal blend)
         this.spawn(position, {
-            count: 10,
+            count: 12,
             spread: radius * 0.4,
             speed: 3,
-            life: 1.2,
-            size: 1.0,
-            endSize: 0.3,
-            gravity: 2,
-            upwardBias: 4,
-            drag: 0.95,
-            color: 0x444444,
+            life: 1.4,
+            size: 1.1,
+            endSize: 0.4,
+            gravity: 3,
+            upwardBias: 5,
+            drag: 0.94,
+            color: 0x555555,
             endColor: 0x111111,
             texture: 'smoke',
             blendMode: 'normal'
         });
+        // Layer 5: Lingering embers (slow fade)
+        this.spawn(position, {
+            count: 15,
+            spread: radius * 0.5,
+            speed: 5,
+            life: 1.2,
+            size: 0.35,
+            endSize: 0.05,
+            gravity: 2,
+            upwardBias: 6,
+            drag: 0.96,
+            color: 0xff4400,
+            endColor: 0x882200,
+            texture: 'ember'
+        });
+        // Layer 6: Ground ring burst
+        this.spawn({x: position.x, y: position.y + 0.1, z: position.z}, {
+            count: 6,
+            spread: radius * 0.2,
+            speed: 12,
+            life: 0.4,
+            size: 0.4,
+            endSize: 1.5,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.8,
+            color: 0xff8844,
+            endColor: 0x442200,
+            texture: 'ring'
+        });
     }
 
     shockwave(position, color = 0x8855ff) {
-        // Ring of particles expanding outward
-        for (let i = 0; i < 32; i++) {
-            const angle = (i / 32) * Math.PI * 2;
-            const offset = {
-                x: position.x + Math.cos(angle) * 0.5,
-                y: position.y + 0.3,
-                z: position.z + Math.sin(angle) * 0.5
-            };
-            this.spawn(offset, {
+        // Layer 1: Central glow flash
+        this.spawn(position, {
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.25,
+            size: 1.2,
+            endSize: 0.2,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffff,
+            endColor: color,
+            texture: 'glow'
+        });
+        // Layer 2: Primary ring expanding outward
+        this.spawn({x: position.x, y: position.y + 0.2, z: position.z}, {
+            count: 3,
+            spread: 0.1,
+            speed: 14,
+            life: 0.5,
+            size: 0.6,
+            endSize: 3.0,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.88,
+            color: color,
+            endColor: 0xffffff,
+            texture: 'ring'
+        });
+        // Layer 3: Secondary wave (slightly delayed)
+        setTimeout(() => {
+            this.spawn({x: position.x, y: position.y + 0.15, z: position.z}, {
                 count: 2,
-                spread: 0.2,
-                speed: 12,
-                life: 0.6,
+                spread: 0.1,
+                speed: 10,
+                life: 0.4,
                 size: 0.4,
-                endSize: 0.1,
+                endSize: 2.2,
                 gravity: 0,
                 upwardBias: 0,
                 drag: 0.9,
+                color: new THREE.Color(color).multiplyScalar(1.3).getHex(),
+                texture: 'ring'
+            });
+        }, 50);
+        // Layer 4: Trailing particles in ring pattern
+        for (let i = 0; i < 24; i++) {
+            const angle = (i / 24) * Math.PI * 2;
+            const offset = {
+                x: position.x + Math.cos(angle) * 0.4,
+                y: position.y + 0.3,
+                z: position.z + Math.sin(angle) * 0.4
+            };
+            this.spawn(offset, {
+                count: 2,
+                spread: 0.15,
+                speed: 13,
+                life: 0.55,
+                size: 0.35,
+                endSize: 0.08,
+                gravity: 0,
+                upwardBias: 0,
+                drag: 0.92,
                 color: color,
                 endColor: 0xffffff,
                 texture: 'soft'
             });
         }
-        // Center flash
+        // Layer 5: Upward sparkles
         this.spawn(position, {
-            count: 8,
-            spread: 0.3,
-            speed: 2,
-            life: 0.3,
-            size: 0.8,
-            gravity: 0,
-            upwardBias: 2,
+            count: 10,
+            spread: 0.4,
+            speed: 4,
+            life: 0.45,
+            size: 0.25,
+            gravity: 2,
+            upwardBias: 3,
             color: 0xffffff,
-            texture: 'soft'
+            texture: 'spark'
         });
     }
 
     bounceImpact(position) {
-        // Dust cloud
+        // Layer 1: Impact flash
         this.spawn(position, {
-            count: 25,
-            spread: 1.2,
-            speed: 6,
-            life: 1.0,
-            size: 0.7,
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.2,
+            size: 1.0,
             endSize: 0.2,
-            gravity: -3,
-            upwardBias: 2,
-            drag: 0.92,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffee,
+            endColor: 0xccbb99,
+            texture: 'glow'
+        });
+        // Layer 2: Dust cloud
+        this.spawn(position, {
+            count: 28,
+            spread: 1.3,
+            speed: 7,
+            life: 1.1,
+            size: 0.75,
+            endSize: 0.2,
+            gravity: -4,
+            upwardBias: 3,
+            drag: 0.91,
             color: 0xaa9977,
-            endColor: 0x665544,
+            endColor: 0x554433,
             texture: 'smoke',
             blendMode: 'normal'
         });
-        // Impact sparks
+        // Layer 3: Impact sparks
         this.spawn(position, {
-            count: 15,
+            count: 18,
             spread: 0.5,
-            speed: 14,
-            life: 0.4,
+            speed: 15,
+            life: 0.45,
             size: 0.3,
-            gravity: -15,
-            upwardBias: 6,
+            gravity: -16,
+            upwardBias: 7,
             color: 0xffffcc,
             texture: 'spark'
         });
-        // Ground ring
-        for (let i = 0; i < 16; i++) {
-            const angle = (i / 16) * Math.PI * 2;
-            const offset = {
-                x: position.x + Math.cos(angle) * 0.3,
-                y: position.y + 0.1,
-                z: position.z + Math.sin(angle) * 0.3
-            };
-            this.spawn(offset, {
-                count: 1,
-                spread: 0.1,
-                speed: 8,
-                life: 0.5,
-                size: 0.35,
-                gravity: -2,
-                upwardBias: 0,
-                drag: 0.88,
-                color: 0xddccaa,
-                texture: 'soft'
-            });
-        }
+        // Layer 4: Expanding ground ring
+        this.spawn({x: position.x, y: position.y + 0.1, z: position.z}, {
+            count: 4,
+            spread: 0.1,
+            speed: 10,
+            life: 0.4,
+            size: 0.4,
+            endSize: 2.0,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.85,
+            color: 0xddccaa,
+            endColor: 0x887766,
+            texture: 'ring'
+        });
+        // Layer 5: Small debris particles
+        this.spawn(position, {
+            count: 12,
+            spread: 0.8,
+            speed: 10,
+            life: 0.6,
+            size: 0.2,
+            gravity: -18,
+            upwardBias: 4,
+            drag: 0.95,
+            color: 0xbbaa88,
+            texture: 'soft'
+        });
     }
 
     playerHit(position) {
-        // Blood/damage particles
-        this.spawn({x: position.x, y: position.y + 1, z: position.z}, {
-            count: 12,
-            spread: 0.3,
-            speed: 5,
-            life: 0.6,
-            size: 0.35,
+        const hitPos = {x: position.x, y: position.y + 1, z: position.z};
+
+        // Layer 1: Impact flash (bright center)
+        this.spawn(hitPos, {
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.15,
+            size: 0.9,
+            endSize: 0.1,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffff,
+            endColor: 0xff6666,
+            texture: 'glow'
+        });
+        // Layer 2: Blood/damage particles
+        this.spawn(hitPos, {
+            count: 15,
+            spread: 0.35,
+            speed: 6,
+            life: 0.7,
+            size: 0.4,
             endSize: 0.05,
-            gravity: -15,
-            upwardBias: 3,
+            gravity: -16,
+            upwardBias: 4,
             color: 0xff4444,
             endColor: 0x880000,
             texture: 'soft'
         });
-        // White flash
-        this.spawn({x: position.x, y: position.y + 1, z: position.z}, {
-            count: 5,
-            spread: 0.5,
-            speed: 8,
-            life: 0.2,
-            size: 0.5,
-            gravity: 0,
-            upwardBias: 0,
-            color: 0xffffff,
-            texture: 'soft'
+        // Layer 3: Bright sparks
+        this.spawn(hitPos, {
+            count: 8,
+            spread: 0.25,
+            speed: 10,
+            life: 0.3,
+            size: 0.2,
+            gravity: -10,
+            upwardBias: 3,
+            color: 0xffaaaa,
+            texture: 'spark'
+        });
+        // Layer 4: Motion streaks (directional)
+        this.spawn(hitPos, {
+            count: 4,
+            spread: 0.4,
+            speed: 12,
+            life: 0.25,
+            size: 0.3,
+            endSize: 0.05,
+            gravity: -8,
+            upwardBias: 2,
+            drag: 0.85,
+            color: 0xff6666,
+            texture: 'streak'
         });
     }
 
@@ -911,44 +1095,77 @@ export class ParticleSystem {
     }
 
     deathExplosion(position, color = 0x44dd44, intensity = 1) {
-        // Main burst
+        const baseColor = new THREE.Color(color);
+        const darkColor = baseColor.clone().multiplyScalar(0.3).getHex();
+        const brightColor = baseColor.clone().multiplyScalar(1.5).getHex();
+
+        // Layer 1: Core flash (bright glow)
         this.spawn(position, {
-            count: Math.floor(35 * intensity),
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.3,
+            size: 1.5 * intensity,
+            endSize: 0.2,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffff,
+            endColor: color,
+            texture: 'glow'
+        });
+        // Layer 2: Main burst (soft particles)
+        this.spawn(position, {
+            count: Math.floor(40 * intensity),
             spread: 0.6,
-            speed: 12,
-            life: 1.1,
-            size: 0.5,
+            speed: 13,
+            life: 1.2,
+            size: 0.55,
             endSize: 0.05,
-            gravity: -10,
-            upwardBias: 7,
+            gravity: -11,
+            upwardBias: 8,
             color: color,
-            endColor: new THREE.Color(color).multiplyScalar(0.4).getHex(),
+            endColor: darkColor,
             texture: 'soft'
         });
-        // Bright flash
+        // Layer 3: Bright flash sparks
         this.spawn(position, {
-            count: Math.floor(15 * intensity),
+            count: Math.floor(18 * intensity),
             spread: 0.3,
-            speed: 16,
-            life: 0.35,
+            speed: 18,
+            life: 0.4,
             size: 0.35,
-            gravity: -12,
-            upwardBias: 5,
+            gravity: -14,
+            upwardBias: 6,
             color: 0xffffff,
             texture: 'spark'
         });
-        // Stars
+        // Layer 4: Rotating stars
         this.spawn(position, {
-            count: Math.floor(8 * intensity),
+            count: Math.floor(10 * intensity),
             spread: 0.4,
-            speed: 8,
-            life: 0.8,
-            size: 0.4,
-            gravity: -5,
-            upwardBias: 4,
-            color: 0xffffff,
+            speed: 9,
+            life: 0.9,
+            size: 0.45,
+            gravity: -6,
+            upwardBias: 5,
+            color: brightColor,
             texture: 'star',
-            rotationSpeed: 4
+            rotationSpeed: 5
+        });
+        // Layer 5: Expanding ring
+        this.spawn({x: position.x, y: position.y + 0.5, z: position.z}, {
+            count: Math.floor(3 * intensity),
+            spread: 0.1,
+            speed: 8,
+            life: 0.45,
+            size: 0.5,
+            endSize: 2.0 * intensity,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.9,
+            color: color,
+            endColor: darkColor,
+            texture: 'ring'
         });
     }
 
@@ -975,30 +1192,44 @@ export class ParticleSystem {
     }
 
     firePoolEffect(position) {
-        // Flames rising
+        // Layer 1: Base glow
         this.spawn(position, {
-            count: 4,
+            count: 1,
+            spread: 1.5,
+            speed: 0.5,
+            life: 0.4,
+            size: 0.8,
+            endSize: 0.3,
+            gravity: 1,
+            upwardBias: 1,
+            color: 0xff4400,
+            endColor: 0xff2200,
+            texture: 'glow'
+        });
+        // Layer 2: Flames rising (ember texture)
+        this.spawn(position, {
+            count: 5,
             spread: 1.8,
-            speed: 2,
-            life: 0.7,
-            size: 0.4,
+            speed: 2.5,
+            life: 0.75,
+            size: 0.45,
             endSize: 0.1,
             gravity: 3,
-            upwardBias: 3,
+            upwardBias: 4,
             color: 0xff5500,
             endColor: 0xff2200,
-            texture: 'soft'
+            texture: 'ember'
         });
-        // Embers
-        if (Math.random() > 0.5) {
+        // Layer 3: Rising embers/sparks
+        if (Math.random() > 0.4) {
             this.spawn(position, {
-                count: 2,
-                spread: 1.5,
-                speed: 4,
-                life: 0.8,
-                size: 0.15,
+                count: 3,
+                spread: 1.6,
+                speed: 5,
+                life: 0.9,
+                size: 0.18,
                 gravity: 2,
-                upwardBias: 4,
+                upwardBias: 5,
                 color: 0xffaa44,
                 texture: 'spark'
             });
@@ -1080,32 +1311,73 @@ export class ParticleSystem {
     }
 
     criticalHit(position) {
-        // Big impact
+        // Layer 1: Bright flash (lens flare)
         this.spawn(position, {
-            count: 25,
-            spread: 0.5,
-            speed: 14,
-            life: 0.7,
-            size: 0.5,
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.25,
+            size: 1.4,
+            endSize: 0.3,
+            gravity: 0,
+            upwardBias: 0,
+            color: 0xffffff,
+            endColor: 0xffcc00,
+            texture: 'flare'
+        });
+        // Layer 2: Main impact burst
+        this.spawn(position, {
+            count: 30,
+            spread: 0.55,
+            speed: 15,
+            life: 0.75,
+            size: 0.55,
             endSize: 0.05,
-            gravity: -12,
-            upwardBias: 6,
+            gravity: -13,
+            upwardBias: 7,
             color: 0xffaa00,
             endColor: 0xff4400,
-            texture: 'soft'
+            texture: 'ember'
         });
-        // Stars
+        // Layer 3: Bright sparks
         this.spawn(position, {
-            count: 8,
+            count: 15,
             spread: 0.3,
-            speed: 10,
-            life: 0.5,
-            size: 0.4,
-            gravity: -8,
+            speed: 18,
+            life: 0.4,
+            size: 0.25,
+            gravity: -10,
             upwardBias: 5,
+            color: 0xffffaa,
+            texture: 'spark'
+        });
+        // Layer 4: Spinning stars
+        this.spawn(position, {
+            count: 10,
+            spread: 0.35,
+            speed: 11,
+            life: 0.55,
+            size: 0.45,
+            gravity: -9,
+            upwardBias: 6,
             color: 0xffff88,
             texture: 'star',
-            rotationSpeed: 6
+            rotationSpeed: 8
+        });
+        // Layer 5: Impact ring
+        this.spawn(position, {
+            count: 3,
+            spread: 0.1,
+            speed: 10,
+            life: 0.35,
+            size: 0.4,
+            endSize: 1.8,
+            gravity: 0,
+            upwardBias: 0,
+            drag: 0.88,
+            color: 0xffdd44,
+            endColor: 0xff8800,
+            texture: 'ring'
         });
     }
 
