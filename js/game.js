@@ -42,6 +42,7 @@ export class Game {
         this.worldItems = null; // World item manager for loot drops
         this.fishingLake = null; // Fishing lake position and state
         this.campfire = null; // Campfire position and state
+        this.mine = null; // Mining area position and state
 
         // Dungeon builder
         this.dungeonBuilder = null;
@@ -299,7 +300,11 @@ export class Game {
                 // Campfire corridor (branches off starting area to the right)
                 { x: 22, z: -5, width: 10, length: 15, rot: Math.PI / 2 },
                 // Campfire clearing
-                { x: 35, z: -5, width: 16, length: 16, rot: 0 }
+                { x: 35, z: -5, width: 16, length: 16, rot: 0 },
+                // Mine corridor (branches off starting area backward)
+                { x: 0, z: -25, width: 12, length: 15, rot: 0 },
+                // Mine chamber
+                { x: 0, z: -42, width: 20, length: 20, rot: 0 }
             ];
 
             // Build floor segments
@@ -394,6 +399,81 @@ export class Game {
                 fireLight: fireLight,
                 interactionRange: 5,
                 isCooking: false
+            };
+
+            // Mine setup - ore rocks
+            const mineGroup = new THREE.Group();
+            mineGroup.position.set(0, 0, -42);
+
+            // Create ore rocks around the mine chamber
+            const orePositions = [
+                { x: -6, z: -6, type: 'copper' },
+                { x: -7, z: 0, type: 'copper' },
+                { x: -6, z: 5, type: 'iron' },
+                { x: 6, z: -5, type: 'iron' },
+                { x: 7, z: 2, type: 'copper' },
+                { x: 5, z: 6, type: 'gold' },
+                { x: 0, z: -7, type: 'iron' },
+                { x: -3, z: 7, type: 'gold' }
+            ];
+
+            const oreColors = {
+                copper: 0xb87333,
+                iron: 0x808080,
+                gold: 0xffd700
+            };
+
+            for (const ore of orePositions) {
+                // Rock base
+                const rockGeo = new THREE.DodecahedronGeometry(1.2, 0);
+                const rockMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                rock.position.set(ore.x, 0.8, ore.z);
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                rock.scale.set(1 + Math.random() * 0.3, 0.8 + Math.random() * 0.4, 1 + Math.random() * 0.3);
+                rock.castShadow = true;
+                mineGroup.add(rock);
+
+                // Ore vein highlights
+                const veinGeo = new THREE.DodecahedronGeometry(0.4, 0);
+                const veinMat = new THREE.MeshStandardMaterial({
+                    color: oreColors[ore.type],
+                    roughness: 0.3,
+                    metalness: 0.7,
+                    emissive: oreColors[ore.type],
+                    emissiveIntensity: 0.1
+                });
+                for (let i = 0; i < 3; i++) {
+                    const vein = new THREE.Mesh(veinGeo, veinMat);
+                    vein.position.set(
+                        ore.x + (Math.random() - 0.5) * 1.5,
+                        0.5 + Math.random() * 0.8,
+                        ore.z + (Math.random() - 0.5) * 1.5
+                    );
+                    vein.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                    vein.scale.setScalar(0.5 + Math.random() * 0.5);
+                    mineGroup.add(vein);
+                }
+            }
+
+            // Mine lantern for lighting
+            const lanternLight = new THREE.PointLight(0xffaa44, 1.5, 20);
+            lanternLight.position.set(0, 3, 0);
+            mineGroup.add(lanternLight);
+
+            this.scene.add(mineGroup);
+
+            // Store mine info
+            this.mine = {
+                position: { x: 0, z: -42 },
+                mesh: mineGroup,
+                interactionRange: 8,
+                isMining: false,
+                ores: {
+                    copper: 99,
+                    iron: 99,
+                    gold: 99
+                }
             };
 
             // Build walls around the dungeon perimeter
@@ -935,6 +1015,9 @@ export class Game {
 
         // Update campfire interaction
         this.updateCampfire(deltaTime);
+
+        // Update mine interaction
+        this.updateMine(deltaTime);
 
         // Update UI
         this.updateUI();
@@ -1635,6 +1718,231 @@ export class Game {
 
     showCookingMessage(message, rarity = 'common') {
         const msgEl = document.getElementById('cooking-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+        }
+    }
+
+    // ==================== MINING ====================
+
+    updateMine(deltaTime) {
+        if (!this.mine || !this.player) return;
+
+        const dx = this.player.position.x - this.mine.position.x;
+        const dz = this.player.position.z - this.mine.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if near mine
+        this.mine.isNearMine = distance < this.mine.interactionRange;
+
+        // Cancel mining if player moves away
+        if (this.mine.isMining) {
+            const startPos = this.mine.playerStartPos;
+            const movedDistance = Math.sqrt(
+                Math.pow(this.player.position.x - startPos.x, 2) +
+                Math.pow(this.player.position.z - startPos.z, 2)
+            );
+            if (movedDistance > 1.5) {
+                this.stopMining('Moved away from mine');
+            }
+        }
+
+        // Show/hide prompt
+        const miningPrompt = document.getElementById('mining-prompt');
+        const miningPopup = document.getElementById('mining-popup');
+
+        if (this.mine.isMining) {
+            miningPrompt?.classList.remove('visible');
+
+            // Update auto-mining
+            this.updateAutoMine(deltaTime);
+        } else if (this.mine.isNearMine) {
+            miningPrompt?.classList.add('visible');
+            miningPopup?.classList.remove('visible');
+        } else {
+            miningPrompt?.classList.remove('visible');
+            miningPopup?.classList.remove('visible');
+        }
+    }
+
+    startMining() {
+        if (!this.mine || this.mine.isMining) return;
+
+        // Show ore selection popup
+        this.showOreSelection();
+    }
+
+    showOreSelection() {
+        const selectionPopup = document.getElementById('mining-selection');
+        const selectionGrid = document.getElementById('mining-selection-grid');
+        const closeBtn = document.getElementById('mining-selection-close');
+        if (!selectionPopup || !selectionGrid) return;
+
+        // Clear existing options
+        selectionGrid.innerHTML = '';
+
+        // Add ore options
+        const oreTypes = [
+            { id: 'copper', name: 'Copper', icon: '🟤', rarity: 'common' },
+            { id: 'iron', name: 'Iron', icon: '⚫', rarity: 'uncommon' },
+            { id: 'gold', name: 'Gold', icon: '🟡', rarity: 'rare' }
+        ];
+
+        for (const ore of oreTypes) {
+            if (this.mine.ores[ore.id] > 0) {
+                const div = document.createElement('div');
+                div.className = `mining-ore-option rarity-${ore.rarity}`;
+                div.dataset.oreId = ore.id;
+                div.innerHTML = `
+                    <span class="ore-icon">${ore.icon}</span>
+                    <span class="ore-name">${ore.name}</span>
+                `;
+                div.onclick = () => this.selectOreToMine(ore.id);
+                selectionGrid.appendChild(div);
+            }
+        }
+
+        // Setup close button
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                selectionPopup.classList.remove('visible');
+            };
+        }
+
+        selectionPopup.classList.add('visible');
+    }
+
+    selectOreToMine(oreId) {
+        // Hide selection popup
+        const selectionPopup = document.getElementById('mining-selection');
+        selectionPopup?.classList.remove('visible');
+
+        // Check available ore
+        const oreCount = this.mine.ores[oreId] || 0;
+        if (oreCount <= 0) return;
+
+        // Determine how many to mine (up to 10 at a time, or all available)
+        const mineCount = Math.min(10, oreCount);
+
+        // Start auto-mining
+        this.mine.isMining = true;
+        this.mine.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+        this.mine.autoMine = {
+            oreId: oreId,
+            remaining: mineCount,
+            total: mineCount,
+            timer: 0,
+            mineTime: 2.0 // 2 seconds per ore
+        };
+
+        // Show mining popup with progress
+        const miningPopup = document.getElementById('mining-popup');
+        miningPopup?.classList.add('visible');
+
+        this.updateAutoMineUI();
+    }
+
+    updateAutoMine(deltaTime) {
+        const am = this.mine?.autoMine;
+        if (!am) return;
+
+        am.timer += deltaTime;
+
+        // Update progress bar
+        const progress = am.timer / am.mineTime;
+        const progressFill = document.getElementById('mining-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = `${progress * 100}%`;
+        }
+
+        // Check if current ore is done
+        if (am.timer >= am.mineTime) {
+            am.timer = 0;
+
+            // Add ore to inventory
+            const oreItemMap = {
+                'copper': 'ore_copper',
+                'iron': 'ore_iron',
+                'gold': 'ore_gold'
+            };
+
+            const oreItemId = oreItemMap[am.oreId];
+            if (oreItemId && this.player.inventory) {
+                this.player.inventory.addItemById(oreItemId, 1);
+            }
+
+            // Decrease mine ore count
+            if (this.mine.ores[am.oreId] > 0) {
+                this.mine.ores[am.oreId]--;
+            }
+
+            am.remaining--;
+            this.updateAutoMineUI();
+
+            // Check if all done
+            if (am.remaining <= 0) {
+                const total = am.total;
+                const oreName = am.oreId.charAt(0).toUpperCase() + am.oreId.slice(1);
+                this.stopMining();
+                this.showMiningMessage(`Mined ${total} ${oreName} Ore!`, am.oreId === 'gold' ? 'rare' : am.oreId === 'iron' ? 'uncommon' : 'common');
+            }
+        }
+    }
+
+    updateAutoMineUI() {
+        const am = this.mine?.autoMine;
+        if (!am) return;
+
+        const minedValue = document.getElementById('mining-mined-value');
+        if (minedValue) {
+            const mined = am.total - am.remaining;
+            minedValue.textContent = `${mined} / ${am.total}`;
+        }
+
+        const statusText = document.getElementById('mining-status-text');
+        if (statusText) {
+            const oreName = am.oreId.charAt(0).toUpperCase() + am.oreId.slice(1);
+            statusText.textContent = `Mining ${oreName}... ${am.remaining} remaining`;
+        }
+
+        const ratingEl = document.getElementById('mining-rating-value');
+        if (ratingEl) {
+            ratingEl.textContent = 'Mining...';
+        }
+    }
+
+    stopMining(message = null) {
+        if (!this.mine) return;
+
+        this.mine.isMining = false;
+        this.mine.autoMine = null;
+        this.mine.playerStartPos = null;
+
+        // Hide popups
+        const miningPopup = document.getElementById('mining-popup');
+        const selectionPopup = document.getElementById('mining-selection');
+        miningPopup?.classList.remove('visible');
+        selectionPopup?.classList.remove('visible');
+
+        // Reset progress bar
+        const progressFill = document.getElementById('mining-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '0%';
+        }
+
+        if (message) {
+            this.showMiningMessage(message);
+        }
+    }
+
+    showMiningMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('mining-message');
         if (msgEl) {
             msgEl.textContent = message;
             msgEl.className = `rarity-${rarity}`;

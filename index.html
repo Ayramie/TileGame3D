@@ -290,6 +290,58 @@
     <!-- Cooking Message -->
     <div id="cooking-message"></div>
 
+    <!-- Mining Prompt -->
+    <div id="mining-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Mine</span>
+    </div>
+
+    <!-- Mining Selection Popup -->
+    <div id="mining-selection">
+        <div id="mining-selection-content">
+            <div id="mining-selection-header">
+                <span id="mining-selection-title">Select Ore to Mine</span>
+                <button id="mining-selection-close">X</button>
+            </div>
+            <div id="mining-selection-grid"></div>
+            <div id="mining-selection-footer">
+                <span>Click an ore to start mining</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mining Popup -->
+    <div id="mining-popup">
+        <div id="mining-popup-content">
+            <div id="mining-popup-header">
+                <span id="mining-popup-title">Mining!</span>
+            </div>
+            <div id="mining-game-area">
+                <div id="mining-score-area">
+                    <div id="mining-mined">
+                        <span id="mining-mined-label">Mined</span>
+                        <span id="mining-mined-value">0 / 0</span>
+                    </div>
+                    <div id="mining-progress">
+                        <span id="mining-progress-label">Progress</span>
+                        <div id="mining-progress-bar">
+                            <div id="mining-progress-fill"></div>
+                        </div>
+                    </div>
+                    <div id="mining-rating">
+                        <span id="mining-rating-value">Mining...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="mining-popup-footer">
+                <span id="mining-status-text">Mining ore...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mining Message -->
+    <div id="mining-message"></div>
+
     <script type="importmap">
     {
         "imports": {

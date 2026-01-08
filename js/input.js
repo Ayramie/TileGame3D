@@ -136,6 +136,15 @@ export class InputManager {
                     break;
                 }
 
+                // Check for mine interaction
+                if (this.game.mine?.isNearMine && !this.game.mine?.isMining) {
+                    this.game.startMining();
+                    break;
+                } else if (this.game.mine?.isMining) {
+                    // Ignore F during mining
+                    break;
+                }
+
                 // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.aimingAbility = 'f';

@@ -667,6 +667,43 @@ export const ITEMS = {
         value: 100
     },
 
+    // === ORES ===
+    ore_copper: {
+        id: 'ore_copper',
+        name: 'Copper Ore',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.COMMON,
+        icon: 'ore_copper',
+        description: 'Raw copper ore. Can be smelted into bars.',
+        stackable: true,
+        maxStack: 99,
+        value: 5
+    },
+
+    ore_iron: {
+        id: 'ore_iron',
+        name: 'Iron Ore',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'ore_iron',
+        description: 'Raw iron ore. Can be smelted into bars.',
+        stackable: true,
+        maxStack: 99,
+        value: 10
+    },
+
+    ore_gold: {
+        id: 'ore_gold',
+        name: 'Gold Ore',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.RARE,
+        icon: 'ore_gold',
+        description: 'Raw gold ore. Can be smelted into bars.',
+        stackable: true,
+        maxStack: 99,
+        value: 25
+    },
+
     // === QUEST ITEMS ===
     boss_trophy: {
         id: 'boss_trophy',
@@ -748,6 +785,11 @@ export function getItemIcon(item) {
         'fish_uncommon': '🐠',
         'fish_rare': '🐡',
         'fish_epic': '🎏',
+
+        // Ores
+        'ore_copper': '🟤',
+        'ore_iron': '⚫',
+        'ore_gold': '🟡',
 
         // Quest
         'quest_crown': '👑'
