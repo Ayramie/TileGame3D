@@ -1601,17 +1601,21 @@ export class Game {
                 // Calculate catch accuracy - how close is food X to pan X?
                 const catchDistance = Math.abs(mg.foodX - mg.panX);
 
-                // Pan catching zone is about 15 units wide (centered on panX)
+                // Pan catching zone - must be precise!
                 let flipScore = 0;
                 let caught = false;
 
-                if (catchDistance < 8) {
-                    // Perfect catch - food landed right on the pan
-                    flipScore = 100 - catchDistance * 2;
+                if (catchDistance < 5) {
+                    // Perfect catch - right in the center
+                    flipScore = 100;
+                    caught = true;
+                } else if (catchDistance < 10) {
+                    // Good catch
+                    flipScore = Math.floor(90 - catchDistance * 4);
                     caught = true;
                 } else if (catchDistance < 15) {
-                    // Good catch - close enough
-                    flipScore = Math.max(40, 80 - catchDistance * 3);
+                    // Barely caught it
+                    flipScore = Math.floor(60 - catchDistance * 2);
                     caught = true;
                 } else {
                     // Missed! Food fell off the pan
@@ -1736,11 +1740,14 @@ export class Game {
         // Trigger flip if velocity is high enough
         if (velocity > 1.5) {
             mg.isFlipping = true;
-            // Launch velocity based on flick speed
-            mg.foodVelocityY = Math.min(350, velocity * 80);
-            // Add horizontal momentum based on recent pan movement
-            // panDeltaX is how much the pan moved recently
-            mg.foodVelocityX = (mg.panDeltaX || 0) * 8;
+            // Launch with consistent height for predictable timing
+            mg.foodVelocityY = 300;
+
+            // Random horizontal velocity - food flies unpredictably!
+            // Range: -40 to +40 units per second
+            const randomDrift = (Math.random() - 0.5) * 80;
+            mg.foodVelocityX = randomDrift;
+
             mg.flipStartTime = performance.now();
         }
     }
