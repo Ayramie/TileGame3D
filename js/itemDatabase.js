@@ -475,6 +475,67 @@ export const ITEMS = {
         stats: { damage: 5, maxHealth: 20 }
     },
 
+    // === FISH ===
+    fish_small_trout: {
+        id: 'fish_small_trout',
+        name: 'Small Trout',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.COMMON,
+        icon: 'fish_common',
+        description: 'A small freshwater fish',
+        stackable: true,
+        maxStack: 99,
+        value: 5
+    },
+
+    fish_bass: {
+        id: 'fish_bass',
+        name: 'Bass',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.COMMON,
+        icon: 'fish_common',
+        description: 'A common bass',
+        stackable: true,
+        maxStack: 99,
+        value: 8
+    },
+
+    fish_golden_carp: {
+        id: 'fish_golden_carp',
+        name: 'Golden Carp',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'fish_uncommon',
+        description: 'A beautiful golden-scaled carp',
+        stackable: true,
+        maxStack: 99,
+        value: 20
+    },
+
+    fish_rainbow_trout: {
+        id: 'fish_rainbow_trout',
+        name: 'Rainbow Trout',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.RARE,
+        icon: 'fish_rare',
+        description: 'A prized rainbow trout with shimmering scales',
+        stackable: true,
+        maxStack: 99,
+        value: 50
+    },
+
+    fish_legendary_koi: {
+        id: 'fish_legendary_koi',
+        name: 'Legendary Koi',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.EPIC,
+        icon: 'fish_epic',
+        description: 'An ancient koi said to bring great fortune',
+        stackable: true,
+        maxStack: 99,
+        value: 150
+    },
+
     // === MATERIALS ===
     bone_fragment: {
         id: 'bone_fragment',
@@ -587,6 +648,12 @@ export function getItemIcon(item) {
         'mat_bone': '🦴',
         'mat_essence': '✨',
         'mat_key': '🔑',
+
+        // Fish
+        'fish_common': '🐟',
+        'fish_uncommon': '🐠',
+        'fish_rare': '🐡',
+        'fish_epic': '🎏',
 
         // Quest
         'quest_crown': '👑'

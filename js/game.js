@@ -1059,13 +1059,14 @@ export class Game {
 
         mg.state = 'qte';
         mg.keys = ['W', 'A', 'S', 'D'];
-        mg.gameTimer = 60; // 60 second game
+        mg.gameTimer = 30; // 30 second game
         mg.keysCompleted = 0;
         mg.score = 0;
         mg.combo = 0;
         mg.maxCombo = 0;
         mg.fishCaught = 0;
         mg.keysForFish = 0; // Track keys toward next fish
+        mg.caughtFishList = []; // Track which fish were caught
         mg.keyTimeLimit = 1.2; // Seconds per key
         mg.keyTimer = mg.keyTimeLimit;
         mg.lastKeyTime = performance.now();
@@ -1086,7 +1087,7 @@ export class Game {
         // Reset timer display
         const timeRemaining = document.getElementById('qte-time-remaining');
         if (timeRemaining) {
-            timeRemaining.textContent = '60';
+            timeRemaining.textContent = '30';
             timeRemaining.classList.remove('warning', 'danger');
         }
 
@@ -1162,6 +1163,16 @@ export class Game {
             if (mg.keysForFish >= 10) {
                 mg.fishCaught++;
                 mg.keysForFish = 0;
+
+                // RNG fish type based on current score/combo
+                const fishId = this.rollFishType(mg.score, mg.combo);
+                mg.caughtFishList.push(fishId);
+
+                // Add fish to inventory immediately
+                if (this.player.inventory) {
+                    this.player.inventory.addItemById(fishId, 1);
+                }
+
                 // Visual feedback for catching a fish
                 if (this.particles) {
                     this.particles.splashEffect(this.fishingLake.waterMesh.position);
@@ -1235,22 +1246,60 @@ export class Game {
         const finalScore = mg.score;
         const fishCaught = mg.fishCaught;
         const maxCombo = mg.maxCombo;
+        const caughtFishList = mg.caughtFishList || [];
 
         this.stopFishing();
 
+        // Count fish by type for summary
+        const fishCounts = {};
+        caughtFishList.forEach(fishId => {
+            fishCounts[fishId] = (fishCounts[fishId] || 0) + 1;
+        });
+
+        // Build fish summary string
+        let fishSummary = '';
+        const fishNames = {
+            'fish_small_trout': 'Trout',
+            'fish_bass': 'Bass',
+            'fish_golden_carp': 'G.Carp',
+            'fish_rainbow_trout': 'R.Trout',
+            'fish_legendary_koi': 'L.Koi'
+        };
+        for (const [fishId, count] of Object.entries(fishCounts)) {
+            if (fishSummary) fishSummary += ', ';
+            fishSummary += `${count}x ${fishNames[fishId] || fishId}`;
+        }
+
         // Show summary message
-        this.showFishingMessage(`Time's up! Fish: ${fishCaught} | Score: ${finalScore} | Max Combo: ${maxCombo}`,
+        const message = fishCaught > 0
+            ? `Time's up! Caught: ${fishSummary} | Score: ${finalScore}`
+            : `Time's up! No fish caught | Score: ${finalScore}`;
+
+        this.showFishingMessage(message,
             fishCaught >= 5 ? 'epic' : fishCaught >= 3 ? 'rare' : fishCaught >= 1 ? 'uncommon' : 'common');
 
         // Splash effect
         if (this.particles && fishCaught > 0) {
             this.particles.splashEffect(this.fishingLake.waterMesh.position);
         }
+    }
 
-        // Add gold based on fish caught (will be RNG fish types later)
-        if (this.player.inventory && fishCaught > 0) {
-            const goldAmount = fishCaught * 10;
-            this.player.inventory.addGold(goldAmount);
+    // Roll for fish type based on score and combo
+    rollFishType(score, combo) {
+        // Higher score/combo = better chance at rare fish
+        const roll = Math.random() * 100;
+        const bonusChance = Math.min(30, score / 100 + combo * 2); // Up to 30% bonus
+
+        if (roll < 2 + bonusChance * 0.1) {
+            return 'fish_legendary_koi'; // ~2-5% chance
+        } else if (roll < 8 + bonusChance * 0.3) {
+            return 'fish_rainbow_trout'; // ~6-17% chance
+        } else if (roll < 25 + bonusChance * 0.5) {
+            return 'fish_golden_carp'; // ~17-40% chance
+        } else if (roll < 55) {
+            return 'fish_bass'; // ~30% chance
+        } else {
+            return 'fish_small_trout'; // ~45% base chance
         }
     }
 
