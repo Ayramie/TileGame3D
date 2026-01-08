@@ -46,11 +46,14 @@ export class WeaponFactory {
         pommel.castShadow = true;
         group.add(pommel);
 
+        // Scale up the sword
+        group.scale.setScalar(1.4);
+
         return {
             mesh: group,
             // KayKit hand bones: grip weapon so blade points forward from character
             offset: new THREE.Vector3(0, 0, 0.1),
-            rotation: new THREE.Euler(0, 0, 0)
+            rotation: new THREE.Euler(-0.4, 0, 0)  // Tilt blade upward
         };
     }
 

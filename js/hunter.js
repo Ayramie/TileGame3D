@@ -261,9 +261,15 @@ export class Hunter {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Ranger character model for Hunter');
 
-                // Attach crossbow weapon
-                const weapon = WeaponFactory.createWeaponForClass('hunter');
-                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
+                // Attach crossbow weapons to both hands
+                const weaponR = WeaponFactory.createWeaponForClass('hunter');
+                this.character.attachWeapon(weaponR.mesh, 'handR', weaponR.offset, weaponR.rotation);
+
+                // Left hand crossbow (mirrored)
+                const weaponL = WeaponFactory.createWeaponForClass('hunter');
+                const mirroredOffset = new THREE.Vector3(0, 0, 0.15);
+                const mirroredRotation = new THREE.Euler(0, 0, -Math.PI / 2);  // Mirror the Z rotation
+                this.character.attachWeapon(weaponL.mesh, 'handL', mirroredOffset, mirroredRotation);
             } else {
                 this.group.visible = true;
             }
