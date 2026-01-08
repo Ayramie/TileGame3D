@@ -61,13 +61,20 @@ export class InputManager {
     onKeyDown(e) {
         const key = e.key.toLowerCase();
 
-        // Check for QTE minigame input first
+        // Check for QTE minigame input first (fishing)
         if (this.game.fishingLake?.minigame?.state === 'qte') {
             if (['w', 'a', 's', 'd'].includes(key)) {
                 e.preventDefault();
                 this.game.handleQTEKeyPress(key);
                 return;
             }
+        }
+
+        // Check for mining minigame input (SPACE to swing)
+        if (this.game.mine?.minigame && key === ' ') {
+            e.preventDefault();
+            this.game.handleMiningSwing();
+            return;
         }
 
         // Movement keys (only if not in QTE)

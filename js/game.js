@@ -1757,8 +1757,8 @@ export class Game {
         if (this.mine.isMining) {
             miningPrompt?.classList.remove('visible');
 
-            // Update auto-mining
-            this.updateAutoMine(deltaTime);
+            // Update mining minigame
+            this.updateMiningMinigame(deltaTime);
         } else if (this.mine.isNearMine) {
             miningPrompt?.classList.add('visible');
             miningPopup?.classList.remove('visible');
@@ -1824,104 +1824,258 @@ export class Game {
         const oreCount = this.mine.ores[oreId] || 0;
         if (oreCount <= 0) return;
 
-        // Determine how many to mine (up to 10 at a time, or all available)
-        const mineCount = Math.min(10, oreCount);
-
-        // Start auto-mining
+        // Start mining minigame
         this.mine.isMining = true;
         this.mine.playerStartPos = {
             x: this.player.position.x,
             z: this.player.position.z
         };
-        this.mine.autoMine = {
+
+        // Initialize minigame state
+        this.mine.minigame = {
             oreId: oreId,
-            remaining: mineCount,
-            total: mineCount,
-            timer: 0,
-            mineTime: 2.0 // 2 seconds per ore
+            gameTimer: 20, // 20 second game
+            indicatorPos: 10, // Position as percentage (10-90)
+            indicatorSpeed: 80, // Speed (percentage per second)
+            indicatorDirection: 1, // 1 = right, -1 = left
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            oreMined: 0,
+            hitsForOre: 0, // Track hits toward next ore (5 good hits = 1 ore)
+            minedOreList: [] // Track mined ore
         };
 
-        // Show mining popup with progress
+        // Show mining popup
         const miningPopup = document.getElementById('mining-popup');
         miningPopup?.classList.add('visible');
 
-        this.updateAutoMineUI();
+        // Reset UI
+        this.updateMiningUI();
+
+        const feedback = document.getElementById('mining-feedback');
+        if (feedback) feedback.textContent = '';
+
+        const timeRemaining = document.getElementById('mining-time-remaining');
+        if (timeRemaining) {
+            timeRemaining.textContent = '20';
+            timeRemaining.classList.remove('warning', 'danger');
+        }
     }
 
-    updateAutoMine(deltaTime) {
-        const am = this.mine?.autoMine;
-        if (!am) return;
+    updateMiningMinigame(deltaTime) {
+        const mg = this.mine?.minigame;
+        if (!mg) return;
 
-        am.timer += deltaTime;
+        // Update game timer
+        mg.gameTimer -= deltaTime;
 
-        // Update progress bar
-        const progress = am.timer / am.mineTime;
-        const progressFill = document.getElementById('mining-progress-fill');
-        if (progressFill) {
-            progressFill.style.width = `${progress * 100}%`;
+        // Update timer display
+        const timeEl = document.getElementById('mining-time-remaining');
+        if (timeEl) {
+            const seconds = Math.ceil(mg.gameTimer);
+            timeEl.textContent = Math.max(0, seconds).toString();
+
+            if (seconds <= 5) {
+                timeEl.classList.add('danger');
+                timeEl.classList.remove('warning');
+            } else if (seconds <= 10) {
+                timeEl.classList.add('warning');
+                timeEl.classList.remove('danger');
+            } else {
+                timeEl.classList.remove('warning', 'danger');
+            }
         }
 
-        // Check if current ore is done
-        if (am.timer >= am.mineTime) {
-            am.timer = 0;
+        // Check if game over
+        if (mg.gameTimer <= 0) {
+            this.endMiningMinigame();
+            return;
+        }
 
-            // Add ore to inventory
+        // Move indicator back and forth
+        mg.indicatorPos += mg.indicatorSpeed * mg.indicatorDirection * deltaTime;
+
+        // Bounce off edges
+        if (mg.indicatorPos >= 90) {
+            mg.indicatorPos = 90;
+            mg.indicatorDirection = -1;
+        } else if (mg.indicatorPos <= 10) {
+            mg.indicatorPos = 10;
+            mg.indicatorDirection = 1;
+        }
+
+        // Update indicator position
+        const indicator = document.getElementById('mining-indicator');
+        if (indicator) {
+            indicator.style.left = `${mg.indicatorPos}%`;
+        }
+    }
+
+    // Handle mining swing (SPACE key)
+    handleMiningSwing() {
+        const mg = this.mine?.minigame;
+        if (!mg || mg.gameTimer <= 0) return;
+
+        // Calculate distance from center (sweet spot is at 50%)
+        const distanceFromCenter = Math.abs(mg.indicatorPos - 50);
+
+        const feedback = document.getElementById('mining-feedback');
+        let rating = '';
+        let points = 0;
+
+        // Determine hit quality based on distance from center
+        if (distanceFromCenter <= 8) {
+            // Perfect hit (within 8% of center)
+            rating = 'PERFECT!';
+            points = 200;
+            mg.combo++;
+            mg.hitsForOre += 2; // Perfect counts as 2 hits
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'perfect';
+            }
+        } else if (distanceFromCenter <= 15) {
+            // Great hit
+            rating = 'Great!';
+            points = 150;
+            mg.combo++;
+            mg.hitsForOre += 1.5;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'great';
+            }
+        } else if (distanceFromCenter <= 25) {
+            // Good hit
+            rating = 'Good';
+            points = 100;
+            mg.combo++;
+            mg.hitsForOre += 1;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'good';
+            }
+        } else {
+            // Miss
+            rating = 'Miss!';
+            points = 0;
+            mg.combo = 0;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'miss';
+            }
+        }
+
+        // Apply combo multiplier
+        mg.maxCombo = Math.max(mg.maxCombo, mg.combo);
+        const comboMultiplier = 1 + (mg.combo * 0.1);
+        points = Math.floor(points * comboMultiplier);
+        mg.score += points;
+
+        // Check if earned an ore (every 5 hits worth)
+        if (mg.hitsForOre >= 5) {
+            mg.oreMined++;
+            mg.hitsForOre -= 5;
+
+            // Add ore to inventory immediately
             const oreItemMap = {
                 'copper': 'ore_copper',
                 'iron': 'ore_iron',
                 'gold': 'ore_gold'
             };
-
-            const oreItemId = oreItemMap[am.oreId];
+            const oreItemId = oreItemMap[mg.oreId];
             if (oreItemId && this.player.inventory) {
                 this.player.inventory.addItemById(oreItemId, 1);
             }
 
             // Decrease mine ore count
-            if (this.mine.ores[am.oreId] > 0) {
-                this.mine.ores[am.oreId]--;
+            if (this.mine.ores[mg.oreId] > 0) {
+                this.mine.ores[mg.oreId]--;
             }
 
-            am.remaining--;
-            this.updateAutoMineUI();
-
-            // Check if all done
-            if (am.remaining <= 0) {
-                const total = am.total;
-                const oreName = am.oreId.charAt(0).toUpperCase() + am.oreId.slice(1);
-                this.stopMining();
-                this.showMiningMessage(`Mined ${total} ${oreName} Ore!`, am.oreId === 'gold' ? 'rare' : am.oreId === 'iron' ? 'uncommon' : 'common');
-            }
+            mg.minedOreList.push(mg.oreId);
         }
+
+        // Speed up indicator slightly with each hit (makes it harder)
+        if (points > 0) {
+            mg.indicatorSpeed = Math.min(150, mg.indicatorSpeed + 2);
+        }
+
+        // Update UI
+        this.updateMiningUI();
+
+        // Clear feedback after a moment
+        setTimeout(() => {
+            if (feedback && feedback.textContent === rating) {
+                feedback.textContent = '';
+            }
+        }, 400);
     }
 
-    updateAutoMineUI() {
-        const am = this.mine?.autoMine;
-        if (!am) return;
+    updateMiningUI() {
+        const mg = this.mine?.minigame;
+        if (!mg) return;
 
-        const minedValue = document.getElementById('mining-mined-value');
-        if (minedValue) {
-            const mined = am.total - am.remaining;
-            minedValue.textContent = `${mined} / ${am.total}`;
+        const oreValue = document.getElementById('mining-ore-value');
+        if (oreValue) {
+            oreValue.textContent = mg.oreMined.toString();
+        }
+
+        const comboValue = document.getElementById('mining-combo-value');
+        if (comboValue) {
+            comboValue.textContent = mg.combo.toString();
+            if (mg.combo >= 10) {
+                comboValue.classList.add('high');
+            } else {
+                comboValue.classList.remove('high');
+            }
+        }
+
+        const scoreValue = document.getElementById('mining-score-value');
+        if (scoreValue) {
+            scoreValue.textContent = mg.score.toString();
         }
 
         const statusText = document.getElementById('mining-status-text');
         if (statusText) {
-            const oreName = am.oreId.charAt(0).toUpperCase() + am.oreId.slice(1);
-            statusText.textContent = `Mining ${oreName}... ${am.remaining} remaining`;
+            const oreName = mg.oreId.charAt(0).toUpperCase() + mg.oreId.slice(1);
+            statusText.textContent = `Mining ${oreName}...`;
         }
+    }
 
-        const ratingEl = document.getElementById('mining-rating-value');
-        if (ratingEl) {
-            ratingEl.textContent = 'Mining...';
-        }
+    endMiningMinigame() {
+        const mg = this.mine?.minigame;
+        if (!mg) return;
+
+        const oreMined = mg.oreMined;
+        const finalScore = mg.score;
+        const maxCombo = mg.maxCombo;
+        const oreId = mg.oreId;
+        const oreName = oreId.charAt(0).toUpperCase() + oreId.slice(1);
+
+        // Stop mining
+        this.mine.isMining = false;
+        this.mine.minigame = null;
+        this.mine.playerStartPos = null;
+
+        // Hide popup
+        const miningPopup = document.getElementById('mining-popup');
+        miningPopup?.classList.remove('visible');
+
+        // Show summary message
+        const rarity = oreId === 'gold' ? 'rare' : oreId === 'iron' ? 'uncommon' : 'common';
+        const message = oreMined > 0
+            ? `Time's up! Mined: ${oreMined} ${oreName} Ore | Score: ${finalScore}`
+            : `Time's up! No ore mined | Score: ${finalScore}`;
+
+        this.showMiningMessage(message, oreMined >= 5 ? 'rare' : oreMined >= 3 ? 'uncommon' : 'common');
     }
 
     stopMining(message = null) {
         if (!this.mine) return;
 
         this.mine.isMining = false;
-        this.mine.autoMine = null;
+        this.mine.minigame = null;
         this.mine.playerStartPos = null;
 
         // Hide popups
@@ -1929,12 +2083,6 @@ export class Game {
         const selectionPopup = document.getElementById('mining-selection');
         miningPopup?.classList.remove('visible');
         selectionPopup?.classList.remove('visible');
-
-        // Reset progress bar
-        const progressFill = document.getElementById('mining-progress-fill');
-        if (progressFill) {
-            progressFill.style.width = '0%';
-        }
 
         if (message) {
             this.showMiningMessage(message);
@@ -1947,7 +2095,8 @@ export class Game {
             msgEl.textContent = message;
             msgEl.className = `rarity-${rarity}`;
             msgEl.classList.add('visible');
-            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+            const displayTime = message.includes('Time') ? 4000 : 2500;
+            setTimeout(() => msgEl.classList.remove('visible'), displayTime);
         }
     }
 

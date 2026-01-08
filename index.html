@@ -315,26 +315,40 @@
         <div id="mining-popup-content">
             <div id="mining-popup-header">
                 <span id="mining-popup-title">Mining!</span>
+                <span id="mining-popup-hint">Press SPACE to swing!</span>
             </div>
             <div id="mining-game-area">
+                <!-- Timer Display -->
+                <div id="mining-timer-display">
+                    <span id="mining-time-remaining">20</span>
+                    <span id="mining-time-label">seconds</span>
+                </div>
+                <!-- Timing Bar -->
+                <div id="mining-timing-container">
+                    <div id="mining-timing-bar">
+                        <div id="mining-sweet-spot"></div>
+                        <div id="mining-indicator"></div>
+                    </div>
+                    <div id="mining-feedback"></div>
+                </div>
+                <!-- Score Area -->
                 <div id="mining-score-area">
-                    <div id="mining-mined">
-                        <span id="mining-mined-label">Mined</span>
-                        <span id="mining-mined-value">0 / 0</span>
+                    <div id="mining-ore-count">
+                        <span id="mining-ore-icon">⛏</span>
+                        <span id="mining-ore-value">0</span>
                     </div>
-                    <div id="mining-progress">
-                        <span id="mining-progress-label">Progress</span>
-                        <div id="mining-progress-bar">
-                            <div id="mining-progress-fill"></div>
-                        </div>
+                    <div id="mining-combo">
+                        <span id="mining-combo-label">Combo</span>
+                        <span id="mining-combo-value">0</span>
                     </div>
-                    <div id="mining-rating">
-                        <span id="mining-rating-value">Mining...</span>
+                    <div id="mining-score">
+                        <span id="mining-score-label">Score</span>
+                        <span id="mining-score-value">0</span>
                     </div>
                 </div>
             </div>
             <div id="mining-popup-footer">
-                <span id="mining-status-text">Mining ore...</span>
+                <span id="mining-status-text">Swing your pickaxe!</span>
             </div>
         </div>
     </div>

@@ -1796,83 +1796,173 @@ body {
     margin-bottom: 5px;
 }
 
+#mining-popup-hint {
+    font-size: 12px;
+    color: #667788;
+}
+
 #mining-game-area {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px 0;
-}
-
-#mining-score-area {
-    display: flex;
     flex-direction: column;
-    gap: 15px;
-    min-width: 150px;
     align-items: center;
+    gap: 15px;
+    padding: 10px 0;
 }
 
-#mining-mined {
+/* Mining Timer */
+#mining-timer-display {
     text-align: center;
 }
 
-#mining-mined-label {
+#mining-time-remaining {
+    font-size: 42px;
+    font-weight: bold;
+    color: #aabbcc;
+    text-shadow: 0 0 15px rgba(150, 180, 200, 0.5);
+}
+
+#mining-time-remaining.warning {
+    color: #ffaa44;
+    text-shadow: 0 0 15px rgba(255, 170, 68, 0.5);
+}
+
+#mining-time-remaining.danger {
+    color: #ff4444;
+    text-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+    animation: pulse-danger 0.5s infinite;
+}
+
+#mining-time-label {
     display: block;
     font-size: 11px;
     color: #667788;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 4px;
 }
 
-#mining-mined-value {
-    font-size: 24px;
+/* Mining Timing Bar */
+#mining-timing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#mining-timing-bar {
+    width: 300px;
+    height: 40px;
+    background: linear-gradient(180deg, #1a1a25, #0f0f18);
+    border: 3px solid #445566;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 15px rgba(0, 30, 60, 0.5);
+}
+
+#mining-sweet-spot {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    background: linear-gradient(180deg, rgba(68, 200, 120, 0.5), rgba(50, 180, 100, 0.3));
+    border: 2px solid #44cc88;
+    border-radius: 16px;
+    box-shadow: 0 0 10px rgba(68, 200, 120, 0.3);
+}
+
+#mining-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    left: 10%;
+    width: 12px;
+    height: 28px;
+    background: linear-gradient(180deg, #ffcc44, #ff9922);
+    border: 2px solid #ffdd66;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(255, 180, 50, 0.6);
+    transition: left 0.016s linear;
+}
+
+#mining-feedback {
+    height: 24px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#mining-feedback.perfect {
+    color: #ffdd44;
+    text-shadow: 0 0 10px #ffdd44;
+}
+
+#mining-feedback.great {
+    color: #44ff88;
+}
+
+#mining-feedback.good {
+    color: #88ddff;
+}
+
+#mining-feedback.miss {
+    color: #ff4444;
+}
+
+/* Mining Score Area */
+#mining-score-area {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 30px;
+}
+
+#mining-ore-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#mining-ore-icon {
+    font-size: 28px;
+}
+
+#mining-ore-value {
+    font-size: 32px;
     font-weight: bold;
     color: #aabbcc;
     text-shadow: 0 0 10px rgba(150, 180, 200, 0.5);
 }
 
-#mining-progress {
+#mining-combo, #mining-score {
     text-align: center;
-    width: 100%;
 }
 
-#mining-progress-label {
+#mining-combo-label, #mining-score-label {
     display: block;
     font-size: 11px;
     color: #667788;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 8px;
 }
 
-#mining-progress-bar {
-    width: 150px;
-    height: 16px;
-    background: linear-gradient(180deg, #0f0f18, #0a0a10);
-    border: 2px solid #445566;
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 0 auto;
-}
-
-#mining-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #556688, #7799bb);
-    border-radius: 6px;
-    transition: width 0.1s linear;
-}
-
-#mining-rating {
-    text-align: center;
-}
-
-#mining-rating-value {
-    font-size: 18px;
+#mining-combo-value {
+    font-size: 28px;
     font-weight: bold;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    color: #ffaa44;
+    text-shadow: 0 0 10px rgba(255, 170, 68, 0.5);
+}
+
+#mining-combo-value.high {
+    color: #ff6644;
+    animation: pulse-combo 0.5s infinite;
+}
+
+#mining-score-value {
+    font-size: 22px;
+    font-weight: bold;
+    color: #88ddff;
 }
 
 #mining-popup-footer {
