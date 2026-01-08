@@ -40,6 +40,7 @@ export class Game {
         this.respawnQueue = []; // Queue for enemy respawns
         this.respawnDelay = 10; // Seconds before respawn
         this.worldItems = null; // World item manager for loot drops
+        this.fishingLake = null; // Fishing lake position and state
 
         // Dungeon builder
         this.dungeonBuilder = null;
@@ -289,7 +290,11 @@ export class Game {
                 // Continue forward
                 { x: 80, z: 80, width: 20, length: 40, rot: 0 },
                 // Final chamber
-                { x: 80, z: 120, width: 40, length: 40, rot: 0 }
+                { x: 80, z: 120, width: 40, length: 40, rot: 0 },
+                // Fishing lake corridor (branches off starting area to the left)
+                { x: -22, z: -5, width: 10, length: 15, rot: Math.PI / 2 },
+                // Fishing lake shore
+                { x: -35, z: -5, width: 18, length: 18, rot: 0 }
             ];
 
             // Build floor segments
@@ -310,6 +315,30 @@ export class Game {
             spawnArea.rotation.x = -Math.PI / 2;
             spawnArea.position.set(0, 0.01, -5);
             this.scene.add(spawnArea);
+
+            // Fishing lake water surface
+            const waterGeo = new THREE.PlaneGeometry(12, 12);
+            const waterMat = new THREE.MeshStandardMaterial({
+                color: 0x2266aa,
+                roughness: 0.2,
+                metalness: 0.3,
+                transparent: true,
+                opacity: 0.85
+            });
+            const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+            waterMesh.rotation.x = -Math.PI / 2;
+            waterMesh.position.set(-35, 0.05, -5);
+            waterMesh.receiveShadow = true;
+            this.scene.add(waterMesh);
+
+            // Store fishing lake info
+            this.fishingLake = {
+                position: { x: -35, z: -5 },
+                waterMesh: waterMesh,
+                interactionRange: 6,
+                isFishing: false,
+                bobberMesh: null
+            };
 
             // Build walls around the dungeon perimeter
             this.buildDungeonWalls(wallMaterial);
@@ -845,8 +874,81 @@ export class Game {
             this.inventoryUI.updateHotbarDisplay();
         }
 
+        // Update fishing lake interaction
+        this.updateFishing(deltaTime);
+
         // Update UI
         this.updateUI();
+    }
+
+    // Check proximity to fishing lake and show/hide prompt
+    updateFishing(deltaTime) {
+        if (!this.fishingLake || !this.player) return;
+
+        const dx = this.player.position.x - this.fishingLake.position.x;
+        const dz = this.player.position.z - this.fishingLake.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        const fishingPrompt = document.getElementById('fishing-prompt');
+        const fishingStatus = document.getElementById('fishing-status');
+
+        // Check if near lake
+        this.fishingLake.isNearLake = distance < this.fishingLake.interactionRange;
+
+        if (this.fishingLake.isFishing) {
+            // Currently fishing
+            fishingPrompt?.classList.remove('visible');
+            fishingStatus?.classList.add('visible');
+
+            // Animate water while fishing (simple wobble)
+            if (this.fishingLake.waterMesh) {
+                const time = this.clock.getElapsedTime();
+                this.fishingLake.waterMesh.position.y = 0.05 + Math.sin(time * 2) * 0.02;
+            }
+        } else if (this.fishingLake.isNearLake) {
+            // Near lake, show prompt
+            fishingPrompt?.classList.add('visible');
+            fishingStatus?.classList.remove('visible');
+        } else {
+            // Not near lake
+            fishingPrompt?.classList.remove('visible');
+            fishingStatus?.classList.remove('visible');
+        }
+    }
+
+    // Toggle fishing state
+    toggleFishing() {
+        if (!this.fishingLake) return;
+
+        if (this.fishingLake.isFishing) {
+            this.stopFishing();
+        } else if (this.fishingLake.isNearLake) {
+            this.startFishing();
+        }
+    }
+
+    startFishing() {
+        if (!this.fishingLake || this.fishingLake.isFishing) return;
+
+        this.fishingLake.isFishing = true;
+        console.log('Started fishing...');
+
+        // Face the water
+        const dx = this.fishingLake.position.x - this.player.position.x;
+        const dz = this.fishingLake.position.z - this.player.position.z;
+        this.player.rotation = Math.atan2(dx, dz);
+    }
+
+    stopFishing() {
+        if (!this.fishingLake || !this.fishingLake.isFishing) return;
+
+        this.fishingLake.isFishing = false;
+        console.log('Stopped fishing.');
+
+        // Reset water position
+        if (this.fishingLake.waterMesh) {
+            this.fishingLake.waterMesh.position.y = 0.05;
+        }
     }
 
     updateGroundHazards(deltaTime) {
@@ -1053,8 +1155,8 @@ export class Game {
 
         // Minimap settings based on game mode
         if (this.gameMode === 'horde') {
-            // Winding dungeon bounds
-            this.minimapBounds = { minX: -20, maxX: 110, minZ: -20, maxZ: 150 };
+            // Winding dungeon bounds (extended for fishing lake)
+            this.minimapBounds = { minX: -50, maxX: 110, minZ: -20, maxZ: 150 };
         } else {
             // Standard dungeon/boss bounds
             this.minimapBounds = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
@@ -1099,11 +1201,29 @@ export class Game {
                 { x: 50, z: 55, w: 50, h: 20 },
                 { x: 80, z: 30, w: 35, h: 35 },
                 { x: 80, z: 80, w: 20, h: 40 },
-                { x: 80, z: 120, w: 40, h: 40 }
+                { x: 80, z: 120, w: 40, h: 40 },
+                // Fishing lake corridor and shore
+                { x: -22, z: -5, w: 15, h: 10 },
+                { x: -35, z: -5, w: 18, h: 18 }
             ];
             for (const f of floors) {
                 const p = toMinimap(f.x - f.w/2, f.z - f.h/2);
                 ctx.fillRect(p.x, p.y, f.w * scale, f.h * scale);
+            }
+
+            // Draw fishing lake water area (blue)
+            if (this.fishingLake) {
+                ctx.fillStyle = 'rgba(34, 102, 170, 0.7)';
+                const lakePos = toMinimap(this.fishingLake.position.x - 6, this.fishingLake.position.z - 6);
+                ctx.fillRect(lakePos.x, lakePos.y, 12 * scale, 12 * scale);
+
+                // Draw fishing icon (small fish shape)
+                ctx.fillStyle = '#00ccff';
+                const fishPos = toMinimap(this.fishingLake.position.x, this.fishingLake.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('~', fishPos.x, fishPos.y);
             }
         } else {
             // Simple square for other modes

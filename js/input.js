@@ -99,6 +99,11 @@ export class InputManager {
                 break;
 
             case 'f':
+                // Check if near fishing lake first
+                if (this.game.fishingLake?.isNearLake || this.game.fishingLake?.isFishing) {
+                    this.game.toggleFishing();
+                    break;
+                }
                 // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.aimingAbility = 'f';
