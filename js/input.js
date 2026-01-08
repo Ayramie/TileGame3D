@@ -56,7 +56,16 @@ export class InputManager {
     onKeyDown(e) {
         const key = e.key.toLowerCase();
 
-        // Movement keys
+        // Check for QTE minigame input first
+        if (this.game.fishingLake?.minigame?.state === 'qte') {
+            if (['w', 'a', 's', 'd'].includes(key)) {
+                e.preventDefault();
+                this.game.handleQTEKeyPress(key);
+                return;
+            }
+        }
+
+        // Movement keys (only if not in QTE)
         if (key in this.keys) {
             this.keys[key] = true;
         }
@@ -105,12 +114,11 @@ export class InputManager {
                     this.game.startFishing();
                     break;
                 } else if (this.game.fishingLake?.minigame?.state === 'bite') {
-                    // Hook the fish on bite
+                    // Hook the fish on bite - starts QTE minigame
                     this.game.fishingAction();
                     break;
-                } else if (this.game.fishingLake?.minigame?.state === 'reeling') {
-                    // Start reeling
-                    this.game.setReeling(true);
+                } else if (this.game.fishingLake?.minigame?.state === 'qte') {
+                    // Ignore F during QTE (use WASD)
                     break;
                 }
 
@@ -226,11 +234,6 @@ export class InputManager {
 
         if (key in this.keys) {
             this.keys[key] = false;
-        }
-
-        // Stop reeling when F is released
-        if (key === 'f' && this.game.fishingLake?.minigame?.state === 'reeling') {
-            this.game.setReeling(false);
         }
 
         // Fire aimed abilities on key release

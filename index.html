@@ -185,17 +185,36 @@
         <div id="fishing-popup-content">
             <div id="fishing-popup-header">
                 <span id="fishing-popup-title">Fishing!</span>
-                <span id="fishing-popup-hint">Hold F to reel up</span>
+                <span id="fishing-popup-hint">Press the keys!</span>
             </div>
             <div id="fishing-game-area">
-                <div id="fishing-bar-container">
-                    <div id="fishing-bar">
-                        <div id="fishing-catch-zone"></div>
-                        <div id="fishing-fish"></div>
+                <!-- QTE Key Display -->
+                <div id="qte-container">
+                    <div id="qte-key-display">
+                        <span id="qte-current-key">W</span>
+                        <div id="qte-timer-ring">
+                            <svg viewBox="0 0 100 100">
+                                <circle id="qte-timer-bg" cx="50" cy="50" r="45"/>
+                                <circle id="qte-timer-fill" cx="50" cy="50" r="45"/>
+                            </svg>
+                        </div>
                     </div>
-                    <div id="fishing-progress-container">
-                        <div id="fishing-progress"></div>
+                    <div id="qte-feedback"></div>
+                </div>
+                <!-- Score Display -->
+                <div id="qte-score-area">
+                    <div id="qte-combo">
+                        <span id="qte-combo-label">Combo</span>
+                        <span id="qte-combo-value">0</span>
                     </div>
+                    <div id="qte-score">
+                        <span id="qte-score-label">Score</span>
+                        <span id="qte-score-value">0</span>
+                    </div>
+                    <div id="qte-progress-bar">
+                        <div id="qte-progress-fill"></div>
+                    </div>
+                    <span id="qte-keys-remaining">10 keys left</span>
                 </div>
             </div>
             <div id="fishing-popup-footer">

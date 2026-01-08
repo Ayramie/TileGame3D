@@ -937,16 +937,19 @@ export class Game {
         }
     }
 
-    // Fishing minigame states: 'waiting', 'bite', 'reeling'
+    // Fishing minigame states: 'waiting', 'bite', 'qte'
     updateFishingMinigame(deltaTime) {
         const mg = this.fishingLake.minigame;
         if (!mg) return;
 
-        const popup = document.getElementById('fishing-popup');
         const statusText = document.getElementById('fishing-status-text');
-        const catchZone = document.getElementById('fishing-catch-zone');
-        const fishEl = document.getElementById('fishing-fish');
-        const progressEl = document.getElementById('fishing-progress');
+        const qteContainer = document.getElementById('qte-container');
+        const qteKey = document.getElementById('qte-current-key');
+        const qteTimerFill = document.getElementById('qte-timer-fill');
+        const qteComboValue = document.getElementById('qte-combo-value');
+        const qteScoreValue = document.getElementById('qte-score-value');
+        const qteProgressFill = document.getElementById('qte-progress-fill');
+        const qteKeysRemaining = document.getElementById('qte-keys-remaining');
 
         switch (mg.state) {
             case 'waiting':
@@ -955,9 +958,8 @@ export class Game {
                 statusText.textContent = 'Waiting for a bite...';
                 statusText.className = '';
 
-                // Hide the game elements during waiting
-                if (catchZone) catchZone.style.opacity = '0.3';
-                if (fishEl) fishEl.style.opacity = '0.3';
+                // Hide QTE elements during waiting
+                if (qteContainer) qteContainer.style.opacity = '0.3';
 
                 if (mg.biteTimer <= 0) {
                     // Fish bites!
@@ -983,88 +985,195 @@ export class Game {
                 }
                 break;
 
-            case 'reeling':
-                // Active reeling minigame - show elements
-                if (catchZone) catchZone.style.opacity = '1';
-                if (fishEl) fishEl.style.opacity = '1';
-                statusText.textContent = 'Hold F to reel!';
+            case 'qte':
+                // Active QTE minigame
+                if (qteContainer) qteContainer.style.opacity = '1';
+                statusText.textContent = 'Press the keys!';
                 statusText.className = '';
 
-                // Catch zone physics (player controlled)
-                // Rises when holding F, falls with gravity
-                if (mg.isReeling) {
-                    mg.zoneVelocity = Math.min(mg.zoneVelocity + 600 * deltaTime, 200);
-                } else {
-                    mg.zoneVelocity -= 400 * deltaTime; // Gravity
-                }
-                mg.zonePos += mg.zoneVelocity * deltaTime;
-                mg.zonePos = Math.max(0, Math.min(100 - mg.zoneHeight, mg.zonePos));
+                // Update timer
+                mg.keyTimer -= deltaTime;
+                const timerPercent = Math.max(0, mg.keyTimer / mg.keyTimeLimit);
 
-                // Bounce off edges
-                if (mg.zonePos <= 0 || mg.zonePos >= 100 - mg.zoneHeight) {
-                    mg.zoneVelocity *= -0.3;
-                }
+                // Update timer ring (stroke-dashoffset: 0 = full, 283 = empty)
+                if (qteTimerFill) {
+                    qteTimerFill.style.strokeDashoffset = (1 - timerPercent) * 283;
 
-                // Fish AI - slower, more predictable movement
-                mg.fishTimer -= deltaTime;
-                if (mg.fishTimer <= 0) {
-                    // Change direction/speed randomly
-                    mg.fishTimer = 0.8 + Math.random() * 1.2; // Slower direction changes
-                    mg.fishTargetSpeed = (Math.random() - 0.5) * 60; // Much slower speed
-
-                    // Occasionally make moderate jumps
-                    if (Math.random() < 0.15) {
-                        mg.fishTargetSpeed *= 1.5;
+                    // Change color based on time remaining
+                    qteTimerFill.classList.remove('warning', 'danger');
+                    if (timerPercent < 0.3) {
+                        qteTimerFill.classList.add('danger');
+                    } else if (timerPercent < 0.5) {
+                        qteTimerFill.classList.add('warning');
                     }
                 }
 
-                // Smooth fish movement toward target speed (slower acceleration)
-                mg.fishSpeed += (mg.fishTargetSpeed - mg.fishSpeed) * deltaTime * 3;
-                mg.fishPos += mg.fishSpeed * deltaTime;
-
-                // Bounce fish off edges
-                if (mg.fishPos < 0) {
-                    mg.fishPos = 0;
-                    mg.fishSpeed = Math.abs(mg.fishSpeed) * 0.8;
-                    mg.fishTargetSpeed = Math.abs(mg.fishTargetSpeed);
-                } else if (mg.fishPos > 100 - 12) { // 12% fish height
-                    mg.fishPos = 100 - 12;
-                    mg.fishSpeed = -Math.abs(mg.fishSpeed) * 0.8;
-                    mg.fishTargetSpeed = -Math.abs(mg.fishTargetSpeed);
+                // Check if time ran out
+                if (mg.keyTimer <= 0) {
+                    this.qteKeyMiss();
                 }
 
-                // Update visual positions (convert to bottom %)
-                if (catchZone) {
-                    catchZone.style.bottom = `${mg.zonePos}%`;
+                // Update displays
+                if (qteComboValue) {
+                    qteComboValue.textContent = mg.combo;
+                    if (mg.combo >= 5) {
+                        qteComboValue.classList.add('high');
+                    } else {
+                        qteComboValue.classList.remove('high');
+                    }
                 }
-                if (fishEl) {
-                    fishEl.style.bottom = `${mg.fishPos}%`;
-                }
+                if (qteScoreValue) qteScoreValue.textContent = mg.score;
+                if (qteProgressFill) qteProgressFill.style.width = `${(mg.keysCompleted / mg.totalKeys) * 100}%`;
+                if (qteKeysRemaining) qteKeysRemaining.textContent = `${mg.totalKeys - mg.keysCompleted} keys left`;
 
-                // Check if fish overlaps catch zone
-                const fishCenter = mg.fishPos + 6; // ~half fish height
-                const zoneTop = mg.zonePos + mg.zoneHeight;
-                const inZone = fishCenter >= mg.zonePos && fishCenter <= zoneTop;
-
-                // Progress changes
-                if (inZone) {
-                    mg.progress += deltaTime * 25; // Fill when fish in zone
-                } else {
-                    mg.progress -= deltaTime * 15; // Drain when fish outside
-                }
-                mg.progress = Math.max(0, Math.min(100, mg.progress));
-
-                // Update progress bar
-                if (progressEl) {
-                    progressEl.style.height = `${mg.progress}%`;
-                }
-
-                // Check win condition
-                if (mg.progress >= 100) {
-                    this.catchFish();
-                }
                 break;
         }
+    }
+
+    // Start QTE sequence after bite
+    startQTEMinigame() {
+        const mg = this.fishingLake.minigame;
+        if (!mg) return;
+
+        mg.state = 'qte';
+        mg.keys = ['W', 'A', 'S', 'D'];
+        mg.totalKeys = 12; // Number of keys to complete
+        mg.keysCompleted = 0;
+        mg.score = 0;
+        mg.combo = 0;
+        mg.maxCombo = 0;
+        mg.misses = 0;
+        mg.keyTimeLimit = 1.2; // Seconds per key
+        mg.keyTimer = mg.keyTimeLimit;
+        mg.currentKey = this.getRandomQTEKey(mg);
+        mg.lastKeyTime = performance.now();
+
+        // Update UI
+        const qteKey = document.getElementById('qte-current-key');
+        if (qteKey) {
+            qteKey.textContent = mg.currentKey;
+            qteKey.className = '';
+        }
+
+        const feedback = document.getElementById('qte-feedback');
+        if (feedback) feedback.textContent = '';
+    }
+
+    getRandomQTEKey(mg) {
+        return mg.keys[Math.floor(Math.random() * mg.keys.length)];
+    }
+
+    // Handle QTE key press
+    handleQTEKeyPress(key) {
+        const mg = this.fishingLake?.minigame;
+        if (!mg || mg.state !== 'qte') return false;
+
+        const pressedKey = key.toUpperCase();
+        const qteKey = document.getElementById('qte-current-key');
+        const feedback = document.getElementById('qte-feedback');
+
+        if (pressedKey === mg.currentKey) {
+            // Correct key!
+            const reactionTime = (performance.now() - mg.lastKeyTime) / 1000;
+            const timeBonus = Math.max(0, (mg.keyTimeLimit - reactionTime) / mg.keyTimeLimit);
+
+            // Score based on speed
+            let points = 100;
+            let rating = 'good';
+
+            if (timeBonus > 0.7) {
+                points = 200;
+                rating = 'perfect';
+            } else if (timeBonus > 0.4) {
+                points = 150;
+                rating = 'great';
+            }
+
+            // Combo multiplier
+            mg.combo++;
+            mg.maxCombo = Math.max(mg.maxCombo, mg.combo);
+            const comboMultiplier = 1 + (mg.combo * 0.1);
+            points = Math.floor(points * comboMultiplier);
+            mg.score += points;
+            mg.keysCompleted++;
+
+            // Visual feedback
+            if (qteKey) {
+                qteKey.classList.remove('wrong');
+                qteKey.classList.add('correct');
+                setTimeout(() => qteKey.classList.remove('correct'), 150);
+            }
+            if (feedback) {
+                feedback.textContent = rating === 'perfect' ? 'PERFECT!' : rating === 'great' ? 'Great!' : 'Good';
+                feedback.className = rating;
+            }
+
+            // Check if done
+            if (mg.keysCompleted >= mg.totalKeys) {
+                this.finishQTEMinigame();
+                return true;
+            }
+
+            // Next key
+            mg.currentKey = this.getRandomQTEKey(mg);
+            mg.keyTimer = mg.keyTimeLimit;
+            mg.lastKeyTime = performance.now();
+
+            if (qteKey) qteKey.textContent = mg.currentKey;
+
+            return true;
+        } else {
+            // Wrong key!
+            this.qteKeyMiss();
+            return true;
+        }
+    }
+
+    qteKeyMiss() {
+        const mg = this.fishingLake?.minigame;
+        if (!mg || mg.state !== 'qte') return;
+
+        mg.combo = 0;
+        mg.misses++;
+        mg.score = Math.max(0, mg.score - 50);
+
+        const qteKey = document.getElementById('qte-current-key');
+        const feedback = document.getElementById('qte-feedback');
+
+        if (qteKey) {
+            qteKey.classList.remove('correct');
+            qteKey.classList.add('wrong');
+            setTimeout(() => qteKey.classList.remove('wrong'), 300);
+        }
+        if (feedback) {
+            feedback.textContent = 'Miss!';
+            feedback.className = 'miss';
+        }
+
+        // Too many misses = fail
+        if (mg.misses >= 5) {
+            this.stopFishing('Too many misses! The fish escaped!');
+            return;
+        }
+
+        // Next key
+        mg.currentKey = this.getRandomQTEKey(mg);
+        mg.keyTimer = mg.keyTimeLimit;
+        mg.lastKeyTime = performance.now();
+        if (qteKey) qteKey.textContent = mg.currentKey;
+    }
+
+    finishQTEMinigame() {
+        const mg = this.fishingLake?.minigame;
+        if (!mg) return;
+
+        // Calculate final score with bonuses
+        const accuracyBonus = Math.floor((1 - (mg.misses / mg.totalKeys)) * 200);
+        const comboBonus = mg.maxCombo * 25;
+        mg.score += accuracyBonus + comboBonus;
+
+        // Determine fish based on score
+        this.catchFishByScore(mg.score);
     }
 
     // Called when F is pressed during fishing
@@ -1075,24 +1184,47 @@ export class Game {
         if (!mg) return;
 
         if (mg.state === 'bite') {
-            // Successfully hooked the fish!
-            mg.state = 'reeling';
-            mg.zonePos = 40; // Start catch zone in middle-ish
-            mg.zoneVelocity = 0;
-            mg.zoneHeight = 28; // Slightly larger catch zone
-            mg.fishPos = 50;
-            mg.fishSpeed = 0;
-            mg.fishTargetSpeed = 20; // Start slow
-            mg.fishTimer = 1.0;
-            mg.progress = 0;
-            mg.isReeling = false;
+            // Successfully hooked the fish - start QTE minigame!
+            this.startQTEMinigame();
         }
     }
 
-    // Called when F is held/released during reeling
-    setReeling(isReeling) {
-        if (this.fishingLake?.minigame?.state === 'reeling') {
-            this.fishingLake.minigame.isReeling = isReeling;
+    // Score-based fish catching
+    catchFishByScore(score) {
+        // Score thresholds for fish quality
+        // Max theoretical score ~3500+ (all perfect with high combo)
+        // Average score ~1800-2200
+        let fish;
+        let goldAmount;
+
+        if (score >= 3000) {
+            fish = { name: 'Legendary Koi', rarity: 'epic' };
+            goldAmount = 100;
+        } else if (score >= 2400) {
+            fish = { name: 'Rainbow Trout', rarity: 'rare' };
+            goldAmount = 40;
+        } else if (score >= 1800) {
+            fish = { name: 'Golden Carp', rarity: 'uncommon' };
+            goldAmount = 20;
+        } else if (score >= 1200) {
+            fish = { name: 'Bass', rarity: 'common' };
+            goldAmount = 10;
+        } else {
+            fish = { name: 'Small Trout', rarity: 'common' };
+            goldAmount = 5;
+        }
+
+        this.stopFishing();
+        this.showFishingMessage(`Caught: ${fish.name}! (Score: ${score})`, fish.rarity);
+
+        // Splash effect
+        if (this.particles) {
+            this.particles.splashEffect(this.fishingLake.waterMesh.position);
+        }
+
+        // Add gold to inventory
+        if (this.player.inventory) {
+            this.player.inventory.addGold(goldAmount);
         }
     }
 
@@ -1153,46 +1285,6 @@ export class Game {
         // Reset water position
         if (this.fishingLake.waterMesh) {
             this.fishingLake.waterMesh.position.y = 0.05;
-        }
-    }
-
-    catchFish() {
-        // Determine fish caught based on luck
-        const fishTypes = [
-            { name: 'Small Trout', rarity: 'common', weight: 50 },
-            { name: 'Bass', rarity: 'common', weight: 30 },
-            { name: 'Golden Carp', rarity: 'uncommon', weight: 15 },
-            { name: 'Rainbow Trout', rarity: 'rare', weight: 4 },
-            { name: 'Legendary Koi', rarity: 'epic', weight: 1 }
-        ];
-
-        const totalWeight = fishTypes.reduce((sum, f) => sum + f.weight, 0);
-        let roll = Math.random() * totalWeight;
-        let caughtFish = fishTypes[0];
-
-        for (const fish of fishTypes) {
-            roll -= fish.weight;
-            if (roll <= 0) {
-                caughtFish = fish;
-                break;
-            }
-        }
-
-        this.stopFishing();
-        this.showFishingMessage(`Caught: ${caughtFish.name}!`, caughtFish.rarity);
-
-        // Splash effect
-        if (this.particles) {
-            this.particles.splashEffect(this.fishingLake.waterMesh.position);
-        }
-
-        // Add fish to inventory (if we had fish items)
-        // For now just show the message and add some gold
-        if (this.player.inventory) {
-            const goldAmount = caughtFish.rarity === 'epic' ? 50 :
-                              caughtFish.rarity === 'rare' ? 20 :
-                              caughtFish.rarity === 'uncommon' ? 10 : 5;
-            this.player.inventory.addGold(goldAmount);
         }
     }
 

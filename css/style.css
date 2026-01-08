@@ -962,3 +962,178 @@ body {
 #fishing-message.rarity-uncommon { color: #44ff44; border-color: #44ff44; }
 #fishing-message.rarity-rare { color: #4488ff; border-color: #4488ff; }
 #fishing-message.rarity-epic { color: #aa44ff; border-color: #aa44ff; }
+
+/* QTE Fishing Minigame */
+#qte-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#qte-key-display {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#qte-current-key {
+    font-size: 56px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    z-index: 2;
+    transition: transform 0.1s ease, color 0.1s ease;
+}
+
+#qte-current-key.correct {
+    color: #44ff88;
+    transform: scale(1.2);
+}
+
+#qte-current-key.wrong {
+    color: #ff4444;
+    transform: scale(0.9);
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0) scale(0.9); }
+    25% { transform: translateX(-8px) scale(0.9); }
+    75% { transform: translateX(8px) scale(0.9); }
+}
+
+#qte-timer-ring {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    top: 0;
+    left: 0;
+}
+
+#qte-timer-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+#qte-timer-bg {
+    fill: none;
+    stroke: #2a3a5a;
+    stroke-width: 6;
+}
+
+#qte-timer-fill {
+    fill: none;
+    stroke: #44aaff;
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 283;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.05s linear, stroke 0.2s ease;
+}
+
+#qte-timer-fill.warning {
+    stroke: #ffaa44;
+}
+
+#qte-timer-fill.danger {
+    stroke: #ff4444;
+}
+
+#qte-feedback {
+    height: 24px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#qte-feedback.perfect {
+    color: #ffdd44;
+    text-shadow: 0 0 10px #ffdd44;
+}
+
+#qte-feedback.great {
+    color: #44ff88;
+}
+
+#qte-feedback.good {
+    color: #88ddff;
+}
+
+#qte-feedback.miss {
+    color: #ff4444;
+}
+
+#qte-score-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-left: 30px;
+    min-width: 100px;
+}
+
+#qte-combo, #qte-score {
+    text-align: center;
+}
+
+#qte-combo-label, #qte-score-label {
+    display: block;
+    font-size: 11px;
+    color: #6688aa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#qte-combo-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffaa44;
+    text-shadow: 0 0 10px rgba(255, 170, 68, 0.5);
+}
+
+#qte-combo-value.high {
+    color: #ff6644;
+    animation: pulse-combo 0.5s infinite;
+}
+
+@keyframes pulse-combo {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+#qte-score-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #88ddff;
+}
+
+#qte-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #1a2a3a;
+    border: 2px solid #3a5a7a;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+#qte-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #44aaff, #88ddff);
+    transition: width 0.2s ease;
+}
+
+#qte-keys-remaining {
+    font-size: 12px;
+    color: #6688aa;
+}
+
+/* Hide old bar elements when using QTE */
+#fishing-popup.qte-mode #fishing-bar-container {
+    display: none;
+}
