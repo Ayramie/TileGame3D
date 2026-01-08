@@ -8,6 +8,8 @@ import { SkeletonEnemy, createSkeletonEnemy } from './skeletonEnemy.js';
 import { EffectsManager } from './effects.js';
 import { ParticleSystem } from './particles.js';
 import { DungeonBuilder } from './dungeonBuilder.js';
+import { WorldItemManager } from './worldItem.js';
+import { InventoryUI } from './inventoryUI.js';
 
 export class Game {
     constructor(canvas) {
@@ -37,6 +39,7 @@ export class Game {
         this.groundHazards = [];
         this.respawnQueue = []; // Queue for enemy respawns
         this.respawnDelay = 10; // Seconds before respawn
+        this.worldItems = null; // World item manager for loot drops
 
         // Dungeon builder
         this.dungeonBuilder = null;
@@ -128,6 +131,7 @@ export class Game {
 
         this.setupCamera();
         this.setupInput();
+        this.setupInventoryUI();
 
         updateLoadingText('Spawning enemies...');
         this.spawnEnemies();
@@ -142,6 +146,9 @@ export class Game {
 
         // Create particle system
         this.particles = new ParticleSystem(this.scene);
+
+        // Create world item manager for loot drops
+        this.worldItems = new WorldItemManager(this.scene, this);
 
         // Screen shake
         this.screenShake = { intensity: 0, decay: 0.9 };
@@ -248,6 +255,12 @@ export class Game {
         this.projectiles = [];
         this.groundHazards = [];
         this.respawnQueue = [];
+
+        // Clean up world items
+        if (this.worldItems) {
+            this.worldItems.dispose();
+            this.worldItems = null;
+        }
     }
 
     async setupScene() {
@@ -420,6 +433,10 @@ export class Game {
 
     setupInput() {
         this.input = new InputManager(this.canvas, this);
+    }
+
+    setupInventoryUI() {
+        this.inventoryUI = new InventoryUI(this);
     }
 
     spawnEnemies() {
@@ -725,6 +742,12 @@ export class Game {
                     }
                 }
 
+                // Spawn loot drops
+                if (this.worldItems) {
+                    const lootType = isBoss ? 'skeleton_boss' : `skeleton_${enemy.skeletonType || 'minion'}`;
+                    this.worldItems.spawnLoot(enemy.deathPosition, lootType);
+                }
+
                 enemy.justDied = false;
             }
         }
@@ -801,6 +824,26 @@ export class Game {
 
         // Update ground hazards
         this.updateGroundHazards(deltaTime);
+
+        // Update world items (loot pickups)
+        if (this.worldItems) {
+            this.worldItems.update(deltaTime);
+        }
+
+        // Update player inventory cooldowns
+        if (this.player && this.player.inventory) {
+            this.player.inventory.update(deltaTime);
+        }
+
+        // Update player buffs
+        if (this.player && this.player.updateBuffs) {
+            this.player.updateBuffs(deltaTime);
+        }
+
+        // Update hotbar display
+        if (this.inventoryUI) {
+            this.inventoryUI.updateHotbarDisplay();
+        }
 
         // Update UI
         this.updateUI();

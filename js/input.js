@@ -185,8 +185,23 @@ export class InputManager {
                 }
                 break;
 
+            // Inventory toggle
+            case 'i':
+                if (this.game.inventoryUI) {
+                    this.game.inventoryUI.toggle();
+                }
+                break;
+
+            // Hotbar slots (1-5)
             case '1':
-                this.game.player.usePotion();
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+                if (this.game.inventoryUI) {
+                    const slotIndex = parseInt(key) - 1;
+                    this.game.inventoryUI.useHotbarSlot(slotIndex);
+                }
                 break;
         }
     }

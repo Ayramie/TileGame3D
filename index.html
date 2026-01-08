@@ -67,12 +67,90 @@
                 <span class="name">Sunder</span>
                 <div class="cooldown-overlay"></div>
             </div>
-            <div class="ability" id="ability-1">
-                <span class="key">1</span>
-                <span class="name">Potion</span>
-                <div class="cooldown-overlay"></div>
+        </div>
+        <!-- Hotbar for quick-use consumables -->
+        <div id="hotbar">
+            <div class="hotbar-slot" data-slot="0">
+                <span class="hotbar-key">1</span>
+                <div class="hotbar-item"></div>
+                <div class="hotbar-quantity"></div>
+                <div class="hotbar-cooldown"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="1">
+                <span class="hotbar-key">2</span>
+                <div class="hotbar-item"></div>
+                <div class="hotbar-quantity"></div>
+                <div class="hotbar-cooldown"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="2">
+                <span class="hotbar-key">3</span>
+                <div class="hotbar-item"></div>
+                <div class="hotbar-quantity"></div>
+                <div class="hotbar-cooldown"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="3">
+                <span class="hotbar-key">4</span>
+                <div class="hotbar-item"></div>
+                <div class="hotbar-quantity"></div>
+                <div class="hotbar-cooldown"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="4">
+                <span class="hotbar-key">5</span>
+                <div class="hotbar-item"></div>
+                <div class="hotbar-quantity"></div>
+                <div class="hotbar-cooldown"></div>
+            </div>
+            <div id="gold-display">
+                <span id="gold-icon">$</span>
+                <span id="gold-amount">0</span>
             </div>
         </div>
+    </div>
+
+    <!-- Inventory Panel -->
+    <div id="inventory-panel">
+        <div id="inventory-header">
+            <span>Inventory</span>
+            <button id="inventory-close">X</button>
+        </div>
+        <div id="inventory-content">
+            <div id="equipment-section">
+                <div class="equip-slot" data-slot="helmet">
+                    <span class="equip-label">Head</span>
+                </div>
+                <div class="equip-slot" data-slot="weapon">
+                    <span class="equip-label">Weapon</span>
+                </div>
+                <div class="equip-slot" data-slot="chest">
+                    <span class="equip-label">Chest</span>
+                </div>
+                <div class="equip-slot" data-slot="gloves">
+                    <span class="equip-label">Hands</span>
+                </div>
+                <div class="equip-slot" data-slot="boots">
+                    <span class="equip-label">Feet</span>
+                </div>
+                <div class="equip-slot" data-slot="ring">
+                    <span class="equip-label">Ring</span>
+                </div>
+                <div class="equip-slot" data-slot="amulet">
+                    <span class="equip-label">Amulet</span>
+                </div>
+            </div>
+            <div id="inventory-grid"></div>
+        </div>
+        <div id="equipment-stats">
+            <span>DMG: <span id="stat-damage">0</span></span>
+            <span>DEF: <span id="stat-defense">0</span></span>
+        </div>
+    </div>
+
+    <!-- Item Tooltip -->
+    <div id="item-tooltip">
+        <div id="tooltip-name"></div>
+        <div id="tooltip-type"></div>
+        <div id="tooltip-stats"></div>
+        <div id="tooltip-desc"></div>
     </div>
 
     <!-- Crosshair removed - using visible cursor now -->

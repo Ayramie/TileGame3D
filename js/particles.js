@@ -3038,4 +3038,151 @@ export class ParticleSystem {
             });
         }
     }
+
+    // Item pickup effect
+    itemPickup(position, color = 0x44ff44) {
+        // Layer 1: Upward sparkle burst
+        this.spawn(position, {
+            count: 12,
+            spread: 0.3,
+            speed: 4,
+            life: 0.5,
+            size: 0.25,
+            endSize: 0.05,
+            gravity: 3,
+            upwardBias: 5,
+            color: color,
+            endColor: 0xffffff,
+            texture: 'star',
+            rotationSpeed: 4
+        });
+
+        // Layer 2: Central glow flash
+        this.spawn(position, {
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.3,
+            size: 0.8,
+            endSize: 0.1,
+            gravity: 0,
+            color: 0xffffff,
+            endColor: color,
+            texture: 'glow'
+        });
+
+        // Layer 3: Rising particles
+        this.spawn(position, {
+            count: 8,
+            spread: 0.4,
+            speed: 2,
+            life: 0.6,
+            size: 0.2,
+            endSize: 0.03,
+            gravity: 2,
+            upwardBias: 4,
+            drag: 0.97,
+            color: color,
+            texture: 'magic',
+            rotationSpeed: 3
+        });
+
+        // Layer 4: Small sparks
+        this.spawn(position, {
+            count: 6,
+            spread: 0.2,
+            speed: 6,
+            life: 0.3,
+            size: 0.12,
+            gravity: -5,
+            upwardBias: 3,
+            color: 0xffffff,
+            texture: 'spark'
+        });
+    }
+
+    // Buff applied effect
+    buffApplied(position, color = 0x44ff44) {
+        // Rising sparkles around player
+        this.spawn(position, {
+            count: 16,
+            spread: 1.0,
+            speed: 2,
+            life: 1.0,
+            size: 0.2,
+            endSize: 0.05,
+            gravity: 3,
+            upwardBias: 4,
+            color: color,
+            endColor: 0xffffff,
+            texture: 'star',
+            rotationSpeed: 3
+        });
+
+        // Central glow
+        this.spawn(position, {
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.4,
+            size: 1.5,
+            endSize: 0.2,
+            gravity: 0,
+            color: color,
+            endColor: color,
+            texture: 'glow'
+        });
+
+        // Swirling particles
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const offset = {
+                x: position.x + Math.cos(angle) * 0.8,
+                y: position.y + 0.5,
+                z: position.z + Math.sin(angle) * 0.8
+            };
+            this.spawn(offset, {
+                count: 2,
+                spread: 0.1,
+                speed: 1,
+                life: 0.8,
+                size: 0.15,
+                gravity: 2,
+                upwardBias: 3,
+                color: color,
+                texture: 'magic'
+            });
+        }
+    }
+
+    // Item use effect (potions, etc.)
+    itemUse(position, color = 0x44ff44) {
+        // Splash particles
+        this.spawn(position, {
+            count: 12,
+            spread: 0.5,
+            speed: 3,
+            life: 0.5,
+            size: 0.2,
+            endSize: 0.05,
+            gravity: 5,
+            upwardBias: 2,
+            color: color,
+            texture: 'circle'
+        });
+
+        // Center flash
+        this.spawn(position, {
+            count: 1,
+            spread: 0,
+            speed: 0,
+            life: 0.3,
+            size: 1.0,
+            endSize: 0.1,
+            gravity: 0,
+            color: 0xffffff,
+            endColor: color,
+            texture: 'glow'
+        });
+    }
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KayKitCharacter } from './kayKitCharacter.js';
 import { WeaponFactory } from './weaponFactory.js';
+import { Inventory } from './inventory.js';
 
 export class Hunter {
     constructor(scene, game) {
@@ -9,7 +10,14 @@ export class Hunter {
         this.position = new THREE.Vector3(0, 0, 0);
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.rotation = 0;
-        this.className = 'Hunter';
+        this.className = 'hunter';
+
+        // Inventory system
+        this.inventory = new Inventory(24);
+        this.inventory.giveStarterItems(this.className);
+
+        // Buff system
+        this.buffs = {};
 
         // Stats - Hunter is mobile with medium health
         this.maxHealth = 400;
@@ -1690,6 +1698,96 @@ export class Hunter {
                 this.character.playAnimation('idle', true);
             }
         }, 2000);
+    }
+
+    // Buff system
+    applyBuff(buffType, duration, value) {
+        const baseValue = this.getBuffBaseValue(buffType);
+
+        this.buffs[buffType] = {
+            duration: duration,
+            value: value,
+            baseValue: baseValue
+        };
+
+        this.applyBuffEffect(buffType, value);
+
+        // Visual effect
+        if (this.game && this.game.particles && this.game.particles.buffApplied) {
+            this.game.particles.buffApplied(this.position, this.getBuffColor(buffType));
+        }
+    }
+
+    getBuffBaseValue(buffType) {
+        switch (buffType) {
+            case 'speed': return this.moveSpeed;
+            case 'damage': return this.autoAttackDamage;
+            case 'defense': return 0;
+            default: return 0;
+        }
+    }
+
+    getBuffColor(buffType) {
+        switch (buffType) {
+            case 'speed': return 0x44ff44;
+            case 'damage': return 0xff4444;
+            case 'defense': return 0x4444ff;
+            default: return 0xffffff;
+        }
+    }
+
+    applyBuffEffect(buffType, value) {
+        switch (buffType) {
+            case 'speed':
+                this.moveSpeed *= (1 + value);
+                break;
+            case 'damage':
+                this.autoAttackDamage = Math.floor(this.autoAttackDamage * (1 + value));
+                break;
+        }
+    }
+
+    removeBuffEffect(buffType, buff) {
+        switch (buffType) {
+            case 'speed':
+                this.moveSpeed = buff.baseValue;
+                break;
+            case 'damage':
+                this.autoAttackDamage = buff.baseValue;
+                break;
+        }
+    }
+
+    updateBuffs(deltaTime) {
+        for (const buffType in this.buffs) {
+            const buff = this.buffs[buffType];
+            buff.duration -= deltaTime;
+
+            if (buff.duration <= 0) {
+                this.removeBuffEffect(buffType, buff);
+                delete this.buffs[buffType];
+            }
+        }
+    }
+
+    getStats() {
+        const baseStats = {
+            damage: this.autoAttackDamage,
+            defense: 0,
+            health: this.maxHealth,
+            speed: this.moveSpeed
+        };
+
+        // Add equipment bonuses
+        if (this.inventory) {
+            const equipStats = this.inventory.getEquipmentStats();
+            baseStats.damage += equipStats.damage || 0;
+            baseStats.defense += equipStats.defense || 0;
+            baseStats.health += equipStats.health || 0;
+            baseStats.speed += equipStats.speed || 0;
+        }
+
+        return baseStats;
     }
 
     // Effect helper methods

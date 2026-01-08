@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KayKitCharacter } from './kayKitCharacter.js';
 import { WeaponFactory } from './weaponFactory.js';
+import { Inventory } from './inventory.js';
 
 export class Player {
     constructor(scene, game) {
@@ -9,6 +10,16 @@ export class Player {
         this.position = new THREE.Vector3(0, 0, 0);
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.rotation = 0; // Y-axis rotation
+
+        // Class identifier
+        this.className = 'warrior';
+
+        // Inventory system
+        this.inventory = new Inventory(24);
+        this.inventory.giveStarterItems(this.className);
+
+        // Buff system
+        this.buffs = {};
 
         // Stats
         this.maxHealth = 500;
@@ -1363,5 +1374,119 @@ export class Player {
                 this.character.playAnimation('idle', true);
             }
         }, 2000);
+    }
+
+    // Apply a temporary buff
+    applyBuff(buffType, options) {
+        const { multiplier, duration } = options;
+
+        // Store original value if not already buffed
+        if (!this.buffs[buffType]) {
+            this.buffs[buffType] = {
+                originalValue: this.getBuffBaseValue(buffType),
+                multiplier: multiplier,
+                remaining: duration
+            };
+        } else {
+            // Refresh duration if already buffed
+            this.buffs[buffType].remaining = duration;
+            this.buffs[buffType].multiplier = multiplier;
+        }
+
+        // Apply the buff effect
+        this.applyBuffEffect(buffType);
+
+        // Visual feedback
+        if (this.game && this.game.particles) {
+            const color = this.getBuffColor(buffType);
+            this.game.particles.buffAura(this.position, color);
+        }
+    }
+
+    getBuffBaseValue(buffType) {
+        switch (buffType) {
+            case 'speed': return this.moveSpeed;
+            case 'damage': return this.autoAttackDamage;
+            case 'defense': return 1; // Damage multiplier
+            default: return 1;
+        }
+    }
+
+    getBuffColor(buffType) {
+        switch (buffType) {
+            case 'speed': return 0x44aaff;
+            case 'damage': return 0xff6644;
+            case 'defense': return 0x888888;
+            default: return 0x44ff88;
+        }
+    }
+
+    applyBuffEffect(buffType) {
+        const buff = this.buffs[buffType];
+        if (!buff) return;
+
+        switch (buffType) {
+            case 'speed':
+                this.moveSpeed = buff.originalValue * buff.multiplier;
+                break;
+            case 'damage':
+                this.autoAttackDamage = Math.floor(buff.originalValue * buff.multiplier);
+                break;
+            // Defense is checked in takeDamage
+        }
+    }
+
+    removeBuffEffect(buffType) {
+        const buff = this.buffs[buffType];
+        if (!buff) return;
+
+        switch (buffType) {
+            case 'speed':
+                this.moveSpeed = buff.originalValue;
+                break;
+            case 'damage':
+                this.autoAttackDamage = buff.originalValue;
+                break;
+        }
+
+        delete this.buffs[buffType];
+    }
+
+    updateBuffs(deltaTime) {
+        for (const buffType in this.buffs) {
+            const buff = this.buffs[buffType];
+            buff.remaining -= deltaTime;
+
+            if (buff.remaining <= 0) {
+                this.removeBuffEffect(buffType);
+            }
+        }
+    }
+
+    // Get total stats including equipment bonuses
+    getStats() {
+        const baseStats = {
+            damage: this.autoAttackDamage,
+            defense: 0,
+            maxHealth: this.maxHealth,
+            attackSpeed: 0,
+            moveSpeed: this.moveSpeed,
+            magicPower: 0
+        };
+
+        // Add equipment bonuses
+        if (this.inventory) {
+            const equipStats = this.inventory.getEquipmentStats();
+            return {
+                damage: baseStats.damage + (equipStats.damage || 0),
+                defense: baseStats.defense + (equipStats.defense || 0),
+                maxHealth: baseStats.maxHealth + (equipStats.maxHealth || 0),
+                attackSpeed: baseStats.attackSpeed + (equipStats.attackSpeed || 0),
+                moveSpeed: baseStats.moveSpeed + (baseStats.moveSpeed * (equipStats.moveSpeed || 0) / 100),
+                magicPower: baseStats.magicPower + (equipStats.magicPower || 0)
+            };
+        }
+
+        return baseStats;
     }
 }
