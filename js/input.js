@@ -99,26 +99,6 @@ export class InputManager {
                 break;
 
             case 'f':
-                // Check if currently fishing (minigame active)
-                if (this.game.fishingLake?.isFishing) {
-                    const mg = this.game.fishingLake.minigame;
-                    if (mg?.state === 'waiting') {
-                        // Can cancel during waiting phase
-                        this.game.stopFishing();
-                    } else if (mg?.state === 'bite') {
-                        // Hook the fish!
-                        this.game.fishingAction();
-                    } else if (mg?.state === 'reeling') {
-                        // Start reeling (handled by keydown/keyup)
-                        this.game.setReeling(true);
-                    }
-                    break;
-                }
-                // Check if near fishing lake to start fishing
-                if (this.game.fishingLake?.isNearLake) {
-                    this.game.startFishing();
-                    break;
-                }
                 // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.aimingAbility = 'f';
@@ -233,12 +213,6 @@ export class InputManager {
             this.keys[key] = false;
         }
 
-        // Stop reeling when F is released
-        if (key === 'f' && this.game.fishingLake?.minigame?.state === 'reeling') {
-            this.game.setReeling(false);
-            return;
-        }
-
         // Fire aimed abilities on key release
         if (this.aimingAbility === key) {
             this.fireAimedAbility(key);
@@ -322,7 +296,30 @@ export class InputManager {
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
 
-        if (e.button === 0) { // Left click - attack or click-to-move
+        if (e.button === 0) { // Left click
+            // Check if fishing minigame is active
+            if (this.game.fishingLake?.isFishing) {
+                const mg = this.game.fishingLake.minigame;
+                if (mg?.state === 'waiting') {
+                    // Can cancel during waiting phase
+                    this.game.stopFishing();
+                } else if (mg?.state === 'bite') {
+                    // Hook the fish!
+                    this.game.fishingAction();
+                } else if (mg?.state === 'reeling') {
+                    // Start reeling
+                    this.game.setReeling(true);
+                }
+                return; // Don't process normal click during fishing
+            }
+
+            // Check if near fishing lake to start fishing
+            if (this.game.fishingLake?.isNearLake && !this.game.fishingLake?.isFishing) {
+                this.game.startFishing();
+                return;
+            }
+
+            // Normal click - attack or click-to-move
             this.leftMouseDown = true;
             this.leftClickStartX = e.clientX;
             this.leftClickStartY = e.clientY;
@@ -336,6 +333,12 @@ export class InputManager {
 
     onMouseUp(e) {
         if (e.button === 0) {
+            // Stop reeling if fishing
+            if (this.game.fishingLake?.minigame?.state === 'reeling') {
+                this.game.setReeling(false);
+                return;
+            }
+
             // Left click - attack or click-to-move
             if (this.leftMouseDown && !this.wasDragging) {
                 // Check if clicked on an enemy first

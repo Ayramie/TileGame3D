@@ -963,7 +963,7 @@ export class Game {
                     // Fish bites!
                     mg.state = 'bite';
                     mg.biteWindow = 2.0; // 2 seconds to react
-                    statusText.textContent = '!! FISH ON !! Press F!';
+                    statusText.textContent = '!! FISH ON !! Click!';
                     statusText.className = 'alert';
 
                     // Play splash effect
@@ -974,9 +974,9 @@ export class Game {
                 break;
 
             case 'bite':
-                // Player must press F quickly
+                // Player must click quickly
                 mg.biteWindow -= deltaTime;
-                statusText.textContent = `!! FISH ON !! Press F! (${mg.biteWindow.toFixed(1)}s)`;
+                statusText.textContent = `!! FISH ON !! Click! (${mg.biteWindow.toFixed(1)}s)`;
 
                 if (mg.biteWindow <= 0) {
                     this.stopFishing('The fish got away!');
@@ -987,7 +987,7 @@ export class Game {
                 // Active reeling minigame - show elements
                 if (catchZone) catchZone.style.opacity = '1';
                 if (fishEl) fishEl.style.opacity = '1';
-                statusText.textContent = 'Hold F to reel!';
+                statusText.textContent = 'Hold Click to reel!';
                 statusText.className = '';
 
                 // Catch zone physics (player controlled)
@@ -1005,21 +1005,21 @@ export class Game {
                     mg.zoneVelocity *= -0.3;
                 }
 
-                // Fish AI - erratic movement
+                // Fish AI - slower, more predictable movement
                 mg.fishTimer -= deltaTime;
                 if (mg.fishTimer <= 0) {
                     // Change direction/speed randomly
-                    mg.fishTimer = 0.3 + Math.random() * 0.8;
-                    mg.fishTargetSpeed = (Math.random() - 0.5) * 150;
+                    mg.fishTimer = 0.8 + Math.random() * 1.2; // Slower direction changes
+                    mg.fishTargetSpeed = (Math.random() - 0.5) * 60; // Much slower speed
 
-                    // Occasionally make big jumps
-                    if (Math.random() < 0.2) {
-                        mg.fishTargetSpeed *= 2;
+                    // Occasionally make moderate jumps
+                    if (Math.random() < 0.15) {
+                        mg.fishTargetSpeed *= 1.5;
                     }
                 }
 
-                // Smooth fish movement toward target speed
-                mg.fishSpeed += (mg.fishTargetSpeed - mg.fishSpeed) * deltaTime * 5;
+                // Smooth fish movement toward target speed (slower acceleration)
+                mg.fishSpeed += (mg.fishTargetSpeed - mg.fishSpeed) * deltaTime * 3;
                 mg.fishPos += mg.fishSpeed * deltaTime;
 
                 // Bounce fish off edges
@@ -1079,11 +1079,11 @@ export class Game {
             mg.state = 'reeling';
             mg.zonePos = 40; // Start catch zone in middle-ish
             mg.zoneVelocity = 0;
-            mg.zoneHeight = 26; // Catch zone height as % of bar
+            mg.zoneHeight = 28; // Slightly larger catch zone
             mg.fishPos = 50;
             mg.fishSpeed = 0;
-            mg.fishTargetSpeed = 50;
-            mg.fishTimer = 0.5;
+            mg.fishTargetSpeed = 20; // Start slow
+            mg.fishTimer = 1.0;
             mg.progress = 0;
             mg.isReeling = false;
         }
