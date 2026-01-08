@@ -2240,8 +2240,8 @@ export class Game {
 
         // Minimap settings based on game mode
         if (this.gameMode === 'horde') {
-            // Winding dungeon bounds (extended for fishing lake)
-            this.minimapBounds = { minX: -50, maxX: 110, minZ: -20, maxZ: 150 };
+            // Winding dungeon bounds (extended for fishing lake and mine)
+            this.minimapBounds = { minX: -50, maxX: 110, minZ: -55, maxZ: 150 };
         } else {
             // Standard dungeon/boss bounds
             this.minimapBounds = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
@@ -2289,7 +2289,10 @@ export class Game {
                 { x: 80, z: 120, w: 40, h: 40 },
                 // Fishing lake corridor and shore
                 { x: -22, z: -5, w: 15, h: 10 },
-                { x: -35, z: -5, w: 18, h: 18 }
+                { x: -35, z: -5, w: 18, h: 18 },
+                // Mine corridor and chamber
+                { x: 0, z: -25, w: 12, h: 15 },
+                { x: 0, z: -42, w: 20, h: 20 }
             ];
             for (const f of floors) {
                 const p = toMinimap(f.x - f.w/2, f.z - f.h/2);
@@ -2325,6 +2328,22 @@ export class Game {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('🔥', firePos.x, firePos.y);
+            }
+
+            // Draw mine area on minimap
+            if (this.mine) {
+                // Draw mine chamber
+                ctx.fillStyle = 'rgba(60, 60, 70, 0.6)';
+                const minePos = toMinimap(this.mine.position.x - 10, this.mine.position.z - 10);
+                ctx.fillRect(minePos.x, minePos.y, 20 * scale, 20 * scale);
+
+                // Draw mine icon
+                ctx.fillStyle = '#aabbcc';
+                const pickPos = toMinimap(this.mine.position.x, this.mine.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⛏', pickPos.x, pickPos.y);
             }
         } else {
             // Simple square for other modes
@@ -2389,7 +2408,19 @@ export class Game {
             // Right wall split for campfire corridor
             { x1: 12, z1: -15, x2: 12, z2: -12 },      // Right wall bottom section
             { x1: 12, z1: 3, x2: 12, z2: 0 },          // Right wall top section (gap from z=-12 to z=3)
-            { x1: -12, z1: -15, x2: 12, z2: -15 },     // Back wall
+            // Back wall split for mine corridor (gap from x=-6 to x=6)
+            { x1: -12, z1: -15, x2: -6, z2: -15 },     // Back wall left section
+            { x1: 6, z1: -15, x2: 12, z2: -15 },       // Back wall right section
+
+            // Mine corridor walls (x=-6 to 6, z=-15 to -32)
+            { x1: -6, z1: -15, x2: -6, z2: -32 },      // Corridor left wall
+            { x1: 6, z1: -15, x2: 6, z2: -32 },        // Corridor right wall
+            // Mine chamber walls (x=-10 to 10, z=-32 to -52)
+            { x1: -6, z1: -32, x2: -10, z2: -32 },     // Chamber entrance left
+            { x1: 6, z1: -32, x2: 10, z2: -32 },       // Chamber entrance right
+            { x1: -10, z1: -32, x2: -10, z2: -52 },    // Chamber left wall
+            { x1: 10, z1: -32, x2: 10, z2: -52 },      // Chamber right wall
+            { x1: -10, z1: -52, x2: 10, z2: -52 },     // Chamber back wall
 
             // Fishing lake area walls
             { x1: -12, z1: -12, x2: -27, z2: -12 },    // Corridor bottom wall
