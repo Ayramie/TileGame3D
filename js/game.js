@@ -891,7 +891,6 @@ export class Game {
 
         const fishingPrompt = document.getElementById('fishing-prompt');
         const fishingStatus = document.getElementById('fishing-status');
-        const fishingMinigame = document.getElementById('fishing-minigame');
 
         // Check if near lake
         this.fishingLake.isNearLake = distance < this.fishingLake.interactionRange;
@@ -909,11 +908,13 @@ export class Game {
             }
         }
 
+        const fishingPopup = document.getElementById('fishing-popup');
+
         if (this.fishingLake.isFishing) {
-            // Currently fishing - update minigame
+            // Currently fishing - show popup and update minigame
             fishingPrompt?.classList.remove('visible');
-            fishingStatus?.classList.add('visible');
-            fishingMinigame?.classList.add('visible');
+            fishingStatus?.classList.remove('visible');
+            fishingPopup?.classList.add('visible');
 
             // Update minigame
             this.updateFishingMinigame(deltaTime);
@@ -927,40 +928,43 @@ export class Game {
             // Near lake, show prompt
             fishingPrompt?.classList.add('visible');
             fishingStatus?.classList.remove('visible');
-            fishingMinigame?.classList.remove('visible');
+            fishingPopup?.classList.remove('visible');
         } else {
             // Not near lake
             fishingPrompt?.classList.remove('visible');
             fishingStatus?.classList.remove('visible');
-            fishingMinigame?.classList.remove('visible');
+            fishingPopup?.classList.remove('visible');
         }
     }
 
-    // Fishing minigame states: 'waiting', 'bite', 'reeling', 'success', 'fail'
+    // Fishing minigame states: 'waiting', 'bite', 'reeling'
     updateFishingMinigame(deltaTime) {
         const mg = this.fishingLake.minigame;
         if (!mg) return;
 
-        const fishingText = document.getElementById('fishing-text');
-        const catchZone = document.getElementById('catch-zone');
-        const fishMarker = document.getElementById('fish-marker');
-        const tensionFill = document.getElementById('tension-fill');
+        const popup = document.getElementById('fishing-popup');
+        const statusText = document.getElementById('fishing-status-text');
+        const catchZone = document.getElementById('fishing-catch-zone');
+        const fishEl = document.getElementById('fishing-fish');
+        const progressEl = document.getElementById('fishing-progress');
 
         switch (mg.state) {
             case 'waiting':
                 // Waiting for a bite
                 mg.biteTimer -= deltaTime;
-                fishingText.textContent = 'Waiting for a bite...';
+                statusText.textContent = 'Waiting for a bite...';
+                statusText.className = '';
 
-                // Hide reeling UI
-                catchZone?.parentElement?.classList.remove('active');
+                // Hide the game elements during waiting
+                if (catchZone) catchZone.style.opacity = '0.3';
+                if (fishEl) fishEl.style.opacity = '0.3';
 
                 if (mg.biteTimer <= 0) {
                     // Fish bites!
                     mg.state = 'bite';
-                    mg.biteWindow = 1.5; // 1.5 seconds to react
-                    fishingText.textContent = '! FISH ON! Press F !';
-                    fishingText.classList.add('bite-alert');
+                    mg.biteWindow = 2.0; // 2 seconds to react
+                    statusText.textContent = '!! FISH ON !! Press F!';
+                    statusText.className = 'alert';
 
                     // Play splash effect
                     if (this.particles) {
@@ -972,85 +976,91 @@ export class Game {
             case 'bite':
                 // Player must press F quickly
                 mg.biteWindow -= deltaTime;
+                statusText.textContent = `!! FISH ON !! Press F! (${mg.biteWindow.toFixed(1)}s)`;
 
                 if (mg.biteWindow <= 0) {
-                    // Too slow!
                     this.stopFishing('The fish got away!');
                 }
                 break;
 
             case 'reeling':
-                // Active reeling minigame
-                fishingText.textContent = 'Hold F to reel in!';
-                fishingText.classList.remove('bite-alert');
-                catchZone?.parentElement?.classList.add('active');
+                // Active reeling minigame - show elements
+                if (catchZone) catchZone.style.opacity = '1';
+                if (fishEl) fishEl.style.opacity = '1';
+                statusText.textContent = 'Hold F to reel!';
+                statusText.className = '';
 
-                // Fish moves erratically
-                mg.fishPos += mg.fishDirection * mg.fishSpeed * deltaTime;
+                // Catch zone physics (player controlled)
+                // Rises when holding F, falls with gravity
+                if (mg.isReeling) {
+                    mg.zoneVelocity = Math.min(mg.zoneVelocity + 600 * deltaTime, 200);
+                } else {
+                    mg.zoneVelocity -= 400 * deltaTime; // Gravity
+                }
+                mg.zonePos += mg.zoneVelocity * deltaTime;
+                mg.zonePos = Math.max(0, Math.min(100 - mg.zoneHeight, mg.zonePos));
+
+                // Bounce off edges
+                if (mg.zonePos <= 0 || mg.zonePos >= 100 - mg.zoneHeight) {
+                    mg.zoneVelocity *= -0.3;
+                }
+
+                // Fish AI - erratic movement
+                mg.fishTimer -= deltaTime;
+                if (mg.fishTimer <= 0) {
+                    // Change direction/speed randomly
+                    mg.fishTimer = 0.3 + Math.random() * 0.8;
+                    mg.fishTargetSpeed = (Math.random() - 0.5) * 150;
+
+                    // Occasionally make big jumps
+                    if (Math.random() < 0.2) {
+                        mg.fishTargetSpeed *= 2;
+                    }
+                }
+
+                // Smooth fish movement toward target speed
+                mg.fishSpeed += (mg.fishTargetSpeed - mg.fishSpeed) * deltaTime * 5;
+                mg.fishPos += mg.fishSpeed * deltaTime;
 
                 // Bounce fish off edges
-                if (mg.fishPos <= 0) {
+                if (mg.fishPos < 0) {
                     mg.fishPos = 0;
-                    mg.fishDirection = 1;
-                    mg.fishSpeed = 30 + Math.random() * 40;
-                } else if (mg.fishPos >= 100) {
-                    mg.fishPos = 100;
-                    mg.fishDirection = -1;
-                    mg.fishSpeed = 30 + Math.random() * 40;
+                    mg.fishSpeed = Math.abs(mg.fishSpeed) * 0.8;
+                    mg.fishTargetSpeed = Math.abs(mg.fishTargetSpeed);
+                } else if (mg.fishPos > 100 - 12) { // 12% fish height
+                    mg.fishPos = 100 - 12;
+                    mg.fishSpeed = -Math.abs(mg.fishSpeed) * 0.8;
+                    mg.fishTargetSpeed = -Math.abs(mg.fishTargetSpeed);
                 }
 
-                // Random direction changes
-                if (Math.random() < deltaTime * 2) {
-                    mg.fishDirection *= -1;
-                    mg.fishSpeed = 30 + Math.random() * 40;
+                // Update visual positions (convert to bottom %)
+                if (catchZone) {
+                    catchZone.style.bottom = `${mg.zonePos}%`;
+                }
+                if (fishEl) {
+                    fishEl.style.bottom = `${mg.fishPos}%`;
                 }
 
-                // Update fish marker position
-                if (fishMarker) {
-                    fishMarker.style.left = `${mg.fishPos}%`;
-                }
+                // Check if fish overlaps catch zone
+                const fishCenter = mg.fishPos + 6; // ~half fish height
+                const zoneTop = mg.zonePos + mg.zoneHeight;
+                const inZone = fishCenter >= mg.zonePos && fishCenter <= zoneTop;
 
-                // Check if fish is in catch zone (40-60%)
-                const inZone = mg.fishPos >= 35 && mg.fishPos <= 65;
-
-                // Tension changes based on reeling
-                if (mg.isReeling) {
-                    if (inZone) {
-                        mg.tension += deltaTime * 25; // Good progress
-                        mg.progress += deltaTime * 20;
-                    } else {
-                        mg.tension += deltaTime * 40; // Too much tension when fish not in zone
-                        mg.progress += deltaTime * 5; // Slow progress
-                    }
+                // Progress changes
+                if (inZone) {
+                    mg.progress += deltaTime * 25; // Fill when fish in zone
                 } else {
-                    mg.tension -= deltaTime * 30; // Tension decreases when not reeling
-                    mg.progress -= deltaTime * 8; // Slight progress loss
+                    mg.progress -= deltaTime * 15; // Drain when fish outside
                 }
-
-                // Clamp values
-                mg.tension = Math.max(0, Math.min(100, mg.tension));
                 mg.progress = Math.max(0, Math.min(100, mg.progress));
 
-                // Update tension bar
-                if (tensionFill) {
-                    tensionFill.style.width = `${mg.tension}%`;
-                    if (mg.tension > 80) {
-                        tensionFill.classList.add('danger');
-                    } else {
-                        tensionFill.classList.remove('danger');
-                    }
-                }
-
                 // Update progress bar
-                const progressFill = document.getElementById('progress-fill');
-                if (progressFill) {
-                    progressFill.style.width = `${mg.progress}%`;
+                if (progressEl) {
+                    progressEl.style.height = `${mg.progress}%`;
                 }
 
-                // Check win/lose conditions
-                if (mg.tension >= 100) {
-                    this.stopFishing('Line snapped!');
-                } else if (mg.progress >= 100) {
+                // Check win condition
+                if (mg.progress >= 100) {
                     this.catchFish();
                 }
                 break;
@@ -1067,16 +1077,19 @@ export class Game {
         if (mg.state === 'bite') {
             // Successfully hooked the fish!
             mg.state = 'reeling';
+            mg.zonePos = 40; // Start catch zone in middle-ish
+            mg.zoneVelocity = 0;
+            mg.zoneHeight = 26; // Catch zone height as % of bar
             mg.fishPos = 50;
-            mg.fishDirection = Math.random() > 0.5 ? 1 : -1;
-            mg.fishSpeed = 40;
-            mg.tension = 20;
+            mg.fishSpeed = 0;
+            mg.fishTargetSpeed = 50;
+            mg.fishTimer = 0.5;
             mg.progress = 0;
             mg.isReeling = false;
         }
     }
 
-    // Called when F is held during reeling
+    // Called when F is held/released during reeling
     setReeling(isReeling) {
         if (this.fishingLake?.minigame?.state === 'reeling') {
             this.fishingLake.minigame.isReeling = isReeling;
@@ -1129,11 +1142,9 @@ export class Game {
         this.fishingLake.minigame = null;
         this.fishingLake.playerStartPos = null;
 
-        // Reset UI
-        const fishingText = document.getElementById('fishing-text');
-        if (fishingText) {
-            fishingText.classList.remove('bite-alert');
-        }
+        // Hide popup
+        const popup = document.getElementById('fishing-popup');
+        popup?.classList.remove('visible');
 
         if (message) {
             this.showFishingMessage(message);
