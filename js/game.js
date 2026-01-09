@@ -3634,7 +3634,7 @@ export class Game {
         recipeList.innerHTML = '';
 
         for (const recipe of this.craftingRecipes) {
-            const itemDef = ItemDatabase[recipe.id];
+            const itemDef = ITEMS[recipe.id];
             if (!itemDef) continue;
 
             const canCraft = this.canCraftRecipe(recipe);
@@ -3668,7 +3668,7 @@ export class Game {
 
     getMaterialText(recipe) {
         return recipe.materials.map(mat => {
-            const itemDef = ItemDatabase[mat.itemId];
+            const itemDef = ITEMS[mat.itemId];
             const name = itemDef ? itemDef.name : mat.itemId;
             const have = this.player?.inventory?.countItem(mat.itemId) || 0;
             const cls = have >= mat.amount ? 'has-material' : 'missing-material';
@@ -3697,7 +3697,7 @@ export class Game {
         this.craftingBench.isCrafting = true;
         this.craftingBench.craftingState = { recipe, progress: 0, craftTime: recipe.craftTime };
 
-        const itemDef = ItemDatabase[recipe.id];
+        const itemDef = ITEMS[recipe.id];
         const itemIcon = document.getElementById('crafting-item-icon');
         const itemName = document.getElementById('crafting-item-name');
         const progressFill = document.getElementById('crafting-progress-fill');
@@ -3723,7 +3723,7 @@ export class Game {
         const state = this.craftingBench.craftingState;
         if (!state) return;
 
-        const itemDef = ItemDatabase[state.recipe.id];
+        const itemDef = ITEMS[state.recipe.id];
         if (this.player?.inventory) this.player.inventory.addItemById(state.recipe.id, 1);
 
         this.craftingBench.isCrafting = false;
