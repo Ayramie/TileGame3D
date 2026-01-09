@@ -2724,9 +2724,9 @@ export class Game {
 
         // Update progress bar
         const progress = as.timer / as.smeltTime;
-        const qualityFill = document.getElementById('smelting-quality-fill');
-        if (qualityFill) {
-            qualityFill.style.width = `${progress * 100}%`;
+        const progressFill = document.getElementById('smelting-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = `${progress * 100}%`;
         }
 
         // Check if current ore is done
@@ -2768,9 +2768,17 @@ export class Game {
         if (!as) return;
 
         const smelted = as.total - as.remaining;
+
+        // Update status text
         const statusText = document.getElementById('smelting-status-text');
         if (statusText) {
             statusText.textContent = `Smelting... ${smelted} / ${as.total}`;
+        }
+
+        // Update bars counter
+        const barsValue = document.getElementById('smelting-bars-value');
+        if (barsValue) {
+            barsValue.textContent = `${smelted} / ${as.total}`;
         }
     }
 
@@ -2788,9 +2796,9 @@ export class Game {
         selectionPopup?.classList.remove('visible');
 
         // Reset progress bar
-        const qualityFill = document.getElementById('smelting-quality-fill');
-        if (qualityFill) {
-            qualityFill.style.width = '0%';
+        const progressFill = document.getElementById('smelting-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '0%';
         }
 
         if (message) {
@@ -5260,8 +5268,8 @@ export class Game {
                     }
                 }
             }
-            // Recalculate stats from equipment
-            this.player.inventory.recalculateStats();
+            // Notify equipment change to update stats
+            this.player.inventory._notifyEquipChange();
         }
 
         // Restore quests

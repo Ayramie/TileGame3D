@@ -183,8 +183,8 @@ export class InputManager {
                     break;
                 }
 
-                // Check for smelter interaction
-                if (this.game.smelter?.isNearSmelter && !this.game.smelter?.isSmelting) {
+                // Check for smelter interaction (only if player has ore)
+                if (this.game.smelter?.isNearSmelter && !this.game.smelter?.isSmelting && this.game.playerHasOre?.()) {
                     this.game.startSmelting();
                     break;
                 } else if (this.game.smelter?.isSmelting) {
