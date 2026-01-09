@@ -285,7 +285,23 @@ export class Game {
     }
 
     updateAbilityLabels() {
+        const abilityBar = document.getElementById('ability-bar');
         const cSlot = document.getElementById('ability-c');
+
+        // For Adventurer in adventure mode, start with hidden ability bar
+        if (this.gameMode === 'adventure' && this.player?.className === 'adventurer') {
+            if (!this.player.currentWeaponType) {
+                if (abilityBar) abilityBar.style.display = 'none';
+                return;
+            }
+            // Show ability bar and set labels based on equipped weapon
+            if (abilityBar) abilityBar.style.display = '';
+            this.updateAbilityUI();
+            return;
+        }
+
+        if (abilityBar) abilityBar.style.display = '';
+
         if (this.selectedClass === 'mage') {
             document.querySelector('#ability-q .name').textContent = 'Blizzard';
             document.querySelector('#ability-f .name').textContent = 'Flame Wave';
@@ -306,6 +322,50 @@ export class Game {
             document.querySelector('#ability-e .name').textContent = 'Parry';
             document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
             document.querySelector('#ability-c .name').textContent = 'Sunder';
+            if (cSlot) cSlot.style.display = '';
+        }
+    }
+
+    // Update ability UI for Adventurer based on equipped weapon
+    updateAbilityUI() {
+        if (!this.player || this.player.className !== 'adventurer') return;
+
+        const abilityBar = document.getElementById('ability-bar');
+        const cSlot = document.getElementById('ability-c');
+        const weaponType = this.player.currentWeaponType;
+
+        if (!weaponType) {
+            // No weapon - hide ability bar
+            if (abilityBar) abilityBar.style.display = 'none';
+            return;
+        }
+
+        // Show ability bar
+        if (abilityBar) abilityBar.style.display = '';
+
+        if (weaponType === 'sword' || weaponType === 'dagger') {
+            // Warrior abilities
+            document.querySelector('#ability-q .name').textContent = 'Cleave';
+            document.querySelector('#ability-f .name').textContent = 'Whirlwind';
+            document.querySelector('#ability-e .name').textContent = 'Parry';
+            document.querySelector('#ability-r .name').textContent = 'Heroic Leap';
+            document.querySelector('#ability-c .name').textContent = 'Sunder';
+            if (cSlot) cSlot.style.display = '';
+        } else if (weaponType === 'staff') {
+            // Mage abilities
+            document.querySelector('#ability-q .name').textContent = 'Blizzard';
+            document.querySelector('#ability-f .name').textContent = 'Flame Wave';
+            document.querySelector('#ability-e .name').textContent = 'Frost Nova';
+            document.querySelector('#ability-r .name').textContent = 'Blink';
+            document.querySelector('#ability-c .name').textContent = 'Frozen Orb';
+            if (cSlot) cSlot.style.display = '';
+        } else if (weaponType === 'bow') {
+            // Hunter abilities
+            document.querySelector('#ability-q .name').textContent = 'Arrow Wave';
+            document.querySelector('#ability-f .name').textContent = 'Spin Dash';
+            document.querySelector('#ability-e .name').textContent = 'Shotgun';
+            document.querySelector('#ability-r .name').textContent = 'Trap';
+            document.querySelector('#ability-c .name').textContent = 'Giant Arrow';
             if (cSlot) cSlot.style.display = '';
         }
     }

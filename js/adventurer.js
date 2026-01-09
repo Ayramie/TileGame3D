@@ -37,24 +37,10 @@ export class Adventurer {
         this.autoAttackCooldownMax = 0.9;
         this.autoAttackDamage = 20;
 
-        // Stub abilities with high cooldowns (adventurer has no real abilities)
-        // These prevent errors from input.js accessing ability cooldowns
-        this.abilities = {
-            cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            parry: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            heroicLeap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
-        };
+        // Dynamic abilities based on equipped weapon
+        // Start with no usable abilities (high cooldowns prevent activation)
+        this.currentWeaponType = null;
+        this.abilities = this.getDisabledAbilities();
 
         // Character model
         this.character = new KayKitCharacter(this.scene);
@@ -119,9 +105,37 @@ export class Adventurer {
             const baseDamage = 20;
             const weaponDamage = weaponDef.stats?.damage || 0;
             this.autoAttackDamage = baseDamage + weaponDamage;
+
+            // Set abilities based on weapon type
+            if (weaponType !== this.currentWeaponType) {
+                this.currentWeaponType = weaponType;
+                if (weaponType === 'sword' || weaponType === 'dagger') {
+                    this.abilities = this.getWarriorAbilities();
+                    console.log('Adventurer: Equipped melee weapon - Warrior abilities unlocked!');
+                } else if (weaponType === 'staff') {
+                    this.abilities = this.getMageAbilities();
+                    console.log('Adventurer: Equipped staff - Mage abilities unlocked!');
+                } else if (weaponType === 'bow') {
+                    this.abilities = this.getHunterAbilities();
+                    console.log('Adventurer: Equipped bow - Hunter abilities unlocked!');
+                }
+                // Notify game to update UI
+                if (this.game && this.game.updateAbilityUI) {
+                    this.game.updateAbilityUI();
+                }
+            }
         } else {
             this.attackRange = 2.5;
             this.autoAttackDamage = 20;
+            // No weapon - disable all abilities
+            if (this.currentWeaponType !== null) {
+                this.currentWeaponType = null;
+                this.abilities = this.getDisabledAbilities();
+                console.log('Adventurer: Unequipped weapon - Abilities disabled');
+                if (this.game && this.game.updateAbilityUI) {
+                    this.game.updateAbilityUI();
+                }
+            }
         }
     }
 
@@ -131,15 +145,22 @@ export class Adventurer {
             this.autoAttackCooldown -= deltaTime;
         }
 
+        // Update ability cooldowns
+        for (const key in this.abilities) {
+            if (this.abilities[key].cooldownRemaining > 0) {
+                this.abilities[key].cooldownRemaining -= deltaTime;
+            }
+        }
+
         // Update buffs
         this.updateBuffs(deltaTime);
 
         // Handle movement
-        this.handleMovement(deltaTime, input);
+        const isMoving = this.handleMovement(deltaTime, input);
 
         // Update character animation
         if (this.useAnimatedCharacter) {
-            this.character.update(deltaTime);
+            this.character.update(deltaTime, isMoving, true, this.isGrounded);
             this.character.setPosition(this.position.x, this.position.y, this.position.z);
             this.character.setRotation(this.rotation);
         }
@@ -155,6 +176,7 @@ export class Adventurer {
 
     handleMovement(deltaTime, input) {
         const moveDir = new THREE.Vector3(0, 0, 0);
+        let isMoving = false;
 
         if (input.keys.w) moveDir.z -= 1;
         if (input.keys.s) moveDir.z += 1;
@@ -172,14 +194,7 @@ export class Adventurer {
 
             // Face movement direction
             this.rotation = Math.atan2(moveDir.x, moveDir.z);
-
-            if (this.useAnimatedCharacter) {
-                this.character.playAnimation('run');
-            }
-        } else {
-            if (this.useAnimatedCharacter) {
-                this.character.playAnimation('idle');
-            }
+            isMoving = true;
         }
 
         // Apply gravity
@@ -193,6 +208,8 @@ export class Adventurer {
             this.velocity.y = 0;
             this.isGrounded = true;
         }
+
+        return isMoving;
     }
 
     performAutoAttack() {
@@ -305,19 +322,102 @@ export class Adventurer {
         }
     }
 
-    // Stub methods for abilities (adventurer has none)
-    useCleave() { return false; }
-    useWhirlwind() { return false; }
-    useParry() { return false; }
-    useHeroicLeap() { return false; }
-    useBlizzard() { return false; }
-    useFlameWave() { return false; }
-    useFrostNova() { return false; }
-    useBlink() { return false; }
-    useFrozenOrb() { return false; }
-    useArrowWave() { return false; }
-    useSpinDash() { return false; }
-    useShotgun() { return false; }
-    useTrap() { return false; }
-    useGiantArrow() { return false; }
+    // Get disabled abilities (high cooldowns prevent use)
+    getDisabledAbilities() {
+        return {
+            cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            parry: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            heroicLeap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+        };
+    }
+
+    // Get warrior abilities for melee weapons
+    getWarriorAbilities() {
+        return {
+            cleave: { cooldown: 4, cooldownRemaining: 0, damage: 45, range: 8.0, angle: Math.PI * 0.6, isActive: false },
+            whirlwind: { cooldown: 6, cooldownRemaining: 0, damage: 35, range: 3.5, dashDistance: 10, dashDuration: 0.5, isActive: false },
+            parry: { cooldown: 5, cooldownRemaining: 0, damage: 50, range: 4, spinDuration: 0.4, isActive: false },
+            heroicLeap: { cooldown: 8, cooldownRemaining: 0, damage: 60, range: 15, radius: 4, isActive: false },
+            // Disable other class abilities
+            blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+        };
+    }
+
+    // Get mage abilities for staff weapons
+    getMageAbilities() {
+        return {
+            blizzard: { cooldown: 6, cooldownRemaining: 0, damage: 15, range: 12, radius: 5, duration: 3, tickRate: 0.5, isActive: false },
+            flameWave: { cooldown: 5, cooldownRemaining: 0, damage: 40, range: 10, width: 6, isActive: false },
+            frostNova: { cooldown: 8, cooldownRemaining: 0, damage: 30, radius: 5, slowDuration: 3, isActive: false },
+            blink: { cooldown: 4, cooldownRemaining: 0, distance: 8, isActive: false },
+            frozenOrb: { cooldown: 10, cooldownRemaining: 0, damage: 25, range: 15, radius: 3, duration: 4, isActive: false },
+            // Disable other class abilities
+            cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            parry: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            heroicLeap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+        };
+    }
+
+    // Get hunter abilities for bow weapons
+    getHunterAbilities() {
+        return {
+            arrowWave: { cooldown: 5, cooldownRemaining: 0, damage: 30, range: 15, count: 5, spread: Math.PI * 0.4, isActive: false },
+            spinDash: { cooldown: 6, cooldownRemaining: 0, damage: 25, distance: 8, duration: 0.4, isActive: false },
+            shotgun: { cooldown: 4, cooldownRemaining: 0, damage: 15, range: 8, count: 8, spread: Math.PI * 0.3, isActive: false },
+            trap: { cooldown: 10, cooldownRemaining: 0, damage: 40, radius: 2, duration: 10, isActive: false },
+            giantArrow: { cooldown: 12, cooldownRemaining: 0, damage: 100, range: 20, piercing: true, isActive: false },
+            // Disable other class abilities
+            cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            parry: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            heroicLeap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+        };
+    }
+
+    // Stub methods for abilities - will work when weapon is equipped
+    useCleave() { return this.currentWeaponType === 'sword' && this.abilities.cleave.cooldownRemaining <= 0; }
+    useWhirlwind() { return this.currentWeaponType === 'sword' && this.abilities.whirlwind.cooldownRemaining <= 0; }
+    useParry() { return this.currentWeaponType === 'sword' && this.abilities.parry.cooldownRemaining <= 0; }
+    useHeroicLeap() { return this.currentWeaponType === 'sword' && this.abilities.heroicLeap.cooldownRemaining <= 0; }
+    useBlizzard() { return this.currentWeaponType === 'staff' && this.abilities.blizzard.cooldownRemaining <= 0; }
+    useFlameWave() { return this.currentWeaponType === 'staff' && this.abilities.flameWave.cooldownRemaining <= 0; }
+    useFrostNova() { return this.currentWeaponType === 'staff' && this.abilities.frostNova.cooldownRemaining <= 0; }
+    useBlink() { return this.currentWeaponType === 'staff' && this.abilities.blink.cooldownRemaining <= 0; }
+    useFrozenOrb() { return this.currentWeaponType === 'staff' && this.abilities.frozenOrb.cooldownRemaining <= 0; }
+    useArrowWave() { return this.currentWeaponType === 'bow' && this.abilities.arrowWave.cooldownRemaining <= 0; }
+    useSpinDash() { return this.currentWeaponType === 'bow' && this.abilities.spinDash.cooldownRemaining <= 0; }
+    useShotgun() { return this.currentWeaponType === 'bow' && this.abilities.shotgun.cooldownRemaining <= 0; }
+    useTrap() { return this.currentWeaponType === 'bow' && this.abilities.trap.cooldownRemaining <= 0; }
+    useGiantArrow() { return this.currentWeaponType === 'bow' && this.abilities.giantArrow.cooldownRemaining <= 0; }
 }
