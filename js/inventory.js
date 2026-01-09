@@ -273,6 +273,11 @@ export class Inventory {
         }, 0);
     }
 
+    // Alias for getItemCount (used by crafting system)
+    countItem(itemId) {
+        return this.getItemCount(itemId);
+    }
+
     // Check if inventory has space
     hasSpace() {
         return this.slots.some(s => s === null);

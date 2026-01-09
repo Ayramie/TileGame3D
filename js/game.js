@@ -375,15 +375,15 @@ export class Game {
             const pathMaterial = new THREE.MeshLambertMaterial({ color: 0x6b5a3d });
             const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x555555 });
 
-            // Main grassy area
-            const groundGeo = new THREE.PlaneGeometry(60, 60);
+            // Main grassy area (expanded)
+            const groundGeo = new THREE.PlaneGeometry(100, 100);
             const ground = new THREE.Mesh(groundGeo, grassMaterial);
             ground.rotation.x = -Math.PI / 2;
             ground.position.set(0, 0, 0);
             ground.receiveShadow = true;
             this.scene.add(ground);
 
-            // Dirt path from spawn to NPC area
+            // Dirt path from spawn to NPC area (north)
             const pathGeo = new THREE.PlaneGeometry(4, 20);
             const path = new THREE.Mesh(pathGeo, pathMaterial);
             path.rotation.x = -Math.PI / 2;
@@ -391,7 +391,7 @@ export class Game {
             path.receiveShadow = true;
             this.scene.add(path);
 
-            // Path to mine area
+            // Path to mine area (northeast)
             const minePathGeo = new THREE.PlaneGeometry(4, 15);
             const minePath = new THREE.Mesh(minePathGeo, pathMaterial);
             minePath.rotation.x = -Math.PI / 2;
@@ -399,6 +399,15 @@ export class Game {
             minePath.rotation.z = Math.PI / 4;
             minePath.receiveShadow = true;
             this.scene.add(minePath);
+
+            // Path going south/west to woodworking area
+            const woodPathGeo = new THREE.PlaneGeometry(4, 25);
+            const woodPath = new THREE.Mesh(woodPathGeo, pathMaterial);
+            woodPath.rotation.x = -Math.PI / 2;
+            woodPath.position.set(-15, 0.01, -15);
+            woodPath.rotation.z = Math.PI / 6;
+            woodPath.receiveShadow = true;
+            this.scene.add(woodPath);
 
             // Add some decorative rocks
             for (let i = 0; i < 8; i++) {
@@ -488,11 +497,82 @@ export class Game {
                 position: { x: -10, z: 22 }
             });
 
-            // Add a few trees (simple cylinders + cones)
+            // Add decorative trees near spawn
             this.addTree(-20, 8);
             this.addTree(-22, 12);
             this.addTree(18, -5);
             this.addTree(22, -8);
+
+            // ========== WOODWORKING AREA (Southwest) ==========
+
+            // Create NPC - Woodworker Wendy
+            await this.createNPC({
+                id: 'woodworker_wendy',
+                name: 'Woodworker Wendy',
+                position: { x: -20, z: -20 },
+                color: 0x228b22,
+                modelPath: 'assets/kaykit/characters/adventurers/Rogue.glb',
+                dialog: {
+                    default: "Thanks for your help! The forest provides.",
+                    questAvailable: "Hello there! I need 10 oak logs to finish my latest project. The grove is just over there!",
+                    questInProgress: "How's the chopping going? I need 10 oak wood total.",
+                    questComplete: "Excellent work! That's lovely oak. Here's your reward!"
+                },
+                quests: [
+                    {
+                        id: 'gather_wood',
+                        name: 'Oak for Wendy',
+                        description: 'Gather 10 oak wood for Woodworker Wendy',
+                        objectives: [
+                            { type: 'collect', itemId: 'wood_oak', target: 10, current: 0 }
+                        ],
+                        rewards: { gold: 50, items: [] },
+                        keepItems: true,
+                        nextQuestId: 'craft_bow'
+                    },
+                    {
+                        id: 'craft_bow',
+                        name: 'Craft a Bow',
+                        description: 'Craft an Oak Shortbow at the crafting bench',
+                        dialog: {
+                            questAvailable: "Great job on the logging! Now, use that wood to craft an Oak Shortbow at my workbench.",
+                            questInProgress: "Use the crafting bench to make an Oak Shortbow. You'll need 5 oak wood.",
+                            questComplete: "A fine bow! That'll serve a hunter well. Here's your reward!"
+                        },
+                        objectives: [
+                            { type: 'collect', itemId: 'oak_shortbow', target: 1, current: 0 }
+                        ],
+                        rewards: { gold: 75, items: [] },
+                        keepItems: true,
+                        nextQuestId: 'craft_staff'
+                    },
+                    {
+                        id: 'craft_staff',
+                        name: 'Craft a Staff',
+                        description: 'Craft a Short Staff at the crafting bench',
+                        dialog: {
+                            questAvailable: "You're getting the hang of this! Now try crafting a Short Staff for any aspiring mages.",
+                            questInProgress: "Use the crafting bench to make a Short Staff. You'll need 4 oak wood.",
+                            questComplete: "Wonderful craftsmanship! You've mastered the basics of woodworking. Keep those items - you've earned them!"
+                        },
+                        objectives: [
+                            { type: 'collect', itemId: 'short_staff', target: 1, current: 0 }
+                        ],
+                        rewards: { gold: 100, items: [] },
+                        keepItems: true
+                    }
+                ]
+            });
+
+            // Create tree chopping area for Wendy's quests
+            this.createTreeArea({
+                position: { x: -30, z: -25 }
+            });
+
+            // Create crafting bench for Wendy's area
+            this.createCraftingBench({
+                position: { x: -25, z: -15 }
+            });
 
             this.isOutdoorMap = true;
 
@@ -4840,6 +4920,160 @@ export class Game {
         };
 
         return oreGroup;
+    }
+
+    // Create tree chopping area for adventure mode
+    createTreeArea(config) {
+        const position = config.position;
+        const treeGroup = new THREE.Group();
+        treeGroup.position.set(position.x, 0, position.z);
+
+        // Create multiple trees
+        const treePositions = [
+            { x: -3, z: 0 },
+            { x: 3, z: 0 },
+            { x: 0, z: -3 },
+            { x: -2, z: 3 },
+            { x: 2, z: 3 }
+        ];
+
+        for (const treePos of treePositions) {
+            // Tree trunk
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.set(treePos.x, 1.5, treePos.z);
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            // Foliage
+            const foliageGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+            const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+            foliage.position.set(treePos.x, 4, treePos.z);
+            foliage.castShadow = true;
+            treeGroup.add(foliage);
+
+            // Second layer of foliage
+            const foliage2Geometry = new THREE.ConeGeometry(1.2, 2.5, 8);
+            const foliage2 = new THREE.Mesh(foliage2Geometry, foliageMaterial);
+            foliage2.position.set(treePos.x, 5.5, treePos.z);
+            foliage2.castShadow = true;
+            treeGroup.add(foliage2);
+        }
+
+        // Add a stump with axe
+        const stumpGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.5, 8);
+        const stumpMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
+        const stump = new THREE.Mesh(stumpGeometry, stumpMaterial);
+        stump.position.set(0, 0.25, 0);
+        stump.castShadow = true;
+        treeGroup.add(stump);
+
+        // Some logs on ground
+        for (let i = 0; i < 3; i++) {
+            const logGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.2, 6);
+            const logMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const log = new THREE.Mesh(logGeometry, logMaterial);
+            log.rotation.z = Math.PI / 2;
+            log.rotation.y = Math.random() * Math.PI;
+            log.position.set(
+                (Math.random() - 0.5) * 4,
+                0.15,
+                (Math.random() - 0.5) * 4
+            );
+            log.castShadow = true;
+            treeGroup.add(log);
+        }
+
+        this.scene.add(treeGroup);
+
+        // Set up trees data for this area
+        this.trees = {
+            position: { x: position.x, z: position.z },
+            mesh: treeGroup,
+            interactionRange: 8,
+            isChopping: false,
+            wood: {
+                oak: 99,
+                birch: 50,
+                mahogany: 25
+            }
+        };
+
+        return treeGroup;
+    }
+
+    // Create crafting bench for adventure mode
+    createCraftingBench(config) {
+        const position = config.position;
+        const craftingGroup = new THREE.Group();
+        craftingGroup.position.set(position.x, 0, position.z);
+
+        const benchWoodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+
+        // Table top
+        const tableTopGeometry = new THREE.BoxGeometry(3, 0.3, 2);
+        const tableTop = new THREE.Mesh(tableTopGeometry, benchWoodMaterial);
+        tableTop.position.y = 1.15;
+        tableTop.castShadow = true;
+        craftingGroup.add(tableTop);
+
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+        const legPositions = [
+            { x: -1.2, z: -0.7 },
+            { x: 1.2, z: -0.7 },
+            { x: -1.2, z: 0.7 },
+            { x: 1.2, z: 0.7 }
+        ];
+
+        for (const pos of legPositions) {
+            const leg = new THREE.Mesh(legGeometry, benchWoodMaterial);
+            leg.position.set(pos.x, 0.5, pos.z);
+            leg.castShadow = true;
+            craftingGroup.add(leg);
+        }
+
+        // Hammer on table
+        const hammerHandleGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6);
+        const hammerHandle = new THREE.Mesh(hammerHandleGeom, benchWoodMaterial);
+        hammerHandle.rotation.z = Math.PI / 6;
+        hammerHandle.position.set(-0.5, 1.4, 0.3);
+        craftingGroup.add(hammerHandle);
+
+        const hammerHeadGeom = new THREE.BoxGeometry(0.15, 0.25, 0.15);
+        const benchMetalMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+        const hammerHead = new THREE.Mesh(hammerHeadGeom, benchMetalMaterial);
+        hammerHead.position.set(-0.3, 1.55, 0.3);
+        craftingGroup.add(hammerHead);
+
+        // Some wood planks
+        for (let i = 0; i < 3; i++) {
+            const plankGeom = new THREE.BoxGeometry(0.8, 0.1, 0.15);
+            const plank = new THREE.Mesh(plankGeom, benchWoodMaterial);
+            plank.position.set(0.5, 1.35 + i * 0.1, -0.2 + i * 0.15);
+            plank.rotation.y = Math.random() * 0.3 - 0.15;
+            craftingGroup.add(plank);
+        }
+
+        // Add a light
+        const craftLight = new THREE.PointLight(0xffdd88, 1.2, 15);
+        craftLight.position.set(0, 3, 0);
+        craftingGroup.add(craftLight);
+
+        this.scene.add(craftingGroup);
+
+        // Set up crafting bench data
+        this.craftingBench = {
+            position: { x: position.x, z: position.z },
+            mesh: craftingGroup,
+            interactionRange: 5,
+            isCrafting: false,
+            craftingState: null
+        };
+
+        return craftingGroup;
     }
 
     // Check if player is near an NPC
