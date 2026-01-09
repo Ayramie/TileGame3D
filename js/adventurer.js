@@ -37,17 +37,33 @@ export class Adventurer {
         this.autoAttackCooldownMax = 0.9;
         this.autoAttackDamage = 20;
 
-        // No class abilities - just basic attacks
-        this.abilities = {};
+        // Stub abilities with high cooldowns (adventurer has no real abilities)
+        // These prevent errors from input.js accessing ability cooldowns
+        this.abilities = {
+            cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            parry: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            heroicLeap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+        };
 
         // Create character mesh
         this.createMesh();
     }
 
     async createMesh() {
-        // Use a basic adventurer model
-        this.character = new KayKitCharacter(this.scene, 'adventurer');
-        await this.character.loadModel('assets/kaykit/characters/adventurers/Barbarian.glb');
+        // Use barbarian model for adventurer
+        this.character = new KayKitCharacter(this.scene);
+        await this.character.load('adventurers', 'barbarian');
 
         // Create unarmed stance (no weapon by default)
         this.weapon = null;

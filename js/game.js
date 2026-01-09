@@ -4144,6 +4144,65 @@ export class Game {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('⛏', orePos.x, orePos.y);
             }
+
+            // Draw tree area
+            if (this.trees) {
+                ctx.fillStyle = '#44aa44';
+                const treePos = toMinimap(this.trees.position.x, this.trees.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🌲', treePos.x, treePos.y);
+            }
+
+            // Draw crafting bench
+            if (this.craftingBench) {
+                ctx.fillStyle = '#ddaa66';
+                const craftPos = toMinimap(this.craftingBench.position.x, this.craftingBench.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔨', craftPos.x, craftPos.y);
+            }
+
+            // Draw smelter
+            if (this.smelter) {
+                ctx.fillStyle = '#ff6600';
+                const smelterPos = toMinimap(this.smelter.position.x, this.smelter.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔶', smelterPos.x, smelterPos.y);
+            }
+
+            // Draw anvil
+            if (this.anvil) {
+                ctx.fillStyle = '#888899';
+                const anvilPos = toMinimap(this.anvil.position.x, this.anvil.position.z);
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⚒️', anvilPos.x, anvilPos.y);
+            }
+
+            // Draw quest objective markers
+            for (const questId in this.quests) {
+                const quest = this.quests[questId];
+                if (quest.status === 'active' && quest.objectives) {
+                    for (const obj of quest.objectives) {
+                        if (obj.location && !obj.completed) {
+                            ctx.fillStyle = '#ffff00';
+                            const objPos = toMinimap(obj.location.x, obj.location.z);
+                            ctx.beginPath();
+                            ctx.arc(objPos.x, objPos.y, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#ffaa00';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
         } else if (this.gameMode === 'horde') {
             // Draw approximate floor areas
             const floors = [
@@ -4275,6 +4334,25 @@ export class Game {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('⚒️', anvilIconPos.x, anvilIconPos.y);
+            }
+
+            // Draw quest objective markers (horde mode)
+            for (const questId in this.quests) {
+                const quest = this.quests[questId];
+                if (quest.status === 'active' && quest.objectives) {
+                    for (const obj of quest.objectives) {
+                        if (obj.location && !obj.completed) {
+                            ctx.fillStyle = '#ffff00';
+                            const objPos = toMinimap(obj.location.x, obj.location.z);
+                            ctx.beginPath();
+                            ctx.arc(objPos.x, objPos.y, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = '#ffaa00';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
             }
         } else {
             // Simple square for other modes
