@@ -4003,6 +4003,17 @@ export class Game {
         } else if (this.selectedClass === 'adventurer') {
             // Adventurer abilities depend on equipped weapon type
             const weaponType = this.player.currentWeaponType;
+            // Debug: log what we're seeing every 60 frames
+            if (!this._uiDebugCounter) this._uiDebugCounter = 0;
+            this._uiDebugCounter++;
+            if (this._uiDebugCounter % 60 === 1) {
+                console.log('updateUI adventurer check:', {
+                    weaponType,
+                    arrowWaveCD: this.player.abilities.arrowWave?.cooldownRemaining,
+                    blizzardCD: this.player.abilities.blizzard?.cooldownRemaining,
+                    cleaveCD: this.player.abilities.cleave?.cooldownRemaining
+                });
+            }
             if (weaponType === 'staff') {
                 this.updateAbilityCooldown('q', this.player.abilities.blizzard);
                 this.updateAbilityCooldown('f', this.player.abilities.flameWave);
