@@ -16,6 +16,11 @@ export class Hunter {
         this.inventory = new Inventory(24);
         this.inventory.giveStarterItems(this.className);
 
+        // Set up equipment change callback
+        this.inventory.onEquipmentChanged = () => {
+            this.updateWeaponFromEquipment();
+        };
+
         // Buff system
         this.buffs = {};
 
@@ -269,15 +274,8 @@ export class Hunter {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Ranger character model for Hunter');
 
-                // Attach crossbow weapons to both hands
-                const weaponR = WeaponFactory.createWeaponForClass('hunter');
-                this.character.attachWeapon(weaponR.mesh, 'handR', weaponR.offset, weaponR.rotation);
-
-                // Left hand crossbow (mirrored)
-                const weaponL = WeaponFactory.createWeaponForClass('hunter');
-                const mirroredOffset = new THREE.Vector3(0, 0, 0.15);
-                const mirroredRotation = new THREE.Euler(0, 0, -Math.PI / 2);  // Mirror the Z rotation
-                this.character.attachWeapon(weaponL.mesh, 'handL', mirroredOffset, mirroredRotation);
+                // Update weapon based on equipment
+                this.updateWeaponFromEquipment();
             } else {
                 this.group.visible = true;
             }
@@ -286,6 +284,35 @@ export class Hunter {
             this.group.visible = true;
         }
         this.characterLoading = false;
+    }
+
+    updateWeaponFromEquipment() {
+        if (!this.useAnimatedCharacter) return;
+
+        // Detach current weapons
+        if (this.weaponMesh) {
+            this.character.detachWeapon();
+            this.weaponMesh = null;
+        }
+
+        const equipped = this.inventory.equipment.weapon;
+        if (equipped) {
+            const weaponDef = equipped.definition;
+            let weaponType = 'bow';
+
+            if (weaponDef.icon?.includes('sword') || weaponDef.id?.includes('sword')) {
+                weaponType = 'sword';
+            } else if (weaponDef.icon?.includes('staff') || weaponDef.id?.includes('staff')) {
+                weaponType = 'staff';
+            } else if (weaponDef.icon?.includes('dagger') || weaponDef.id?.includes('dagger')) {
+                weaponType = 'dagger';
+            }
+
+            this.weaponMesh = WeaponFactory.createWeapon(weaponType);
+            if (this.weaponMesh) {
+                this.character.attachWeapon(this.weaponMesh);
+            }
+        }
     }
 
     createMesh() {

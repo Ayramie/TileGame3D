@@ -16,6 +16,11 @@ export class Mage {
         this.inventory = new Inventory(24);
         this.inventory.giveStarterItems(this.className);
 
+        // Set up equipment change callback
+        this.inventory.onEquipmentChanged = () => {
+            this.updateWeaponFromEquipment();
+        };
+
         // Buff system
         this.buffs = {};
 
@@ -205,9 +210,8 @@ export class Mage {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Mage character model');
 
-                // Attach staff weapon
-                const weapon = WeaponFactory.createWeaponForClass('mage');
-                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
+                // Update weapon based on equipment
+                this.updateWeaponFromEquipment();
             } else {
                 this.group.visible = true;
             }
@@ -216,6 +220,35 @@ export class Mage {
             this.group.visible = true;
         }
         this.characterLoading = false;
+    }
+
+    updateWeaponFromEquipment() {
+        if (!this.useAnimatedCharacter) return;
+
+        // Detach current weapon
+        if (this.weaponMesh) {
+            this.character.detachWeapon();
+            this.weaponMesh = null;
+        }
+
+        const equipped = this.inventory.equipment.weapon;
+        if (equipped) {
+            const weaponDef = equipped.definition;
+            let weaponType = 'staff';
+
+            if (weaponDef.icon?.includes('bow') || weaponDef.id?.includes('bow')) {
+                weaponType = 'bow';
+            } else if (weaponDef.icon?.includes('sword') || weaponDef.id?.includes('sword')) {
+                weaponType = 'sword';
+            } else if (weaponDef.icon?.includes('dagger') || weaponDef.id?.includes('dagger')) {
+                weaponType = 'dagger';
+            }
+
+            this.weaponMesh = WeaponFactory.createWeapon(weaponType);
+            if (this.weaponMesh) {
+                this.character.attachWeapon(this.weaponMesh);
+            }
+        }
     }
 
     createMesh() {

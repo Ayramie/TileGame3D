@@ -20,6 +20,11 @@ export class Adventurer {
         this.inventory = new Inventory(24);
         this.inventory.giveStarterItems(this.className);
 
+        // Set up equipment change callback
+        this.inventory.onEquipmentChanged = () => {
+            this.updateWeaponFromEquipment();
+        };
+
         // Buff system
         this.buffs = {};
 

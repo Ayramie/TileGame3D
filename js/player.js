@@ -18,6 +18,11 @@ export class Player {
         this.inventory = new Inventory(24);
         this.inventory.giveStarterItems(this.className);
 
+        // Set up equipment change callback
+        this.inventory.onEquipmentChanged = () => {
+            this.updateWeaponFromEquipment();
+        };
+
         // Buff system
         this.buffs = {};
 
@@ -633,9 +638,8 @@ export class Player {
                 this.useAnimatedCharacter = true;
                 console.log('Using KayKit Knight character model');
 
-                // Attach sword weapon
-                const weapon = WeaponFactory.createWeaponForClass('warrior');
-                this.character.attachWeapon(weapon.mesh, 'handR', weapon.offset, weapon.rotation);
+                // Update weapon based on equipment (or show default if nothing equipped)
+                this.updateWeaponFromEquipment();
             } else {
                 // Show fallback if loading failed
                 this.group.visible = true;
@@ -645,6 +649,36 @@ export class Player {
             this.group.visible = true;
         }
         this.characterLoading = false;
+    }
+
+    updateWeaponFromEquipment() {
+        if (!this.useAnimatedCharacter) return;
+
+        // Detach current weapon
+        if (this.weaponMesh) {
+            this.character.detachWeapon();
+            this.weaponMesh = null;
+        }
+
+        const equipped = this.inventory.equipment.weapon;
+        if (equipped) {
+            const weaponDef = equipped.definition;
+            let weaponType = 'sword';
+
+            if (weaponDef.icon?.includes('bow') || weaponDef.id?.includes('bow')) {
+                weaponType = 'bow';
+            } else if (weaponDef.icon?.includes('staff') || weaponDef.id?.includes('staff')) {
+                weaponType = 'staff';
+            } else if (weaponDef.icon?.includes('dagger') || weaponDef.id?.includes('dagger')) {
+                weaponType = 'dagger';
+            }
+
+            this.weaponMesh = WeaponFactory.createWeapon(weaponType);
+            if (this.weaponMesh) {
+                this.character.attachWeapon(this.weaponMesh);
+            }
+        }
+        // If no weapon equipped, character is unarmed
     }
 
     createMesh() {

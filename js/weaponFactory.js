@@ -231,4 +231,19 @@ export class WeaponFactory {
                 return WeaponFactory.createSword();
         }
     }
+
+    // Create weapon by type (for dynamic weapon equipping)
+    static createWeapon(type) {
+        switch (type?.toLowerCase()) {
+            case 'sword':
+            case 'dagger':
+                return WeaponFactory.createSword().mesh;
+            case 'bow':
+                return WeaponFactory.createCrossbow().mesh;
+            case 'staff':
+                return WeaponFactory.createStaff().mesh;
+            default:
+                return null;
+        }
+    }
 }
