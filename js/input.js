@@ -117,19 +117,18 @@ export class InputManager {
                         }
                     }
                 } else if (this.game.selectedClass === 'adventurer') {
+                    // Fire directly without cooldown pre-checks - abilities handle their own cooldowns
                     const weaponType = this.game.player.currentWeaponType;
-                    console.log('Adventurer Q pressed:', {
-                        weaponType,
-                        blizzardCD: this.game.player.abilities.blizzard?.cooldownRemaining,
-                        arrowWaveCD: this.game.player.abilities.arrowWave?.cooldownRemaining,
-                        cleaveCD: this.game.player.abilities.cleave?.cooldownRemaining
-                    });
-                    if (weaponType === 'staff' && this.game.player.abilities.blizzard?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'q';
-                    } else if (weaponType === 'bow' && this.game.player.abilities.arrowWave?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'q';
-                    } else if ((weaponType === 'sword' || weaponType === 'dagger') && this.game.player.abilities.cleave?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'q';
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    if (weaponType === 'staff') {
+                        this.game.player.useBlizzard(this.mouseWorldPos.clone());
+                    } else if (weaponType === 'bow') {
+                        this.game.player.useArrowWave(direction);
+                    } else if (weaponType === 'sword' || weaponType === 'dagger') {
+                        this.game.player.useCleave(this.game.enemies, direction);
                     }
                 } else {
                     if (this.game.player.abilities.cleave.cooldownRemaining <= 0) {
@@ -263,11 +262,16 @@ export class InputManager {
                         }
                     }
                 } else if (this.game.selectedClass === 'adventurer') {
+                    // Fire directly without cooldown pre-checks
                     const weaponType = this.game.player.currentWeaponType;
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
                     if (weaponType === 'staff') {
                         this.game.player.useFrostNova();
-                    } else if (weaponType === 'bow' && this.game.player.abilities.shotgun?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'e';
+                    } else if (weaponType === 'bow') {
+                        this.game.player.useShotgun(direction);
                     } else if (weaponType === 'sword' || weaponType === 'dagger') {
                         this.game.player.useParry();
                     }
@@ -288,17 +292,18 @@ export class InputManager {
                     // Throw trap instantly to mouse position
                     this.game.player.useTrap(this.mouseWorldPos.clone());
                 } else if (this.game.selectedClass === 'adventurer') {
+                    // Fire directly without cooldown pre-checks
                     const weaponType = this.game.player.currentWeaponType;
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
                     if (weaponType === 'staff') {
-                        const direction = {
-                            x: this.mouseWorldPos.x - this.game.player.position.x,
-                            z: this.mouseWorldPos.z - this.game.player.position.z
-                        };
                         this.game.player.useBackstep(direction);
                     } else if (weaponType === 'bow') {
                         this.game.player.useTrap(this.mouseWorldPos.clone());
-                    } else if ((weaponType === 'sword' || weaponType === 'dagger') && this.game.player.abilities.heroicLeap?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'r';
+                    } else if (weaponType === 'sword' || weaponType === 'dagger') {
+                        this.game.player.useHeroicLeap(this.mouseWorldPos.clone());
                     }
                 } else {
                     if (this.game.player.abilities.heroicLeap.cooldownRemaining <= 0) {
@@ -328,15 +333,16 @@ export class InputManager {
                         }
                     }
                 } else if (this.game.selectedClass === 'adventurer') {
+                    // Fire directly without cooldown pre-checks
                     const weaponType = this.game.player.currentWeaponType;
-                    if (weaponType === 'staff' && this.game.player.abilities.frozenOrb?.cooldownRemaining <= 0) {
-                        const direction = {
-                            x: this.mouseWorldPos.x - this.game.player.position.x,
-                            z: this.mouseWorldPos.z - this.game.player.position.z
-                        };
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    if (weaponType === 'staff') {
                         this.game.player.useFrozenOrb(direction);
-                    } else if (weaponType === 'bow' && this.game.player.abilities.giantArrow?.cooldownRemaining <= 0) {
-                        this.aimingAbility = 'c';
+                    } else if (weaponType === 'bow') {
+                        this.game.player.useGiantArrow(direction);
                     }
                     // Sword/dagger has no 5th ability for Adventurer
                 } else {
