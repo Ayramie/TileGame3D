@@ -1091,6 +1091,7 @@ export class Game {
     setupPlayer() {
         // In adventure mode, use classless Adventurer for tutorial
         if (this.gameMode === 'adventure') {
+            this.selectedClass = 'adventurer';
             this.player = new Adventurer(this.scene, this);
         } else if (this.selectedClass === 'mage') {
             this.player = new Mage(this.scene, this);
