@@ -788,7 +788,9 @@ export class Adventurer {
             this.character.playAttack(2);
         }
 
+        console.log('Cleave - game:', !!this.game, 'effects:', !!this.game?.effects);
         if (this.game && this.game.effects) {
+            console.log('Calling createCleaveEffect');
             this.game.effects.createCleaveEffect(this.position, this.rotation);
         }
 
@@ -1435,10 +1437,12 @@ export class Adventurer {
 
     // Helper method for creating arrow projectiles
     createArrowProjectile(direction, damage, range, color) {
+        console.log('Creating arrow projectile:', { direction, damage, range, color: color.toString(16) });
         const startPos = this.position.clone();
         startPos.y = 1.2;
 
-        const arrowGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4);
+        // Make arrows more visible
+        const arrowGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6);
         const arrowMaterial = new THREE.MeshBasicMaterial({ color: color });
         const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
         arrow.position.copy(startPos);
