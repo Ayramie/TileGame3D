@@ -27,6 +27,51 @@ body {
     cursor: default;
 }
 
+/* Screen flash overlay for damage effects */
+#screen-flash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 50;
+    transition: opacity 0.05s ease-out;
+}
+
+#screen-flash.damage {
+    background: radial-gradient(ellipse at center, rgba(255,0,0,0.4) 0%, rgba(255,0,0,0.6) 60%, rgba(139,0,0,0.7) 100%);
+    animation: damageFlash 0.25s ease-out;
+}
+
+#screen-flash.heal {
+    background: radial-gradient(ellipse at center, rgba(0,255,100,0.3) 0%, rgba(0,200,80,0.4) 60%, rgba(0,150,60,0.5) 100%);
+    animation: healFlash 0.4s ease-out;
+}
+
+#screen-flash.critical {
+    background: radial-gradient(ellipse at center, rgba(255,200,0,0.5) 0%, rgba(255,100,0,0.6) 60%, rgba(200,0,0,0.7) 100%);
+    animation: criticalFlash 0.35s ease-out;
+}
+
+@keyframes damageFlash {
+    0% { opacity: 0.7; }
+    100% { opacity: 0; }
+}
+
+@keyframes healFlash {
+    0% { opacity: 0.5; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0; }
+}
+
+@keyframes criticalFlash {
+    0% { opacity: 0.8; transform: scale(1); }
+    20% { opacity: 0.9; transform: scale(1.02); }
+    100% { opacity: 0; transform: scale(1); }
+}
+
 #ui {
     position: fixed;
     bottom: 20px;
@@ -3447,4 +3492,47 @@ body {
 
 #anvil-message.visible {
     opacity: 1;
+}
+
+/* ==================== SAVE INDICATOR ==================== */
+
+#save-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(145deg, rgba(40, 60, 40, 0.95), rgba(25, 40, 25, 0.95));
+    border: 2px solid #4ade80;
+    border-radius: 10px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 700;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+#save-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#save-icon {
+    font-size: 20px;
+    animation: save-pulse 0.5s ease-in-out;
+}
+
+@keyframes save-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+#save-text {
+    color: #4ade80;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
 }

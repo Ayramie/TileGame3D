@@ -225,6 +225,15 @@ export class Game {
         // Setup minimap
         this.setupMinimap();
 
+        // Load saved game data for adventure mode
+        if (this.gameMode === 'adventure') {
+            if (this.loadGame()) {
+                updateLoadingText('Restoring save...');
+                await new Promise(resolve => setTimeout(resolve, 50));
+                this.applySaveData();
+            }
+        }
+
         // Now show UI and canvas
         this.gameState = 'playing';
         this.canvas.style.opacity = '1';
@@ -2432,6 +2441,11 @@ export class Game {
             : `Time's up! No ore mined | Score: ${finalScore}`;
 
         this.showMiningMessage(message, oreMined >= 5 ? 'rare' : oreMined >= 3 ? 'uncommon' : 'common');
+
+        // Auto-save after mining
+        if (oreMined > 0) {
+            this.autoSave();
+        }
     }
 
     stopMining(message = null) {
@@ -2742,6 +2756,9 @@ export class Game {
                 const oreName = as.oreId.replace('ore_', '');
                 this.stopSmelting();
                 this.showSmeltingMessage(`Smelted ${total} ${oreName} bar${total > 1 ? 's' : ''}!`, 'uncommon');
+
+                // Auto-save after smelting
+                this.autoSave();
             }
         }
     }
@@ -3051,6 +3068,9 @@ export class Game {
 
             this.stopAnvilForging();
             this.showAnvilMessage(`Forged ${state.recipe.name}!`, 'uncommon');
+
+            // Auto-save after forging
+            this.autoSave();
         }
     }
 
@@ -3602,6 +3622,9 @@ export class Game {
 
         document.getElementById('crafting-popup')?.classList.remove('visible');
         this.showCraftingMessage(`Crafted: ${itemDef?.name || state.recipe.name}!`, 'uncommon');
+
+        // Auto-save after crafting
+        this.autoSave();
     }
 
     stopCrafting(message = null) {
@@ -3858,6 +3881,26 @@ export class Game {
             // Reduce intensity significantly
             this.screenShake.intensity = Math.max(this.screenShake.intensity, intensity * 0.15);
         }
+    }
+
+    // Screen flash effect for damage/heal feedback
+    addScreenFlash(type = 'damage') {
+        const flashElement = document.getElementById('screen-flash');
+        if (!flashElement) return;
+
+        // Remove existing animation classes
+        flashElement.classList.remove('damage', 'heal', 'critical');
+
+        // Force reflow to restart animation
+        void flashElement.offsetWidth;
+
+        // Add the appropriate class
+        flashElement.classList.add(type);
+
+        // Remove class after animation completes
+        setTimeout(() => {
+            flashElement.classList.remove(type);
+        }, type === 'heal' ? 400 : type === 'critical' ? 350 : 250);
     }
 
     onResize() {
@@ -5009,6 +5052,9 @@ export class Game {
         this.updateQuestTrackerUI();
 
         this.closeNPCDialog();
+
+        // Auto-save after completing quest
+        this.autoSave();
     }
 
     // Update quest tracker UI
@@ -5068,6 +5114,218 @@ export class Game {
     }
 
     // ==================== END ADVENTURE MODE ====================
+
+    // ==================== SAVE/LOAD SYSTEM ====================
+
+    saveGame() {
+        if (this.gameMode !== 'adventure') return; // Only save adventure mode
+
+        const saveData = {
+            version: 1,
+            timestamp: Date.now(),
+            gameMode: this.gameMode,
+            selectedClass: this.selectedClass,
+            player: {
+                position: {
+                    x: this.player.position.x,
+                    y: this.player.position.y,
+                    z: this.player.position.z
+                },
+                health: this.player.health,
+                maxHealth: this.player.maxHealth,
+                gold: this.player.gold || 0
+            },
+            inventory: this.serializeInventory(),
+            equipment: this.serializeEquipment(),
+            quests: this.serializeQuests(),
+            activeQuests: [...this.activeQuests]
+        };
+
+        try {
+            localStorage.setItem('tileGame3D_save', JSON.stringify(saveData));
+            this.showSaveIndicator();
+            console.log('Game saved!', saveData);
+            return true;
+        } catch (e) {
+            console.error('Failed to save game:', e);
+            return false;
+        }
+    }
+
+    serializeInventory() {
+        if (!this.player?.inventory?.slots) return [];
+
+        return this.player.inventory.slots.map(slot => {
+            if (!slot) return null;
+            return {
+                itemId: slot.definition.id,
+                quantity: slot.quantity
+            };
+        });
+    }
+
+    serializeEquipment() {
+        if (!this.player?.inventory?.equipment) return {};
+
+        const equipment = {};
+        for (const [slot, item] of Object.entries(this.player.inventory.equipment)) {
+            if (item) {
+                equipment[slot] = item.definition.id;
+            }
+        }
+        return equipment;
+    }
+
+    serializeQuests() {
+        const questData = {};
+        for (const [questId, quest] of Object.entries(this.quests)) {
+            questData[questId] = {
+                status: quest.status,
+                objectives: quest.objectives.map(obj => ({
+                    type: obj.type,
+                    itemId: obj.itemId,
+                    target: obj.target,
+                    current: obj.current
+                }))
+            };
+        }
+        return questData;
+    }
+
+    loadGame() {
+        try {
+            const saveStr = localStorage.getItem('tileGame3D_save');
+            if (!saveStr) return false;
+
+            const saveData = JSON.parse(saveStr);
+            if (!saveData || saveData.version !== 1) return false;
+
+            // Store save data to apply after game initializes
+            this.pendingSaveData = saveData;
+            return true;
+        } catch (e) {
+            console.error('Failed to load save:', e);
+            return false;
+        }
+    }
+
+    applySaveData() {
+        const saveData = this.pendingSaveData;
+        if (!saveData) return;
+
+        console.log('Applying save data...', saveData);
+
+        // Restore player position
+        if (saveData.player && this.player) {
+            this.player.position.x = saveData.player.position.x;
+            this.player.position.y = saveData.player.position.y;
+            this.player.position.z = saveData.player.position.z;
+            this.player.health = saveData.player.health;
+            this.player.maxHealth = saveData.player.maxHealth;
+            this.player.gold = saveData.player.gold || 0;
+        }
+
+        // Restore inventory
+        if (saveData.inventory && this.player?.inventory) {
+            // Clear existing inventory
+            this.player.inventory.slots = new Array(this.player.inventory.maxSlots).fill(null);
+
+            // Restore items
+            for (let i = 0; i < saveData.inventory.length; i++) {
+                const slotData = saveData.inventory[i];
+                if (slotData && slotData.itemId) {
+                    const item = ITEMS[slotData.itemId];
+                    if (item) {
+                        this.player.inventory.slots[i] = {
+                            definition: item,
+                            quantity: slotData.quantity,
+                            instanceId: Math.random().toString(36).substr(2, 9)
+                        };
+                    }
+                }
+            }
+        }
+
+        // Restore equipment
+        if (saveData.equipment && this.player?.inventory) {
+            for (const [slot, itemId] of Object.entries(saveData.equipment)) {
+                if (itemId) {
+                    const item = ITEMS[itemId];
+                    if (item) {
+                        this.player.inventory.equipment[slot] = {
+                            definition: item,
+                            quantity: 1,
+                            instanceId: Math.random().toString(36).substr(2, 9)
+                        };
+                    }
+                }
+            }
+            // Recalculate stats from equipment
+            this.player.inventory.recalculateStats();
+        }
+
+        // Restore quests
+        if (saveData.quests) {
+            for (const [questId, questData] of Object.entries(saveData.quests)) {
+                if (this.quests[questId]) {
+                    this.quests[questId].status = questData.status;
+                    if (questData.objectives) {
+                        for (let i = 0; i < questData.objectives.length; i++) {
+                            if (this.quests[questId].objectives[i]) {
+                                this.quests[questId].objectives[i].current = questData.objectives[i].current;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Restore active quests
+        if (saveData.activeQuests) {
+            this.activeQuests = [...saveData.activeQuests];
+        }
+
+        // Update UI
+        this.updateQuestTrackerUI();
+        if (this.player?.inventory?.updateUI) {
+            this.player.inventory.updateUI();
+        }
+
+        this.pendingSaveData = null;
+        console.log('Save data applied!');
+    }
+
+    hasSaveData() {
+        try {
+            const saveStr = localStorage.getItem('tileGame3D_save');
+            if (!saveStr) return false;
+            const saveData = JSON.parse(saveStr);
+            return saveData && saveData.version === 1 && saveData.gameMode === 'adventure';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    deleteSaveData() {
+        localStorage.removeItem('tileGame3D_save');
+    }
+
+    showSaveIndicator() {
+        const indicator = document.getElementById('save-indicator');
+        if (indicator) {
+            indicator.classList.add('visible');
+            setTimeout(() => indicator.classList.remove('visible'), 1500);
+        }
+    }
+
+    // Auto-save on important events
+    autoSave() {
+        if (this.gameMode === 'adventure' && this.gameState === 'playing') {
+            this.saveGame();
+        }
+    }
+
+    // ==================== END SAVE/LOAD SYSTEM ====================
 
     start() {
         const gameLoop = () => {

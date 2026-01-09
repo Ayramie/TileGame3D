@@ -591,6 +591,36 @@ export class Player {
         this.cleaveIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
+    updateIndicatorAnimations(deltaTime) {
+        // Animate visible indicators with pulsing edges
+        const indicators = [this.cleaveIndicator, this.sunderIndicator, this.leapTargetGroup, this.leapRangeGroup];
+
+        for (const indicator of indicators) {
+            if (!indicator || !indicator.visible) continue;
+
+            // Update animation time
+            indicator.userData.animTime = (indicator.userData.animTime || 0) + deltaTime;
+            const time = indicator.userData.animTime;
+
+            // Animate children with special properties
+            indicator.traverse((child) => {
+                if (child.userData.isPulsingEdge && child.material) {
+                    // Pulse opacity between 0.5 and 1.0
+                    const pulse = 0.65 + Math.sin(time * 6) * 0.35;
+                    child.material.opacity = pulse;
+                }
+                if (child.userData.isPulsingCenter && child.material) {
+                    // Faster pulse for center crosshair
+                    const pulse = 0.4 + Math.sin(time * 8) * 0.3;
+                    child.material.opacity = pulse;
+                    // Slight scale pulse
+                    const scale = 1 + Math.sin(time * 8) * 0.1;
+                    child.scale.set(scale, scale, 1);
+                }
+            });
+        }
+    }
+
     async loadCharacter() {
         this.characterLoading = true;
         // Hide fallback mesh immediately while loading
@@ -1085,6 +1115,11 @@ export class Player {
             this.game.effects.createSwingEffect(this.position, this.rotation, 0xffffff);
         }
 
+        // Play swing sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('swordSwing');
+        }
+
         // Swing trail particles
         if (this.game && this.game.particles) {
             const startPos = this.position.clone();
@@ -1098,6 +1133,11 @@ export class Player {
         this.targetEnemy.takeDamage(this.autoAttackDamage, this);
         if (this.game && this.game.effects) {
             this.game.effects.createDamageNumber(this.targetEnemy.position, this.autoAttackDamage);
+        }
+
+        // Play hit sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('swordHit', { volumeMult: 0.8 });
         }
 
         return true;
@@ -1132,6 +1172,11 @@ export class Player {
         // Visual effect
         if (this.game && this.game.effects) {
             this.game.effects.createCleaveEffect(this.position, this.rotation);
+        }
+
+        // Play cleave sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('cleave');
         }
 
         // Particle effect - cleave wave
@@ -1200,6 +1245,11 @@ export class Player {
         // Create whirlwind visual effect
         if (this.game && this.game.effects) {
             this.game.effects.createWhirlwindEffect(this.position, ability.range);
+        }
+
+        // Play whirlwind sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('whirlwind');
         }
 
         // Emit spin particles
@@ -1321,6 +1371,11 @@ export class Player {
             this.game.effects.createSpinAttackEffect(this.position, ability.range);
         }
 
+        // Play spin attack sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('spinAttack');
+        }
+
         // Damage all enemies in range
         if (this.game && this.game.enemies) {
             for (const enemy of this.game.enemies) {
@@ -1415,6 +1470,11 @@ export class Player {
             this.game.effects.createLeapTrailEffect(this.position);
         }
 
+        // Play leap launch sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('heroicLeap');
+        }
+
         return true;
     }
 
@@ -1460,6 +1520,11 @@ export class Player {
                 // Screen shake
                 this.game.addScreenShake(0.8);
 
+                // Play ground slam sound
+                if (this.game.sound) {
+                    this.game.sound.play('groundSlam');
+                }
+
                 // Damage and stun enemies in AoE
                 for (const enemy of this.game.enemies) {
                     if (!enemy.isAlive) continue;
@@ -1500,6 +1565,16 @@ export class Player {
             this.game.particles.healEffect(this.position);
         }
 
+        // Play heal sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('heal');
+        }
+
+        // Screen flash effect for healing
+        if (this.game && this.game.addScreenFlash) {
+            this.game.addScreenFlash('heal');
+        }
+
         return true;
     }
 
@@ -1536,6 +1611,11 @@ export class Player {
         // Particle effect
         if (this.game && this.game.particles) {
             this.game.particles.sunderWave(this.position, forward, ability.range);
+        }
+
+        // Play sunder sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('sunder');
         }
 
         // Damage enemies in line (widening cone)
@@ -1597,6 +1677,16 @@ export class Player {
             this.game.addScreenShake(Math.min(amount / 20, 0.5));
         }
 
+        // Play hit sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('playerHit');
+        }
+
+        // Screen flash effect
+        if (this.game && this.game.addScreenFlash) {
+            this.game.addScreenFlash(amount > 20 ? 'critical' : 'damage');
+        }
+
         if (this.health <= 0) {
             this.health = 0;
             this.die();
@@ -1609,6 +1699,11 @@ export class Player {
         // Play death animation
         if (this.useAnimatedCharacter) {
             this.character.playDeath();
+        }
+
+        // Play death sound
+        if (this.game && this.game.sound) {
+            this.game.sound.play('playerDeath');
         }
 
         // Reset for now

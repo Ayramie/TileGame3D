@@ -66,7 +66,7 @@ export class EffectsManager {
         return Object.values(this.sharedMaterials).includes(material);
     }
 
-    // Get or create cached damage number texture
+    // Get or create cached damage number texture with enhanced visuals
     getDamageTexture(damage, isHeal, isCrit) {
         const key = `${Math.round(damage)}_${isHeal ? 'h' : 'd'}_${isCrit ? 'c' : 'n'}`;
 
@@ -76,7 +76,6 @@ export class EffectsManager {
 
         // Limit cache size
         if (this.damageTextureCache.size > 50) {
-            // Remove oldest entries
             const keysToDelete = Array.from(this.damageTextureCache.keys()).slice(0, 10);
             for (const k of keysToDelete) {
                 const tex = this.damageTextureCache.get(k);
@@ -90,25 +89,59 @@ export class EffectsManager {
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
 
+        // Determine color and style based on damage type
         let color = '#ff4444';
+        let glowColor = '#ff0000';
         let fontSize = 64;
+        let prefix = '';
+
         if (isHeal) {
-            color = '#44ff44';
+            color = '#44ff88';
+            glowColor = '#00ff44';
+            prefix = '+';
         } else if (isCrit || damage > 40) {
-            color = '#ffff44';
+            color = '#ffdd44';
+            glowColor = '#ffaa00';
             fontSize = 72;
+            prefix = '!';
+        } else if (damage > 25) {
+            color = '#ff8844';
+            glowColor = '#ff4400';
         }
 
+        const text = prefix + Math.round(damage);
+
+        // Draw outer glow
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 15;
         ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillStyle = glowColor;
+        ctx.fillText(text, 128, 64);
 
+        // Draw dark outline
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 6;
-        ctx.strokeText(Math.round(damage), 128, 64);
+        ctx.strokeText(text, 128, 64);
 
+        // Draw inner lighter outline for depth
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 3;
+        ctx.strokeText(text, 128, 64);
+
+        // Draw main text
         ctx.fillStyle = color;
-        ctx.fillText(Math.round(damage), 128, 64);
+        ctx.fillText(text, 128, 64);
+
+        // Add highlight on top portion
+        const gradient = ctx.createLinearGradient(0, 40, 0, 88);
+        gradient.addColorStop(0, 'rgba(255,255,255,0.4)');
+        gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.2)');
+        ctx.fillStyle = gradient;
+        ctx.fillText(text, 128, 64);
 
         const texture = new THREE.CanvasTexture(canvas);
         this.damageTextureCache.set(key, texture);
@@ -1053,14 +1086,13 @@ export class EffectsManager {
         });
     }
 
-    // Damage number floating text (using sprite)
+    // Damage number floating text (using sprite) with enhanced animation
     createDamageNumber(position, damage, isHeal = false, isCrit = false) {
         // Limit concurrent damage numbers to prevent texture overflow
         if (this.damageNumberCount >= this.maxDamageNumbers) {
-            // Remove oldest damage number
             for (let i = 0; i < this.effects.length; i++) {
                 if (this.effects[i].isDamageNumber) {
-                    this.effects[i].life = 0; // Mark for removal
+                    this.effects[i].life = 0;
                     break;
                 }
             }
@@ -1071,33 +1103,85 @@ export class EffectsManager {
         const spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            depthTest: false // Always render on top
+            depthTest: false
         });
         const sprite = new THREE.Sprite(spriteMaterial);
 
-        // Clone position with slight random offset so numbers don't stack
-        const offsetX = (Math.random() - 0.5) * 1;
-        const offsetZ = (Math.random() - 0.5) * 0.5;
-        sprite.position.set(position.x + offsetX, position.y + 2.5, position.z + offsetZ);
-        sprite.scale.set(3, 1.5, 1);
+        // Random offset and initial velocity for variety
+        const offsetX = (Math.random() - 0.5) * 1.2;
+        const offsetZ = (Math.random() - 0.5) * 0.6;
+        const velocityX = (Math.random() - 0.5) * 2;
+        sprite.position.set(position.x + offsetX, position.y + 2.2, position.z + offsetZ);
+        sprite.scale.set(0.1, 0.05, 1); // Start tiny for pop-in effect
 
         this.scene.add(sprite);
         this.damageNumberCount++;
 
+        // Determine animation style
+        const baseScale = (isCrit || damage > 40) ? 3.5 : 2.5;
+        const totalLife = (isCrit || damage > 40) ? 1.5 : 1.2;
+
         this.effects.push({
             mesh: sprite,
-            life: 1.2,
-            velocityY: 3,
+            life: totalLife,
+            totalLife: totalLife,
+            velocityY: (isCrit || damage > 40) ? 5 : 3.5,
+            velocityX: velocityX,
+            baseScale: baseScale,
             isDamageNumber: true,
-            usesCachedTexture: true, // Don't dispose the shared texture
+            usesCachedTexture: true,
             update: (dt, eff) => {
+                const progress = 1 - (eff.life / eff.totalLife);
+
+                // Movement with slight arc
                 eff.mesh.position.y += eff.velocityY * dt;
-                eff.velocityY -= dt * 5; // Gravity
-                eff.mesh.material.opacity = Math.min(eff.life, 1);
-                // Scale up then down
-                const scale = eff.life > 1 ? 1 + (1.2 - eff.life) * 3 : eff.life;
-                eff.mesh.scale.set(2 * scale, 1 * scale, 1);
+                eff.mesh.position.x += eff.velocityX * dt;
+                eff.velocityY -= dt * 8; // Gravity
+                eff.velocityX *= 0.98; // Slow horizontal drift
+
+                // Pop-in bounce scale animation
+                let scale;
+                if (progress < 0.1) {
+                    // Quick pop-in (0-10%)
+                    scale = progress * 10 * eff.baseScale * 1.3;
+                } else if (progress < 0.2) {
+                    // Bounce back (10-20%)
+                    const bounceProgress = (progress - 0.1) / 0.1;
+                    scale = eff.baseScale * (1.3 - bounceProgress * 0.3);
+                } else if (progress < 0.8) {
+                    // Hold steady (20-80%)
+                    scale = eff.baseScale;
+                } else {
+                    // Fade out and shrink (80-100%)
+                    const fadeProgress = (progress - 0.8) / 0.2;
+                    scale = eff.baseScale * (1 - fadeProgress * 0.5);
+                }
+
+                eff.mesh.scale.set(scale, scale * 0.5, 1);
+
+                // Opacity: quick fade in, hold, then fade out
+                let opacity;
+                if (progress < 0.1) {
+                    opacity = progress * 10;
+                } else if (progress < 0.75) {
+                    opacity = 1;
+                } else {
+                    opacity = 1 - ((progress - 0.75) / 0.25);
+                }
+                eff.mesh.material.opacity = opacity;
             }
         });
+    }
+
+    // Screen flash effect overlay (called from game when player takes damage)
+    createScreenFlash(color = 0xff0000, intensity = 0.3, duration = 0.2) {
+        // This creates a full-screen flash by adding a plane in front of the camera
+        // The actual implementation will be handled by the game class with CSS overlay
+        // This method is a placeholder for the effect trigger
+        return {
+            color: color,
+            intensity: intensity,
+            duration: duration
+        };
     }
 }
