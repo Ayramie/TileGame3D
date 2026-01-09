@@ -299,7 +299,7 @@ export class InputManager {
                         z: this.mouseWorldPos.z - this.game.player.position.z
                     };
                     if (weaponType === 'staff') {
-                        this.game.player.useBackstep(direction);
+                        this.game.player.useBlink(direction);
                     } else if (weaponType === 'bow') {
                         this.game.player.useTrap(this.mouseWorldPos.clone());
                     } else if (weaponType === 'sword' || weaponType === 'dagger') {

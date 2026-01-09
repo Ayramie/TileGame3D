@@ -3991,7 +3991,7 @@ export class Game {
             this.updateAbilityCooldown('q', this.player.abilities.blizzard);
             this.updateAbilityCooldown('f', this.player.abilities.flameWave);
             this.updateAbilityCooldown('e', this.player.abilities.frostNova);
-            this.updateAbilityCooldown('r', this.player.abilities.backstep);
+            this.updateAbilityCooldown('r', this.player.abilities.blink);
             this.updateAbilityCooldown('c', this.player.abilities.frozenOrb);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
         } else if (this.selectedClass === 'hunter') {
@@ -4019,7 +4019,7 @@ export class Game {
                 this.updateAbilityCooldown('q', this.player.abilities.blizzard);
                 this.updateAbilityCooldown('f', this.player.abilities.flameWave);
                 this.updateAbilityCooldown('e', this.player.abilities.frostNova);
-                this.updateAbilityCooldown('r', this.player.abilities.backstep);
+                this.updateAbilityCooldown('r', this.player.abilities.blink);
                 this.updateAbilityCooldown('c', this.player.abilities.frozenOrb);
                 this.updateAbilityCooldown('1', this.player.abilities.potion);
             } else if (weaponType === 'bow') {

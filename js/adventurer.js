@@ -157,7 +157,7 @@ export class Adventurer {
                     blizzard: this.abilities.blizzard?.cooldownRemaining,
                     flameWave: this.abilities.flameWave?.cooldownRemaining,
                     frostNova: this.abilities.frostNova?.cooldownRemaining,
-                    backstep: this.abilities.backstep?.cooldownRemaining,
+                    blink: this.abilities.blink?.cooldownRemaining,
                     frozenOrb: this.abilities.frozenOrb?.cooldownRemaining
                 });
             } else if (weaponType === 'bow') {
@@ -399,7 +399,7 @@ export class Adventurer {
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
@@ -422,7 +422,7 @@ export class Adventurer {
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
@@ -438,7 +438,7 @@ export class Adventurer {
             blizzard: { cooldown: 6, cooldownRemaining: 0, damage: 15, range: 12, radius: 5, duration: 3, tickRate: 0.5, isActive: false },
             flameWave: { cooldown: 5, cooldownRemaining: 0, damage: 40, range: 10, width: 6, isActive: false },
             frostNova: { cooldown: 8, cooldownRemaining: 0, damage: 30, radius: 5, slowDuration: 3, isActive: false },
-            backstep: { cooldown: 4, cooldownRemaining: 0, distance: 8, isActive: false },
+            blink: { cooldown: 4, cooldownRemaining: 0, distance: 8, isActive: false },
             frozenOrb: { cooldown: 10, cooldownRemaining: 0, damage: 25, range: 15, radius: 3, duration: 4, isActive: false },
             potion: { cooldown: 30, cooldownRemaining: 0 },
             // Disable other class abilities
@@ -471,7 +471,7 @@ export class Adventurer {
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false }
         };
     }
@@ -1101,7 +1101,7 @@ export class Adventurer {
         return true;
     }
 
-    useBackstep(direction = null) {
+    useBlink(direction = null) {
         const ability = this.abilities.blink;
         if (ability.cooldownRemaining > 0) return false;
         if (this.currentWeaponType !== 'staff') return false;
