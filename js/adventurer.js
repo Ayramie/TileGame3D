@@ -91,22 +91,32 @@ export class Adventurer {
 
         if (equipped) {
             const weaponDef = equipped.definition;
+            const iconLower = (weaponDef.icon || '').toLowerCase();
+            const idLower = (weaponDef.id || '').toLowerCase();
+            const nameLower = (weaponDef.name || '').toLowerCase();
 
-            // Determine weapon type from icon/id
+            // Determine weapon type from icon/id/name - check most specific first
             let weaponType = 'sword'; // default
-            if (weaponDef.icon?.includes('bow') || weaponDef.id?.includes('bow')) {
+            if (iconLower.includes('bow') || idLower.includes('bow') ||
+                iconLower.includes('crossbow') || idLower.includes('crossbow') ||
+                nameLower.includes('bow') || nameLower.includes('crossbow')) {
                 weaponType = 'bow';
                 this.attackRange = 12; // Ranged
-            } else if (weaponDef.icon?.includes('staff') || weaponDef.id?.includes('staff') || weaponDef.id?.includes('scepter')) {
+            } else if (iconLower.includes('staff') || idLower.includes('staff') ||
+                       iconLower.includes('scepter') || idLower.includes('scepter') ||
+                       iconLower.includes('wand') || idLower.includes('wand') ||
+                       nameLower.includes('staff') || nameLower.includes('scepter') || nameLower.includes('wand')) {
                 weaponType = 'staff';
                 this.attackRange = 10; // Ranged magic
-            } else if (weaponDef.icon?.includes('dagger') || weaponDef.id?.includes('dagger')) {
+            } else if (iconLower.includes('dagger') || idLower.includes('dagger') || nameLower.includes('dagger')) {
                 weaponType = 'dagger';
                 this.attackRange = 2.0; // Short melee
             } else {
                 weaponType = 'sword';
                 this.attackRange = 2.5; // Standard melee
             }
+
+            console.log('Adventurer weapon detection:', { icon: iconLower, id: idLower, name: nameLower, detected: weaponType });
 
             this.weaponMesh = WeaponFactory.createWeapon(weaponType);
             if (this.weaponMesh && this.useAnimatedCharacter) {
@@ -214,6 +224,17 @@ export class Adventurer {
             // Face movement direction
             this.rotation = Math.atan2(moveDir.x, moveDir.z);
             isMoving = true;
+        }
+
+        // Jump
+        if (input.keys[' '] && this.isGrounded) {
+            this.velocity.y = this.jumpForce;
+            this.isGrounded = false;
+            input.keys[' '] = false;
+
+            if (this.useAnimatedCharacter) {
+                this.character.playJump();
+            }
         }
 
         // Apply gravity
