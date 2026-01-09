@@ -56,24 +56,32 @@ export class Adventurer {
             giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
         };
 
-        // Create character mesh
-        this.createMesh();
-    }
-
-    async createMesh() {
-        // Use barbarian model for adventurer
+        // Character model
         this.character = new KayKitCharacter(this.scene);
-        await this.character.load('adventurers', 'barbarian');
-
-        // Create unarmed stance (no weapon by default)
+        this.useAnimatedCharacter = false;
         this.weapon = null;
         this.weaponMesh = null;
+
+        // Load animated character
+        this.loadCharacter();
+    }
+
+    async loadCharacter() {
+        try {
+            const success = await this.character.load('adventurers', 'barbarian');
+            if (success) {
+                this.useAnimatedCharacter = true;
+                console.log('Adventurer: Using KayKit Barbarian character model');
+            }
+        } catch (error) {
+            console.warn('Failed to load Adventurer character:', error);
+        }
     }
 
     updateWeaponFromEquipment() {
         const equipped = this.inventory.equipment.weapon;
 
-        if (this.weaponMesh) {
+        if (this.weaponMesh && this.useAnimatedCharacter) {
             this.character.detachWeapon();
             this.scene.remove(this.weaponMesh);
             this.weaponMesh = null;
@@ -99,7 +107,7 @@ export class Adventurer {
             }
 
             this.weaponMesh = WeaponFactory.createWeapon(weaponType);
-            if (this.weaponMesh) {
+            if (this.weaponMesh && this.useAnimatedCharacter) {
                 this.character.attachWeapon(this.weaponMesh);
             }
 
@@ -126,7 +134,7 @@ export class Adventurer {
         this.handleMovement(deltaTime, input);
 
         // Update character animation
-        if (this.character) {
+        if (this.useAnimatedCharacter) {
             this.character.update(deltaTime);
             this.character.setPosition(this.position);
             this.character.setRotation(this.rotation);
@@ -161,11 +169,11 @@ export class Adventurer {
             // Face movement direction
             this.rotation = Math.atan2(moveDir.x, moveDir.z);
 
-            if (this.character) {
+            if (this.useAnimatedCharacter) {
                 this.character.playAnimation('run');
             }
         } else {
-            if (this.character) {
+            if (this.useAnimatedCharacter) {
                 this.character.playAnimation('idle');
             }
         }
@@ -202,7 +210,7 @@ export class Adventurer {
         this.rotation = Math.atan2(dx, dz);
 
         // Play attack animation
-        if (this.character) {
+        if (this.useAnimatedCharacter) {
             this.character.playAnimation('attack', { once: true });
         }
 
