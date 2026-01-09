@@ -222,6 +222,7 @@ export class EffectsManager {
 
     // Cleave cone effect - ground shockwave expanding forward (126 degree, range 5.5)
     createCleaveEffect(position, rotation) {
+        console.log('Creating cleave effect at', position, 'rotation', rotation);
         const group = new THREE.Group();
 
         // Ground cone shockwave (126 degree arc expanding outward, centered forward)
@@ -304,6 +305,7 @@ export class EffectsManager {
 
     // Flame Wave effect - mage cone fire attack
     createFlameWaveEffect(position, rotation) {
+        console.log('Creating flame wave effect at', position, 'rotation', rotation);
         const group = new THREE.Group();
 
         // Fire cone on ground
