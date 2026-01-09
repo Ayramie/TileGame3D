@@ -354,13 +354,6 @@ export class Inventory {
             }
         }
 
-        // Adventurer gets one of each weapon type for testing
-        if (className === 'adventurer') {
-            this.addItemById('iron_sword', 1);      // Sword for warrior abilities
-            this.addItemById('apprentice_staff', 1); // Staff for mage abilities
-            this.addItemById('wooden_bow', 1);       // Bow for hunter abilities
-        }
-
         // Testing: Add some raw fish for cooking
         this.addItemById('fish_small_trout', 3);
         this.addItemById('fish_bass', 2);
