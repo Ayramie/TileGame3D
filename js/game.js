@@ -2306,7 +2306,6 @@ export class Game {
             points = 200;
             mg.combo++;
             mg.hitsForOre += 2; // Perfect counts as 2 hits
-            console.log('[Mining] Perfect hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'perfect';
@@ -2317,7 +2316,6 @@ export class Game {
             points = 150;
             mg.combo++;
             mg.hitsForOre += 1.5;
-            console.log('[Mining] Great hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'great';
@@ -2328,7 +2326,6 @@ export class Game {
             points = 100;
             mg.combo++;
             mg.hitsForOre += 1;
-            console.log('[Mining] Good hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'good';
@@ -2362,12 +2359,8 @@ export class Game {
                 'gold': 'ore_gold'
             };
             const oreItemId = oreItemMap[mg.oreId];
-            console.log('[Mining] Earned ore:', oreItemId, 'oreId:', mg.oreId);
             if (oreItemId && this.player.inventory) {
-                const overflow = this.player.inventory.addItemById(oreItemId, 1);
-                console.log('[Mining] Added to inventory, overflow:', overflow);
-            } else {
-                console.warn('[Mining] Failed to add ore - oreItemId:', oreItemId, 'inventory:', !!this.player.inventory);
+                this.player.inventory.addItemById(oreItemId, 1);
             }
 
             // Decrease mine ore count
@@ -2593,7 +2586,7 @@ export class Game {
             smeltingPrompt?.classList.remove('visible');
             // Update auto-smelting
             this.updateAutoSmelt(deltaTime);
-        } else if (this.smelter.isNearSmelter && this.playerHasOre()) {
+        } else if (this.smelter.isNearSmelter) {
             smeltingPrompt?.classList.add('visible');
             smeltingPopup?.classList.remove('visible');
         } else {
@@ -5247,8 +5240,8 @@ export class Game {
 
         // Restore inventory
         if (saveData.inventory && this.player?.inventory) {
-            // Clear existing inventory
-            this.player.inventory.slots = new Array(this.player.inventory.maxSlots).fill(null);
+            // Clear existing inventory (use .size, not .maxSlots)
+            this.player.inventory.slots = new Array(this.player.inventory.size).fill(null);
 
             // Restore items
             for (let i = 0; i < saveData.inventory.length; i++) {
