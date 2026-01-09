@@ -379,13 +379,14 @@ export class Adventurer {
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             shotgun: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             trap: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false }
+            giantArrow: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            potion: { cooldown: 999, cooldownRemaining: 999 }
         };
     }
 
@@ -396,11 +397,12 @@ export class Adventurer {
             whirlwind: { cooldown: 6, cooldownRemaining: 0, damage: 35, range: 3.5, dashDistance: 10, dashDuration: 0.5, isActive: false },
             parry: { cooldown: 5, cooldownRemaining: 0, damage: 50, range: 4, spinDuration: 0.4, isActive: false },
             heroicLeap: { cooldown: 8, cooldownRemaining: 0, damage: 60, range: 15, radius: 4, isActive: false },
+            potion: { cooldown: 30, cooldownRemaining: 0 },
             // Disable other class abilities
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             arrowWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             spinDash: { cooldown: 999, cooldownRemaining: 999, isActive: false },
@@ -416,8 +418,9 @@ export class Adventurer {
             blizzard: { cooldown: 6, cooldownRemaining: 0, damage: 15, range: 12, radius: 5, duration: 3, tickRate: 0.5, isActive: false },
             flameWave: { cooldown: 5, cooldownRemaining: 0, damage: 40, range: 10, width: 6, isActive: false },
             frostNova: { cooldown: 8, cooldownRemaining: 0, damage: 30, radius: 5, slowDuration: 3, isActive: false },
-            blink: { cooldown: 4, cooldownRemaining: 0, distance: 8, isActive: false },
+            backstep: { cooldown: 4, cooldownRemaining: 0, distance: 8, isActive: false },
             frozenOrb: { cooldown: 10, cooldownRemaining: 0, damage: 25, range: 15, radius: 3, duration: 4, isActive: false },
+            potion: { cooldown: 30, cooldownRemaining: 0 },
             // Disable other class abilities
             cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
@@ -439,6 +442,7 @@ export class Adventurer {
             shotgun: { cooldown: 4, cooldownRemaining: 0, damage: 15, range: 8, count: 8, spread: Math.PI * 0.3, isActive: false },
             trap: { cooldown: 10, cooldownRemaining: 0, damage: 40, radius: 2, duration: 10, isActive: false },
             giantArrow: { cooldown: 12, cooldownRemaining: 0, damage: 100, range: 20, piercing: true, isActive: false },
+            potion: { cooldown: 30, cooldownRemaining: 0 },
             // Disable other class abilities
             cleave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             whirlwind: { cooldown: 999, cooldownRemaining: 999, isActive: false },
@@ -447,7 +451,7 @@ export class Adventurer {
             blizzard: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             flameWave: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frostNova: { cooldown: 999, cooldownRemaining: 999, isActive: false },
-            blink: { cooldown: 999, cooldownRemaining: 999, isActive: false },
+            backstep: { cooldown: 999, cooldownRemaining: 999, isActive: false },
             frozenOrb: { cooldown: 999, cooldownRemaining: 999, isActive: false }
         };
     }
