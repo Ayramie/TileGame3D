@@ -142,6 +142,24 @@ export class Game {
         returnBtn.addEventListener('click', () => {
             this.returnToMenu();
         });
+
+        // Clear save button
+        const clearSaveBtn = document.getElementById('clear-save-btn');
+        if (clearSaveBtn) {
+            clearSaveBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear your save data? This cannot be undone.')) {
+                    localStorage.removeItem('tileGame3D_save');
+                    clearSaveBtn.textContent = 'Save Cleared!';
+                    clearSaveBtn.style.color = '#44ff88';
+                    clearSaveBtn.style.borderColor = '#44ff88';
+                    setTimeout(() => {
+                        clearSaveBtn.textContent = 'Clear Save Data';
+                        clearSaveBtn.style.color = '';
+                        clearSaveBtn.style.borderColor = '';
+                    }, 2000);
+                }
+            });
+        }
     }
 
     async startGame(mode) {

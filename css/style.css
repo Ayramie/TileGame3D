@@ -287,6 +287,32 @@ body {
     transform: scale(0.98);
 }
 
+/* Secondary menu options */
+.menu-secondary {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #3a3a5a;
+}
+
+.menu-btn-secondary {
+    padding: 10px 25px;
+    font-size: 14px;
+    color: #888;
+    background: transparent;
+    border: 2px solid #3a3a5a;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.menu-btn-secondary:hover {
+    color: #ff6666;
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+}
+
 /* Return to menu button */
 #return-menu-btn {
     position: fixed;
@@ -3237,13 +3263,38 @@ body {
 
 /* Anvil Prompt */
 #anvil-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50px);
+    display: none;
+    align-items: center;
+    gap: 10px;
     background: linear-gradient(145deg, rgba(80, 60, 40, 0.95), rgba(50, 35, 25, 0.95));
-    border-color: #cc6600;
+    border: 2px solid #cc6600;
+    border-radius: 8px;
+    padding: 10px 20px;
+    z-index: 200;
+}
+
+#anvil-prompt.visible {
+    display: flex;
 }
 
 #anvil-prompt .prompt-key {
     background: linear-gradient(145deg, #cc6600, #ff8822);
+    border: 2px solid #ff9933;
+    color: #fff;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 4px;
     box-shadow: 0 0 10px rgba(204, 102, 0, 0.5);
+}
+
+#anvil-prompt .prompt-text {
+    color: #ffcc88;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 /* Anvil Selection Popup */
