@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Player } from './player.js';
 import { Mage } from './mage.js';
 import { Hunter } from './hunter.js';
@@ -10,6 +11,7 @@ import { ParticleSystem } from './particles.js';
 import { DungeonBuilder } from './dungeonBuilder.js';
 import { WorldItemManager } from './worldItem.js';
 import { InventoryUI } from './inventoryUI.js';
+import { ITEMS, getItemIcon } from './itemDatabase.js';
 
 export class Game {
     constructor(canvas) {
@@ -43,6 +45,25 @@ export class Game {
         this.fishingLake = null; // Fishing lake position and state
         this.campfire = null; // Campfire position and state
         this.mine = null; // Mining area position and state
+        this.trees = null; // Chopping area position and state
+        this.smelter = null; // Smelter forge station
+        this.craftingBench = null; // Crafting station position and state
+
+        // Crafting recipes
+        this.craftingRecipes = [
+            {
+                id: 'oak_shortbow',
+                name: 'Oak Shortbow',
+                materials: [{ itemId: 'wood_oak', amount: 5 }],
+                craftTime: 2.0
+            },
+            {
+                id: 'short_staff',
+                name: 'Short Staff',
+                materials: [{ itemId: 'wood_oak', amount: 4 }],
+                craftTime: 2.0
+            }
+        ];
 
         // Adventure mode - NPCs and Quests
         this.npcs = [];
@@ -328,30 +349,45 @@ export class Game {
                 this.scene.add(rock);
             }
 
-            // Create NPC - Miner Tom
-            this.createNPC({
+            // Create NPC - Miner Tom (with model)
+            await this.createNPC({
                 id: 'miner_tom',
                 name: 'Miner Tom',
                 position: { x: 0, z: 12 },
                 color: 0x8b4513,
+                modelPath: 'assets/kaykit/characters/adventurers/Barbarian.glb',
                 dialog: {
-                    default: "Hello adventurer! I'm in need of some copper ore. Would you be willing to help?",
-                    questAvailable: "I need 10 copper ore to repair my tools. There's a copper vein just up the hill. Bring me 10 ore and I'll make it worth your while!",
+                    default: "Thanks for your help, adventurer!",
+                    questAvailable: "I need 10 copper ore to repair my tools. There's a copper vein just up the hill!",
                     questInProgress: "How's the mining going? I need 10 copper ore total.",
                     questComplete: "Excellent work! That's all the copper I need. Here's your reward!"
                 },
-                quest: {
-                    id: 'gather_copper',
-                    name: 'Copper for Tom',
-                    description: 'Gather 10 copper ore for Miner Tom',
-                    objectives: [
-                        { type: 'collect', itemId: 'ore_copper', target: 10, current: 0 }
-                    ],
-                    rewards: {
-                        gold: 50,
-                        items: []
+                quests: [
+                    {
+                        id: 'gather_copper',
+                        name: 'Copper for Tom',
+                        description: 'Gather 10 copper ore for Miner Tom',
+                        objectives: [
+                            { type: 'collect', itemId: 'ore_copper', target: 10, current: 0 }
+                        ],
+                        rewards: { gold: 50, items: [] },
+                        nextQuestId: 'smelt_copper'
+                    },
+                    {
+                        id: 'smelt_copper',
+                        name: 'Smelt Some Bars',
+                        description: 'Smelt 5 copper bars at the forge',
+                        dialog: {
+                            questAvailable: "Great job on the mining! Now I need you to smelt 5 copper bars at the forge over there.",
+                            questInProgress: "Use the forge to smelt copper ore into bars. I need 5 copper bars.",
+                            questComplete: "Perfect! Those bars look great. Here's your reward!"
+                        },
+                        objectives: [
+                            { type: 'collect', itemId: 'bar_copper', target: 5, current: 0 }
+                        ],
+                        rewards: { gold: 75, items: [] }
                     }
-                }
+                ]
             });
 
             // Create copper ore node
@@ -361,10 +397,14 @@ export class Game {
                 respawnTime: 30
             });
 
+            // Create smelting forge
+            this.createSmelter({
+                position: { x: -15, z: 18 }
+            });
+
             // Add a few trees (simple cylinders + cones)
-            this.addTree(-15, 10);
-            this.addTree(-18, 15);
-            this.addTree(-12, 18);
+            this.addTree(-20, 8);
+            this.addTree(-22, 12);
             this.addTree(18, -5);
             this.addTree(22, -8);
 
@@ -580,6 +620,144 @@ export class Game {
                     iron: 99,
                     gold: 99
                 }
+            };
+
+            // Create tree chopping area
+            const treeGroup = new THREE.Group();
+
+            // Create multiple trees
+            const treePositions = [
+                { x: -3, z: 0 },
+                { x: 3, z: 0 },
+                { x: 0, z: -3 },
+                { x: -2, z: 3 },
+                { x: 2, z: 3 }
+            ];
+
+            for (const treePos of treePositions) {
+                // Tree trunk
+                const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+                const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(treePos.x, 1.5, treePos.z);
+                trunk.castShadow = true;
+                treeGroup.add(trunk);
+
+                // Tree foliage (cone shape)
+                const foliageGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+                const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+                foliage.position.set(treePos.x, 4, treePos.z);
+                foliage.castShadow = true;
+                treeGroup.add(foliage);
+
+                // Second layer of foliage
+                const foliage2Geometry = new THREE.ConeGeometry(1.2, 2.5, 8);
+                const foliage2 = new THREE.Mesh(foliage2Geometry, foliageMaterial);
+                foliage2.position.set(treePos.x, 5.5, treePos.z);
+                foliage2.castShadow = true;
+                treeGroup.add(foliage2);
+            }
+
+            // Stump for visual variety
+            const stumpGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.5, 8);
+            const stumpMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
+            const stump = new THREE.Mesh(stumpGeometry, stumpMaterial);
+            stump.position.set(0, 0.25, 0);
+            stump.castShadow = true;
+            treeGroup.add(stump);
+
+            // Wood pile
+            for (let i = 0; i < 5; i++) {
+                const logGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.2, 6);
+                const logMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+                const log = new THREE.Mesh(logGeometry, logMaterial);
+                log.rotation.z = Math.PI / 2;
+                log.position.set(-4 + Math.random() * 0.3, 0.15 + (i * 0.15), Math.random() * 0.5 - 0.25);
+                log.castShadow = true;
+                treeGroup.add(log);
+            }
+
+            // Position tree area
+            treeGroup.position.set(42, 0, 0);
+            this.scene.add(treeGroup);
+
+            // Store tree info
+            this.trees = {
+                position: { x: 42, z: 0 },
+                mesh: treeGroup,
+                interactionRange: 8,
+                isChopping: false,
+                wood: {
+                    oak: 99,
+                    birch: 99,
+                    mahogany: 99
+                }
+            };
+
+            // Create crafting bench
+            const craftingGroup = new THREE.Group();
+
+            // Workbench table
+            const tableTopGeometry = new THREE.BoxGeometry(3, 0.3, 2);
+            const benchWoodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const tableTop = new THREE.Mesh(tableTopGeometry, benchWoodMaterial);
+            tableTop.position.set(0, 1.1, 0);
+            tableTop.castShadow = true;
+            craftingGroup.add(tableTop);
+
+            // Table legs
+            const legGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+            const legPositions = [
+                { x: -1.2, z: -0.7 },
+                { x: 1.2, z: -0.7 },
+                { x: -1.2, z: 0.7 },
+                { x: 1.2, z: 0.7 }
+            ];
+            for (const legPos of legPositions) {
+                const leg = new THREE.Mesh(legGeometry, benchWoodMaterial);
+                leg.position.set(legPos.x, 0.5, legPos.z);
+                leg.castShadow = true;
+                craftingGroup.add(leg);
+            }
+
+            // Tools on the bench - hammer
+            const hammerHandleGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6);
+            const hammerHandle = new THREE.Mesh(hammerHandleGeom, benchWoodMaterial);
+            hammerHandle.rotation.z = Math.PI / 6;
+            hammerHandle.position.set(-0.5, 1.4, 0.3);
+            craftingGroup.add(hammerHandle);
+
+            const hammerHeadGeom = new THREE.BoxGeometry(0.15, 0.25, 0.15);
+            const benchMetalMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const hammerHead = new THREE.Mesh(hammerHeadGeom, benchMetalMaterial);
+            hammerHead.position.set(-0.7, 1.55, 0.3);
+            craftingGroup.add(hammerHead);
+
+            // Some wood planks on the bench
+            for (let i = 0; i < 3; i++) {
+                const plankGeom = new THREE.BoxGeometry(0.8, 0.1, 0.15);
+                const plank = new THREE.Mesh(plankGeom, benchWoodMaterial);
+                plank.position.set(0.5, 1.3 + i * 0.1, -0.3 + i * 0.2);
+                plank.rotation.y = Math.random() * 0.3 - 0.15;
+                craftingGroup.add(plank);
+            }
+
+            // Lantern for visibility
+            const craftLight = new THREE.PointLight(0xffdd88, 1.2, 15);
+            craftLight.position.set(0, 2.5, 0);
+            craftingGroup.add(craftLight);
+
+            // Position crafting bench (opposite side from trees)
+            craftingGroup.position.set(-42, 0, 0);
+            this.scene.add(craftingGroup);
+
+            // Store crafting bench info
+            this.craftingBench = {
+                position: { x: -42, z: 0 },
+                mesh: craftingGroup,
+                interactionRange: 6,
+                isCrafting: false
             };
 
             // Build walls around the dungeon perimeter
@@ -1129,6 +1307,15 @@ export class Game {
 
         // Update mine interaction
         this.updateMine(deltaTime);
+
+        // Update tree chopping interaction
+        this.updateTrees(deltaTime);
+
+        // Update smelter interaction
+        this.updateSmelter(deltaTime);
+
+        // Update crafting bench interaction
+        this.updateCraftingBench(deltaTime);
 
         // Update NPC proximity (adventure mode)
         if (this.gameMode === 'adventure') {
@@ -2217,6 +2404,871 @@ export class Game {
         }
     }
 
+    // ==================== SMELTING ====================
+
+    createSmelter(config) {
+        const { position } = config;
+        const smelterGroup = new THREE.Group();
+        smelterGroup.position.set(position.x, 0, position.z);
+
+        // Forge base - stone structure
+        const baseGeo = new THREE.BoxGeometry(3, 1.5, 2);
+        const baseMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.75;
+        base.castShadow = true;
+        base.receiveShadow = true;
+        smelterGroup.add(base);
+
+        // Forge opening (dark)
+        const openingGeo = new THREE.BoxGeometry(1.5, 1, 0.5);
+        const openingMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const opening = new THREE.Mesh(openingGeo, openingMat);
+        opening.position.set(0, 0.7, 1.05);
+        smelterGroup.add(opening);
+
+        // Forge chimney
+        const chimneyGeo = new THREE.CylinderGeometry(0.4, 0.5, 2, 8);
+        const chimneyMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+        const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+        chimney.position.set(0, 2.5, -0.5);
+        chimney.castShadow = true;
+        smelterGroup.add(chimney);
+
+        // Fire glow inside forge
+        const fireGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        const fireMat = new THREE.MeshBasicMaterial({
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.8
+        });
+        const fireMesh = new THREE.Mesh(fireGeo, fireMat);
+        fireMesh.position.set(0, 0.7, 0.5);
+        smelterGroup.add(fireMesh);
+
+        // Fire light
+        const fireLight = new THREE.PointLight(0xff4400, 1.5, 10);
+        fireLight.position.set(0, 1, 0.5);
+        smelterGroup.add(fireLight);
+
+        // Anvil nearby
+        const anvilBaseGeo = new THREE.BoxGeometry(0.8, 0.4, 0.5);
+        const anvilMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const anvilBase = new THREE.Mesh(anvilBaseGeo, anvilMat);
+        anvilBase.position.set(2.5, 0.2, 0);
+        anvilBase.castShadow = true;
+        smelterGroup.add(anvilBase);
+
+        const anvilTopGeo = new THREE.BoxGeometry(1.2, 0.3, 0.6);
+        const anvilTop = new THREE.Mesh(anvilTopGeo, anvilMat);
+        anvilTop.position.set(2.5, 0.55, 0);
+        anvilTop.castShadow = true;
+        smelterGroup.add(anvilTop);
+
+        this.scene.add(smelterGroup);
+
+        // Store smelter info
+        this.smelter = {
+            position: position,
+            mesh: smelterGroup,
+            fireMesh: fireMesh,
+            fireLight: fireLight,
+            interactionRange: 5,
+            isSmelting: false,
+            autoSmelt: null,
+            playerStartPos: null
+        };
+    }
+
+    updateSmelter(deltaTime) {
+        if (!this.smelter || !this.player) return;
+
+        const dx = this.player.position.x - this.smelter.position.x;
+        const dz = this.player.position.z - this.smelter.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if near smelter
+        this.smelter.isNearSmelter = distance < this.smelter.interactionRange;
+
+        // Cancel smelting if player moves away
+        if (this.smelter.isSmelting) {
+            const startPos = this.smelter.playerStartPos;
+            const movedDistance = Math.sqrt(
+                Math.pow(this.player.position.x - startPos.x, 2) +
+                Math.pow(this.player.position.z - startPos.z, 2)
+            );
+            if (movedDistance > 1.5) {
+                this.stopSmelting('Moved away from forge');
+            }
+        }
+
+        // Show/hide prompt
+        const smeltingPrompt = document.getElementById('smelting-prompt');
+        const smeltingPopup = document.getElementById('smelting-popup');
+
+        if (this.smelter.isSmelting) {
+            smeltingPrompt?.classList.remove('visible');
+            // Update auto-smelting
+            this.updateAutoSmelt(deltaTime);
+        } else if (this.smelter.isNearSmelter && this.playerHasOre()) {
+            smeltingPrompt?.classList.add('visible');
+            smeltingPopup?.classList.remove('visible');
+        } else {
+            smeltingPrompt?.classList.remove('visible');
+            smeltingPopup?.classList.remove('visible');
+        }
+
+        // Animate fire
+        if (this.smelter.fireMesh) {
+            const time = performance.now() / 1000;
+            this.smelter.fireMesh.scale.y = 1 + Math.sin(time * 4) * 0.15;
+            this.smelter.fireMesh.material.opacity = 0.7 + Math.sin(time * 5) * 0.2;
+        }
+    }
+
+    playerHasOre() {
+        if (!this.player.inventory) return false;
+        const oreIds = ['ore_copper', 'ore_iron', 'ore_gold'];
+        for (const oreId of oreIds) {
+            if (this.player.inventory.getItemCount(oreId) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    getOresInInventory() {
+        if (!this.player.inventory) return [];
+        const oreIds = ['ore_copper', 'ore_iron', 'ore_gold'];
+        const result = [];
+        for (const oreId of oreIds) {
+            const count = this.player.inventory.getItemCount(oreId);
+            if (count > 0) {
+                result.push({ id: oreId, count: count });
+            }
+        }
+        return result;
+    }
+
+    startSmelting() {
+        if (!this.smelter || this.smelter.isSmelting) return;
+        if (!this.playerHasOre()) return;
+
+        // Show ore selection popup
+        this.showSmeltingSelection();
+    }
+
+    showSmeltingSelection() {
+        const selectionPopup = document.getElementById('smelting-selection');
+        const selectionGrid = document.getElementById('smelting-selection-grid');
+        const closeBtn = document.getElementById('smelting-selection-close');
+        if (!selectionPopup || !selectionGrid) return;
+
+        // Clear existing options
+        selectionGrid.innerHTML = '';
+
+        // Add ore options with icons
+        const oresInInventory = this.getOresInInventory();
+        const oreIcons = {
+            'ore_copper': '🟤',
+            'ore_iron': '⚫',
+            'ore_gold': '🟡'
+        };
+        const oreNames = {
+            'ore_copper': 'Copper',
+            'ore_iron': 'Iron',
+            'ore_gold': 'Gold'
+        };
+        const oreRarities = {
+            'ore_copper': 'common',
+            'ore_iron': 'uncommon',
+            'ore_gold': 'rare'
+        };
+
+        for (const ore of oresInInventory) {
+            const div = document.createElement('div');
+            div.className = `smelting-ore-option rarity-${oreRarities[ore.id] || 'common'}`;
+            div.dataset.oreId = ore.id;
+            div.innerHTML = `
+                <span class="ore-icon">${oreIcons[ore.id] || '⚫'}</span>
+                <span class="ore-name">${oreNames[ore.id] || 'Ore'}</span>
+                <span class="ore-qty">x${ore.count}</span>
+            `;
+            div.onclick = () => this.selectOreToSmelt(ore.id);
+            selectionGrid.appendChild(div);
+        }
+
+        // Setup close button
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                selectionPopup.classList.remove('visible');
+            };
+        }
+
+        selectionPopup.classList.add('visible');
+    }
+
+    selectOreToSmelt(oreId) {
+        // Hide selection popup
+        const selectionPopup = document.getElementById('smelting-selection');
+        selectionPopup?.classList.remove('visible');
+
+        // Count how many of this ore we have
+        const oreCount = this.player.inventory.getItemCount(oreId);
+        if (oreCount <= 0) return;
+
+        // Start auto-smelting
+        this.smelter.isSmelting = true;
+        this.smelter.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+        this.smelter.autoSmelt = {
+            oreId: oreId,
+            remaining: oreCount,
+            total: oreCount,
+            timer: 0,
+            smeltTime: 3.0 // 3 seconds per bar
+        };
+
+        // Face the forge
+        const dx = this.smelter.position.x - this.player.position.x;
+        const dz = this.smelter.position.z - this.player.position.z;
+        this.player.rotation = Math.atan2(dx, dz);
+
+        // Show smelting popup with progress
+        const smeltingPopup = document.getElementById('smelting-popup');
+        smeltingPopup?.classList.add('visible');
+
+        this.updateAutoSmeltUI();
+    }
+
+    updateAutoSmelt(deltaTime) {
+        const as = this.smelter?.autoSmelt;
+        if (!as) return;
+
+        as.timer += deltaTime;
+
+        // Update progress bar
+        const progress = as.timer / as.smeltTime;
+        const qualityFill = document.getElementById('smelting-quality-fill');
+        if (qualityFill) {
+            qualityFill.style.width = `${progress * 100}%`;
+        }
+
+        // Check if current ore is done
+        if (as.timer >= as.smeltTime) {
+            as.timer = 0;
+
+            // Mapping ore to bar
+            const barMap = {
+                'ore_copper': 'bar_copper',
+                'ore_iron': 'bar_iron',
+                'ore_gold': 'bar_gold'
+            };
+
+            if (this.player.inventory.removeItemById(as.oreId, 1)) {
+                const barId = barMap[as.oreId];
+                if (barId) {
+                    this.player.inventory.addItemById(barId, 1);
+                    // Update quest progress for copper bars
+                    this.updateQuestProgress('collect', barId, 1);
+                }
+            }
+
+            as.remaining--;
+            this.updateAutoSmeltUI();
+
+            // Check if all done
+            if (as.remaining <= 0) {
+                const total = as.total;
+                const oreName = as.oreId.replace('ore_', '');
+                this.stopSmelting();
+                this.showSmeltingMessage(`Smelted ${total} ${oreName} bar${total > 1 ? 's' : ''}!`, 'uncommon');
+            }
+        }
+    }
+
+    updateAutoSmeltUI() {
+        const as = this.smelter?.autoSmelt;
+        if (!as) return;
+
+        const smelted = as.total - as.remaining;
+        const statusText = document.getElementById('smelting-status-text');
+        if (statusText) {
+            statusText.textContent = `Smelting... ${smelted} / ${as.total}`;
+        }
+    }
+
+    stopSmelting(message = null) {
+        if (!this.smelter) return;
+
+        this.smelter.isSmelting = false;
+        this.smelter.autoSmelt = null;
+        this.smelter.playerStartPos = null;
+
+        // Hide popups
+        const smeltingPopup = document.getElementById('smelting-popup');
+        const selectionPopup = document.getElementById('smelting-selection');
+        smeltingPopup?.classList.remove('visible');
+        selectionPopup?.classList.remove('visible');
+
+        // Reset progress bar
+        const qualityFill = document.getElementById('smelting-quality-fill');
+        if (qualityFill) {
+            qualityFill.style.width = '0%';
+        }
+
+        if (message) {
+            this.showSmeltingMessage(message);
+        }
+    }
+
+    showSmeltingMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('smelting-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+        }
+    }
+
+    // ========================================
+    // CHOPPING SYSTEM
+    // ========================================
+
+    updateTrees(deltaTime) {
+        if (!this.trees || !this.player) return;
+
+        const dx = this.player.position.x - this.trees.position.x;
+        const dz = this.player.position.z - this.trees.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if near trees
+        this.trees.isNearTrees = distance < this.trees.interactionRange;
+
+        // Cancel chopping if player moves away
+        if (this.trees.isChopping) {
+            const startPos = this.trees.playerStartPos;
+            const movedDistance = Math.sqrt(
+                Math.pow(this.player.position.x - startPos.x, 2) +
+                Math.pow(this.player.position.z - startPos.z, 2)
+            );
+            if (movedDistance > 1.5) {
+                this.stopChopping('Moved away from trees');
+            }
+        }
+
+        // Show/hide prompt
+        const choppingPrompt = document.getElementById('chopping-prompt');
+        const choppingPopup = document.getElementById('chopping-popup');
+
+        if (this.trees.isChopping) {
+            choppingPrompt?.classList.remove('visible');
+
+            // Update chopping minigame
+            this.updateChoppingMinigame(deltaTime);
+        } else if (this.trees.isNearTrees) {
+            choppingPrompt?.classList.add('visible');
+            choppingPopup?.classList.remove('visible');
+        } else {
+            choppingPrompt?.classList.remove('visible');
+            choppingPopup?.classList.remove('visible');
+        }
+    }
+
+    startChopping() {
+        if (!this.trees || this.trees.isChopping) return;
+
+        // Show wood selection popup
+        this.showWoodSelection();
+    }
+
+    showWoodSelection() {
+        const selectionPopup = document.getElementById('chopping-selection');
+        const selectionGrid = document.getElementById('chopping-selection-grid');
+        const closeBtn = document.getElementById('chopping-selection-close');
+        if (!selectionPopup || !selectionGrid) return;
+
+        // Clear existing options
+        selectionGrid.innerHTML = '';
+
+        // Add wood options
+        const woodTypes = [
+            { id: 'oak', name: 'Oak', icon: '🪵', rarity: 'common' },
+            { id: 'birch', name: 'Birch', icon: '🪵', rarity: 'uncommon' },
+            { id: 'mahogany', name: 'Mahogany', icon: '🪵', rarity: 'rare' }
+        ];
+
+        for (const wood of woodTypes) {
+            if (this.trees.wood[wood.id] > 0) {
+                const div = document.createElement('div');
+                div.className = `chopping-wood-option rarity-${wood.rarity}`;
+                div.dataset.woodId = wood.id;
+                div.innerHTML = `
+                    <span class="wood-icon">${wood.icon}</span>
+                    <span class="wood-name">${wood.name}</span>
+                `;
+                div.onclick = () => this.selectWoodToChop(wood.id);
+                selectionGrid.appendChild(div);
+            }
+        }
+
+        // Setup close button
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                selectionPopup.classList.remove('visible');
+            };
+        }
+
+        selectionPopup.classList.add('visible');
+    }
+
+    selectWoodToChop(woodId) {
+        // Hide selection popup
+        const selectionPopup = document.getElementById('chopping-selection');
+        selectionPopup?.classList.remove('visible');
+
+        // Check available wood
+        const woodCount = this.trees.wood[woodId] || 0;
+        if (woodCount <= 0) return;
+
+        // Start chopping minigame
+        this.trees.isChopping = true;
+        this.trees.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+
+        // Initialize minigame state
+        this.trees.minigame = {
+            woodId: woodId,
+            gameTimer: 20, // 20 second game
+            indicatorPos: 10, // Position as percentage (10-90)
+            indicatorSpeed: 80, // Speed (percentage per second)
+            indicatorDirection: 1, // 1 = right, -1 = left
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            woodChopped: 0,
+            hitsForWood: 0, // Track hits toward next wood (5 good hits = 1 wood)
+            choppedWoodList: [] // Track chopped wood
+        };
+
+        // Show chopping popup
+        const choppingPopup = document.getElementById('chopping-popup');
+        choppingPopup?.classList.add('visible');
+
+        // Reset UI
+        this.updateChoppingUI();
+
+        const feedback = document.getElementById('chopping-feedback');
+        if (feedback) feedback.textContent = '';
+
+        const timeRemaining = document.getElementById('chopping-time-remaining');
+        if (timeRemaining) {
+            timeRemaining.textContent = '20';
+            timeRemaining.classList.remove('warning', 'danger');
+        }
+    }
+
+    updateChoppingMinigame(deltaTime) {
+        const mg = this.trees?.minigame;
+        if (!mg) return;
+
+        // Update game timer
+        mg.gameTimer -= deltaTime;
+
+        // Update timer display
+        const timeEl = document.getElementById('chopping-time-remaining');
+        if (timeEl) {
+            const seconds = Math.ceil(mg.gameTimer);
+            timeEl.textContent = Math.max(0, seconds).toString();
+
+            if (seconds <= 5) {
+                timeEl.classList.add('danger');
+                timeEl.classList.remove('warning');
+            } else if (seconds <= 10) {
+                timeEl.classList.add('warning');
+                timeEl.classList.remove('danger');
+            } else {
+                timeEl.classList.remove('warning', 'danger');
+            }
+        }
+
+        // Check if game over
+        if (mg.gameTimer <= 0) {
+            this.endChoppingMinigame();
+            return;
+        }
+
+        // Move indicator back and forth
+        mg.indicatorPos += mg.indicatorSpeed * mg.indicatorDirection * deltaTime;
+
+        // Bounce off edges
+        if (mg.indicatorPos >= 90) {
+            mg.indicatorPos = 90;
+            mg.indicatorDirection = -1;
+        } else if (mg.indicatorPos <= 10) {
+            mg.indicatorPos = 10;
+            mg.indicatorDirection = 1;
+        }
+
+        // Update indicator position
+        const indicator = document.getElementById('chopping-indicator');
+        if (indicator) {
+            indicator.style.left = `${mg.indicatorPos}%`;
+        }
+    }
+
+    // Handle chopping swing (SPACE key)
+    handleChoppingSwing() {
+        const mg = this.trees?.minigame;
+        if (!mg || mg.gameTimer <= 0) return;
+
+        // Calculate distance from center (sweet spot is at 50%)
+        const distanceFromCenter = Math.abs(mg.indicatorPos - 50);
+
+        const feedback = document.getElementById('chopping-feedback');
+        let rating = '';
+        let points = 0;
+
+        // Determine hit quality based on distance from center
+        if (distanceFromCenter <= 8) {
+            // Perfect hit (within 8% of center)
+            rating = 'PERFECT!';
+            points = 200;
+            mg.combo++;
+            mg.hitsForWood += 2; // Perfect counts as 2 hits
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'perfect';
+            }
+        } else if (distanceFromCenter <= 15) {
+            // Great hit
+            rating = 'Great!';
+            points = 150;
+            mg.combo++;
+            mg.hitsForWood += 1.5;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'great';
+            }
+        } else if (distanceFromCenter <= 25) {
+            // Good hit
+            rating = 'Good';
+            points = 100;
+            mg.combo++;
+            mg.hitsForWood += 1;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'good';
+            }
+        } else {
+            // Miss
+            rating = 'Miss!';
+            points = 0;
+            mg.combo = 0;
+            if (feedback) {
+                feedback.textContent = rating;
+                feedback.className = 'miss';
+            }
+        }
+
+        // Apply combo multiplier
+        mg.maxCombo = Math.max(mg.maxCombo, mg.combo);
+        const comboMultiplier = 1 + (mg.combo * 0.1);
+        points = Math.floor(points * comboMultiplier);
+        mg.score += points;
+
+        // Check if earned wood (every 5 hits worth)
+        if (mg.hitsForWood >= 5) {
+            mg.woodChopped++;
+            mg.hitsForWood -= 5;
+
+            // Add wood to inventory immediately
+            const woodItemMap = {
+                'oak': 'wood_oak',
+                'birch': 'wood_birch',
+                'mahogany': 'wood_mahogany'
+            };
+            const woodItemId = woodItemMap[mg.woodId];
+            if (woodItemId && this.player.inventory) {
+                this.player.inventory.addItemById(woodItemId, 1);
+            }
+
+            // Decrease tree wood count
+            if (this.trees.wood[mg.woodId] > 0) {
+                this.trees.wood[mg.woodId]--;
+            }
+
+            mg.choppedWoodList.push(mg.woodId);
+        }
+
+        // Speed up indicator slightly with each hit (makes it harder)
+        if (points > 0) {
+            mg.indicatorSpeed = Math.min(150, mg.indicatorSpeed + 2);
+        }
+
+        // Update UI
+        this.updateChoppingUI();
+
+        // Clear feedback after a moment
+        setTimeout(() => {
+            if (feedback && feedback.textContent === rating) {
+                feedback.textContent = '';
+            }
+        }, 400);
+    }
+
+    updateChoppingUI() {
+        const mg = this.trees?.minigame;
+        if (!mg) return;
+
+        const woodValue = document.getElementById('chopping-wood-value');
+        if (woodValue) {
+            woodValue.textContent = mg.woodChopped.toString();
+        }
+
+        const comboValue = document.getElementById('chopping-combo-value');
+        if (comboValue) {
+            comboValue.textContent = mg.combo.toString();
+            if (mg.combo >= 10) {
+                comboValue.classList.add('high');
+            } else {
+                comboValue.classList.remove('high');
+            }
+        }
+
+        const scoreValue = document.getElementById('chopping-score-value');
+        if (scoreValue) {
+            scoreValue.textContent = mg.score.toString();
+        }
+
+        const statusText = document.getElementById('chopping-status-text');
+        if (statusText) {
+            const woodName = mg.woodId.charAt(0).toUpperCase() + mg.woodId.slice(1);
+            statusText.textContent = `Chopping ${woodName}...`;
+        }
+    }
+
+    endChoppingMinigame() {
+        const mg = this.trees?.minigame;
+        if (!mg) return;
+
+        const woodChopped = mg.woodChopped;
+        const finalScore = mg.score;
+        const maxCombo = mg.maxCombo;
+        const woodId = mg.woodId;
+        const woodName = woodId.charAt(0).toUpperCase() + woodId.slice(1);
+
+        // Stop chopping
+        this.trees.isChopping = false;
+        this.trees.minigame = null;
+        this.trees.playerStartPos = null;
+
+        // Hide popup
+        const choppingPopup = document.getElementById('chopping-popup');
+        choppingPopup?.classList.remove('visible');
+
+        // Show summary message
+        const rarity = woodId === 'mahogany' ? 'rare' : woodId === 'birch' ? 'uncommon' : 'common';
+        const message = woodChopped > 0
+            ? `Time's up! Chopped: ${woodChopped} ${woodName} Wood | Score: ${finalScore}`
+            : `Time's up! No wood chopped | Score: ${finalScore}`;
+
+        this.showChoppingMessage(message, woodChopped >= 5 ? 'rare' : woodChopped >= 3 ? 'uncommon' : 'common');
+    }
+
+    stopChopping(message = null) {
+        if (!this.trees) return;
+
+        this.trees.isChopping = false;
+        this.trees.minigame = null;
+        this.trees.playerStartPos = null;
+
+        // Hide popups
+        const choppingPopup = document.getElementById('chopping-popup');
+        const selectionPopup = document.getElementById('chopping-selection');
+        choppingPopup?.classList.remove('visible');
+        selectionPopup?.classList.remove('visible');
+
+        if (message) {
+            this.showChoppingMessage(message);
+        }
+    }
+
+    showChoppingMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('chopping-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            const displayTime = message.includes('Time') ? 4000 : 2500;
+            setTimeout(() => msgEl.classList.remove('visible'), displayTime);
+        }
+    }
+
+    // ========================================
+    // CRAFTING SYSTEM
+    // ========================================
+
+    updateCraftingBench(deltaTime) {
+        if (!this.craftingBench || !this.player) return;
+
+        const dx = this.player.position.x - this.craftingBench.position.x;
+        const dz = this.player.position.z - this.craftingBench.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        this.craftingBench.isNearBench = distance < this.craftingBench.interactionRange;
+
+        if (this.craftingBench.isCrafting && this.craftingBench.craftingState) {
+            this.updateCraftingProgress(deltaTime);
+        }
+
+        const craftingPrompt = document.getElementById('crafting-prompt');
+        if (this.craftingBench.isCrafting) {
+            craftingPrompt?.classList.remove('visible');
+        } else if (this.craftingBench.isNearBench) {
+            craftingPrompt?.classList.add('visible');
+        } else {
+            craftingPrompt?.classList.remove('visible');
+        }
+    }
+
+    startCrafting() {
+        if (!this.craftingBench || this.craftingBench.isCrafting) return;
+        this.showCraftingMenu();
+    }
+
+    showCraftingMenu() {
+        const selectionPopup = document.getElementById('crafting-selection');
+        const recipeList = document.getElementById('crafting-recipe-list');
+        const closeBtn = document.getElementById('crafting-selection-close');
+        if (!selectionPopup || !recipeList) return;
+
+        recipeList.innerHTML = '';
+
+        for (const recipe of this.craftingRecipes) {
+            const itemDef = ItemDatabase[recipe.id];
+            if (!itemDef) continue;
+
+            const canCraft = this.canCraftRecipe(recipe);
+            const materialText = this.getMaterialText(recipe);
+
+            const div = document.createElement('div');
+            div.className = `crafting-recipe ${canCraft ? '' : 'cannot-craft'}`;
+            div.innerHTML = `
+                <div class="recipe-icon">${getItemIcon({ icon: itemDef.icon })}</div>
+                <div class="recipe-info">
+                    <div class="recipe-name">${itemDef.name}</div>
+                    <div class="recipe-materials">${materialText}</div>
+                    ${itemDef.stats ? `<div class="recipe-stats">${this.formatStats(itemDef.stats)}</div>` : ''}
+                </div>
+            `;
+            if (canCraft) div.onclick = () => this.craftItem(recipe);
+            recipeList.appendChild(div);
+        }
+
+        if (closeBtn) closeBtn.onclick = () => selectionPopup.classList.remove('visible');
+        selectionPopup.classList.add('visible');
+    }
+
+    canCraftRecipe(recipe) {
+        if (!this.player?.inventory) return false;
+        for (const mat of recipe.materials) {
+            if (this.player.inventory.countItem(mat.itemId) < mat.amount) return false;
+        }
+        return true;
+    }
+
+    getMaterialText(recipe) {
+        return recipe.materials.map(mat => {
+            const itemDef = ItemDatabase[mat.itemId];
+            const name = itemDef ? itemDef.name : mat.itemId;
+            const have = this.player?.inventory?.countItem(mat.itemId) || 0;
+            const cls = have >= mat.amount ? 'has-material' : 'missing-material';
+            return `<span class="${cls}">${name} (${have}/${mat.amount})</span>`;
+        }).join(' + ');
+    }
+
+    formatStats(stats) {
+        const parts = [];
+        if (stats.damage) parts.push(`+${stats.damage} Damage`);
+        if (stats.magicPower) parts.push(`+${stats.magicPower} Magic`);
+        if (stats.attackSpeed) parts.push(`+${stats.attackSpeed} Speed`);
+        if (stats.defense) parts.push(`+${stats.defense} Defense`);
+        return parts.join(', ');
+    }
+
+    craftItem(recipe) {
+        if (!this.canCraftRecipe(recipe)) return;
+
+        document.getElementById('crafting-selection')?.classList.remove('visible');
+
+        for (const mat of recipe.materials) {
+            this.player.inventory.removeItemById(mat.itemId, mat.amount);
+        }
+
+        this.craftingBench.isCrafting = true;
+        this.craftingBench.craftingState = { recipe, progress: 0, craftTime: recipe.craftTime };
+
+        const itemDef = ItemDatabase[recipe.id];
+        const itemIcon = document.getElementById('crafting-item-icon');
+        const itemName = document.getElementById('crafting-item-name');
+        const progressFill = document.getElementById('crafting-progress-fill');
+        if (itemIcon) itemIcon.textContent = getItemIcon({ icon: itemDef?.icon });
+        if (itemName) itemName.textContent = itemDef?.name || recipe.name;
+        if (progressFill) progressFill.style.width = '0%';
+
+        document.getElementById('crafting-popup')?.classList.add('visible');
+    }
+
+    updateCraftingProgress(deltaTime) {
+        const state = this.craftingBench.craftingState;
+        if (!state) return;
+
+        state.progress += deltaTime;
+        const progressFill = document.getElementById('crafting-progress-fill');
+        if (progressFill) progressFill.style.width = `${Math.min(100, (state.progress / state.craftTime) * 100)}%`;
+
+        if (state.progress >= state.craftTime) this.completeCrafting();
+    }
+
+    completeCrafting() {
+        const state = this.craftingBench.craftingState;
+        if (!state) return;
+
+        const itemDef = ItemDatabase[state.recipe.id];
+        if (this.player?.inventory) this.player.inventory.addItemById(state.recipe.id, 1);
+
+        this.craftingBench.isCrafting = false;
+        this.craftingBench.craftingState = null;
+
+        document.getElementById('crafting-popup')?.classList.remove('visible');
+        this.showCraftingMessage(`Crafted: ${itemDef?.name || state.recipe.name}!`, 'uncommon');
+    }
+
+    stopCrafting(message = null) {
+        if (!this.craftingBench) return;
+        this.craftingBench.isCrafting = false;
+        this.craftingBench.craftingState = null;
+        document.getElementById('crafting-popup')?.classList.remove('visible');
+        document.getElementById('crafting-selection')?.classList.remove('visible');
+        if (message) this.showCraftingMessage(message);
+    }
+
+    showCraftingMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('crafting-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+        }
+    }
+
     // Called when F is pressed during fishing
     fishingAction() {
         if (!this.fishingLake?.isFishing) return;
@@ -2650,6 +3702,54 @@ export class Game {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('⛏', pickPos.x, pickPos.y);
+            }
+
+            // Draw tree area on minimap
+            if (this.trees) {
+                // Draw forest area
+                ctx.fillStyle = 'rgba(34, 80, 34, 0.6)';
+                const treeAreaPos = toMinimap(this.trees.position.x - 10, this.trees.position.z - 10);
+                ctx.fillRect(treeAreaPos.x, treeAreaPos.y, 20 * scale, 20 * scale);
+
+                // Draw tree icon
+                ctx.fillStyle = '#44aa44';
+                const treeIconPos = toMinimap(this.trees.position.x, this.trees.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🌲', treeIconPos.x, treeIconPos.y);
+            }
+
+            // Draw crafting bench on minimap
+            if (this.craftingBench) {
+                // Draw workshop area
+                ctx.fillStyle = 'rgba(100, 80, 50, 0.6)';
+                const craftAreaPos = toMinimap(this.craftingBench.position.x - 8, this.craftingBench.position.z - 8);
+                ctx.fillRect(craftAreaPos.x, craftAreaPos.y, 16 * scale, 16 * scale);
+
+                // Draw crafting icon
+                ctx.fillStyle = '#ddaa66';
+                const craftIconPos = toMinimap(this.craftingBench.position.x, this.craftingBench.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔨', craftIconPos.x, craftIconPos.y);
+            }
+
+            // Draw smelter on minimap
+            if (this.smelter) {
+                // Draw forge area
+                ctx.fillStyle = 'rgba(80, 40, 20, 0.6)';
+                const smelterAreaPos = toMinimap(this.smelter.position.x - 6, this.smelter.position.z - 6);
+                ctx.fillRect(smelterAreaPos.x, smelterAreaPos.y, 12 * scale, 12 * scale);
+
+                // Draw smelter icon (anvil)
+                ctx.fillStyle = '#ff6600';
+                const smelterIconPos = toMinimap(this.smelter.position.x, this.smelter.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔶', smelterIconPos.x, smelterIconPos.y);
             }
         } else {
             // Simple square for other modes
@@ -3087,28 +4187,118 @@ export class Game {
     // ==================== ADVENTURE MODE - NPC & QUEST SYSTEM ====================
 
     // Create NPC with visual mesh and dialog
-    createNPC(config) {
+    async createNPC(config) {
         const npc = {
             id: config.id,
             name: config.name,
             position: new THREE.Vector3(config.position.x, 0, config.position.z),
             dialog: config.dialog,
-            quest: config.quest,
+            quests: config.quests || (config.quest ? [config.quest] : []),
+            currentQuestIndex: 0,
             interactionRange: 4,
             mesh: null
         };
 
-        // Create NPC visual - simple humanoid figure
         const npcGroup = new THREE.Group();
         npcGroup.position.set(config.position.x, 0, config.position.z);
 
+        // Try to load 3D model if path provided
+        if (config.modelPath) {
+            try {
+                const loader = new GLTFLoader();
+                const gltf = await new Promise((resolve, reject) => {
+                    loader.load(config.modelPath, resolve, undefined, reject);
+                });
+                const model = gltf.scene;
+                model.scale.setScalar(1.0);
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                npcGroup.add(model);
+            } catch (e) {
+                console.warn(`Failed to load NPC model: ${config.modelPath}`, e);
+                // Fallback to basic geometry
+                this.createBasicNPCMesh(npcGroup, config.color);
+            }
+        } else {
+            // Use basic geometry
+            this.createBasicNPCMesh(npcGroup, config.color);
+        }
+
+        // Quest indicator - starts as ! symbol sprite
+        const indicatorGroup = new THREE.Group();
+        indicatorGroup.position.y = 2.8;
+
+        // Create ! indicator (yellow, quest available)
+        const exclamationMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const exclamationGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 8);
+        const exclamation = new THREE.Mesh(exclamationGeo, exclamationMat);
+        exclamation.name = 'exclamation';
+        indicatorGroup.add(exclamation);
+
+        const dotGeo = new THREE.SphereGeometry(0.1, 8, 8);
+        const dot = new THREE.Mesh(dotGeo, exclamationMat);
+        dot.position.y = -0.35;
+        dot.name = 'exclamationDot';
+        indicatorGroup.add(dot);
+
+        // Create ? indicator (hidden initially)
+        const questionMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+        const questionTop = new THREE.TorusGeometry(0.15, 0.06, 8, 16, Math.PI * 1.5);
+        const question = new THREE.Mesh(questionTop, questionMat);
+        question.rotation.x = Math.PI / 2;
+        question.rotation.z = Math.PI / 4;
+        question.position.y = 0.1;
+        question.name = 'question';
+        question.visible = false;
+        indicatorGroup.add(question);
+
+        const questionStem = new THREE.CylinderGeometry(0.06, 0.06, 0.15, 8);
+        const stem = new THREE.Mesh(questionStem, questionMat);
+        stem.position.y = -0.1;
+        stem.name = 'questionStem';
+        stem.visible = false;
+        indicatorGroup.add(stem);
+
+        const questionDot = new THREE.Mesh(dotGeo, questionMat);
+        questionDot.position.y = -0.3;
+        questionDot.name = 'questionDot';
+        questionDot.visible = false;
+        indicatorGroup.add(questionDot);
+
+        npcGroup.add(indicatorGroup);
+
+        this.scene.add(npcGroup);
+        npc.mesh = npcGroup;
+        npc.indicatorGroup = indicatorGroup;
+
+        this.npcs.push(npc);
+
+        // Register all quests for this NPC
+        for (const quest of npc.quests) {
+            const isFirstQuest = npc.quests.indexOf(quest) === 0;
+            this.quests[quest.id] = {
+                ...quest,
+                status: isFirstQuest ? 'available' : 'locked',
+                npcId: config.id
+            };
+        }
+
+        return npc;
+    }
+
+    // Create basic NPC mesh (fallback)
+    createBasicNPCMesh(group, color) {
         // Body
         const bodyGeo = new THREE.CylinderGeometry(0.4, 0.5, 1.2, 8);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: config.color || 0x8b4513 });
+        const bodyMat = new THREE.MeshLambertMaterial({ color: color || 0x8b4513 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 1;
         body.castShadow = true;
-        npcGroup.add(body);
+        group.add(body);
 
         // Head
         const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
@@ -3116,40 +4306,15 @@ export class Game {
         const head = new THREE.Mesh(headGeo, headMat);
         head.position.y = 1.9;
         head.castShadow = true;
-        npcGroup.add(head);
+        group.add(head);
 
-        // Hat (mining helmet)
+        // Hat
         const hatGeo = new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8);
         const hatMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
         const hat = new THREE.Mesh(hatGeo, hatMat);
         hat.position.y = 2.2;
         hat.castShadow = true;
-        npcGroup.add(hat);
-
-        // Quest indicator (yellow ! or ? above head)
-        const indicatorGeo = new THREE.SphereGeometry(0.2, 8, 8);
-        const indicatorMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
-        indicator.position.y = 2.8;
-        indicator.name = 'questIndicator';
-        npcGroup.add(indicator);
-
-        this.scene.add(npcGroup);
-        npc.mesh = npcGroup;
-        npc.indicator = indicator;
-
-        this.npcs.push(npc);
-
-        // Register the quest
-        if (config.quest) {
-            this.quests[config.quest.id] = {
-                ...config.quest,
-                status: 'available', // available, active, completed, turned_in
-                npcId: config.id
-            };
-        }
-
-        return npc;
+        group.add(hat);
     }
 
     // Add a simple tree
@@ -3268,31 +4433,70 @@ export class Game {
         this.updateQuestIndicators();
     }
 
-    // Update NPC quest indicators (! for available, ? for turn-in ready)
+    // Update NPC quest indicators (! for available, gray ? for in-progress, gold ? for turn-in ready)
     updateQuestIndicators() {
         for (const npc of this.npcs) {
-            if (!npc.indicator) continue;
+            if (!npc.indicatorGroup) continue;
 
-            const quest = this.quests[npc.quest?.id];
-            if (!quest) {
-                npc.indicator.visible = false;
-                continue;
+            // Find current active quest for this NPC
+            let currentQuest = null;
+            for (const q of (npc.quests || [])) {
+                const quest = this.quests[q.id];
+                if (quest && (quest.status === 'available' || quest.status === 'active')) {
+                    currentQuest = quest;
+                    break;
+                }
             }
 
-            if (quest.status === 'available') {
-                npc.indicator.visible = true;
-                npc.indicator.material.color.setHex(0xffff00); // Yellow !
-            } else if (quest.status === 'active' && this.isQuestComplete(quest)) {
-                npc.indicator.visible = true;
-                npc.indicator.material.color.setHex(0xffff00); // Yellow ?
-            } else {
-                npc.indicator.visible = false;
+            // Get indicator elements
+            const exclamation = npc.indicatorGroup.getObjectByName('exclamation');
+            const exclamationDot = npc.indicatorGroup.getObjectByName('exclamationDot');
+            const question = npc.indicatorGroup.getObjectByName('question');
+            const questionStem = npc.indicatorGroup.getObjectByName('questionStem');
+            const questionDot = npc.indicatorGroup.getObjectByName('questionDot');
+
+            // Hide all by default
+            if (exclamation) exclamation.visible = false;
+            if (exclamationDot) exclamationDot.visible = false;
+            if (question) question.visible = false;
+            if (questionStem) questionStem.visible = false;
+            if (questionDot) questionDot.visible = false;
+            npc.indicatorGroup.visible = false;
+
+            if (!currentQuest) continue;
+
+            npc.indicatorGroup.visible = true;
+
+            if (currentQuest.status === 'available') {
+                // Yellow ! for available quest
+                if (exclamation) {
+                    exclamation.visible = true;
+                    exclamation.material.color.setHex(0xffff00);
+                }
+                if (exclamationDot) {
+                    exclamationDot.visible = true;
+                    exclamationDot.material.color.setHex(0xffff00);
+                }
+            } else if (currentQuest.status === 'active') {
+                const isComplete = this.isQuestComplete(currentQuest);
+                const color = isComplete ? 0xffff00 : 0x888888; // Gold if complete, gray if not
+
+                if (question) {
+                    question.visible = true;
+                    question.material.color.setHex(color);
+                }
+                if (questionStem) {
+                    questionStem.visible = true;
+                    questionStem.material.color.setHex(color);
+                }
+                if (questionDot) {
+                    questionDot.visible = true;
+                    questionDot.material.color.setHex(color);
+                }
             }
 
             // Bobbing animation
-            if (npc.indicator.visible) {
-                npc.indicator.position.y = 2.8 + Math.sin(Date.now() * 0.005) * 0.1;
-            }
+            npc.indicatorGroup.position.y = 2.8 + Math.sin(Date.now() * 0.005) * 0.1;
         }
     }
 
@@ -3311,31 +4515,42 @@ export class Game {
 
         nameEl.textContent = npc.name;
 
-        const quest = this.quests[npc.quest?.id];
+        // Find current active quest for this NPC
+        let currentQuest = null;
+        for (const q of (npc.quests || [])) {
+            const quest = this.quests[q.id];
+            if (quest && (quest.status === 'available' || quest.status === 'active')) {
+                currentQuest = quest;
+                break;
+            }
+        }
 
         // Determine dialog text and options
         let dialogText = npc.dialog.default;
         let options = [];
 
-        if (quest) {
-            if (quest.status === 'available') {
-                dialogText = npc.dialog.questAvailable;
-                options.push({ text: 'Accept Quest', action: () => this.acceptQuest(quest.id) });
+        if (currentQuest) {
+            // Get quest-specific dialog if available
+            const questDialog = currentQuest.dialog || npc.dialog;
+
+            if (currentQuest.status === 'available') {
+                dialogText = questDialog.questAvailable || npc.dialog.questAvailable;
+                options.push({ text: 'Accept Quest', action: () => this.acceptQuest(currentQuest.id) });
                 options.push({ text: 'Not now', action: () => this.closeNPCDialog() });
-            } else if (quest.status === 'active') {
-                if (this.isQuestComplete(quest)) {
-                    dialogText = npc.dialog.questComplete;
-                    options.push({ text: 'Complete Quest', action: () => this.turnInQuest(quest.id) });
+            } else if (currentQuest.status === 'active') {
+                if (this.isQuestComplete(currentQuest)) {
+                    dialogText = questDialog.questComplete || npc.dialog.questComplete;
+                    options.push({ text: 'Complete Quest', action: () => this.turnInQuest(currentQuest.id) });
                 } else {
-                    dialogText = npc.dialog.questInProgress;
-                    const obj = quest.objectives[0];
+                    dialogText = questDialog.questInProgress || npc.dialog.questInProgress;
+                    const obj = currentQuest.objectives[0];
                     dialogText += ` (${obj.current}/${obj.target})`;
                     options.push({ text: 'Okay', action: () => this.closeNPCDialog() });
                 }
-            } else {
-                dialogText = "Thanks for your help!";
-                options.push({ text: 'Goodbye', action: () => this.closeNPCDialog() });
             }
+        } else {
+            dialogText = npc.dialog.default || "Thanks for your help!";
+            options.push({ text: 'Goodbye', action: () => this.closeNPCDialog() });
         }
 
         textEl.textContent = dialogText;
@@ -3414,6 +4629,11 @@ export class Game {
 
         quest.status = 'turned_in';
         this.activeQuests = this.activeQuests.filter(id => id !== questId);
+
+        // Unlock next quest if specified
+        if (quest.nextQuestId && this.quests[quest.nextQuestId]) {
+            this.quests[quest.nextQuestId].status = 'available';
+        }
 
         // Update UI
         this.updateQuestTrackerUI();

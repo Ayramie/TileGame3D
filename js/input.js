@@ -77,6 +77,13 @@ export class InputManager {
             return;
         }
 
+        // Check for chopping minigame input (SPACE to swing)
+        if (this.game.trees?.minigame && key === ' ') {
+            e.preventDefault();
+            this.game.handleChoppingSwing();
+            return;
+        }
+
         // Movement keys (only if not in QTE)
         if (key in this.keys) {
             this.keys[key] = true;
@@ -155,6 +162,33 @@ export class InputManager {
                     break;
                 } else if (this.game.mine?.isMining) {
                     // Ignore F during mining
+                    break;
+                }
+
+                // Check for tree chopping interaction
+                if (this.game.trees?.isNearTrees && !this.game.trees?.isChopping) {
+                    this.game.startChopping();
+                    break;
+                } else if (this.game.trees?.isChopping) {
+                    // Ignore F during chopping
+                    break;
+                }
+
+                // Check for crafting bench interaction
+                if (this.game.craftingBench?.isNearBench && !this.game.craftingBench?.isCrafting) {
+                    this.game.startCrafting();
+                    break;
+                } else if (this.game.craftingBench?.isCrafting) {
+                    // Ignore F during crafting
+                    break;
+                }
+
+                // Check for smelter interaction
+                if (this.game.smelter?.isNearSmelter && !this.game.smelter?.isSmelting) {
+                    this.game.startSmelting();
+                    break;
+                } else if (this.game.smelter?.isSmelting) {
+                    // Ignore F during smelting
                     break;
                 }
 

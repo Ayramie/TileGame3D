@@ -379,6 +379,170 @@
     <!-- Mining Message -->
     <div id="mining-message"></div>
 
+    <!-- Smelting Prompt -->
+    <div id="smelting-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Smelt</span>
+    </div>
+
+    <!-- Smelting Selection Popup -->
+    <div id="smelting-selection">
+        <div id="smelting-selection-content">
+            <div id="smelting-selection-header">
+                <span id="smelting-selection-title">Select Ore to Smelt</span>
+                <button id="smelting-selection-close">X</button>
+            </div>
+            <div id="smelting-selection-grid"></div>
+            <div id="smelting-selection-footer">
+                <span>Click an ore to start smelting</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smelting Popup -->
+    <div id="smelting-popup">
+        <div id="smelting-popup-content">
+            <div id="smelting-popup-header">
+                <span id="smelting-popup-title">Smelting!</span>
+            </div>
+            <div id="smelting-game-area">
+                <div id="smelting-score-area">
+                    <div id="smelting-bars">
+                        <span id="smelting-bars-label">Smelted</span>
+                        <span id="smelting-bars-value">0 / 0</span>
+                    </div>
+                    <div id="smelting-progress">
+                        <span id="smelting-progress-label">Progress</span>
+                        <div id="smelting-progress-bar">
+                            <div id="smelting-progress-fill"></div>
+                        </div>
+                    </div>
+                    <div id="smelting-rating">
+                        <span id="smelting-rating-value">Smelting...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="smelting-popup-footer">
+                <span id="smelting-status-text">Smelting ore...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smelting Message -->
+    <div id="smelting-message"></div>
+
+    <!-- Chopping Prompt -->
+    <div id="chopping-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Chop</span>
+    </div>
+
+    <!-- Chopping Selection Popup -->
+    <div id="chopping-selection">
+        <div id="chopping-selection-content">
+            <div id="chopping-selection-header">
+                <span id="chopping-selection-title">Select Wood to Chop</span>
+                <button id="chopping-selection-close">X</button>
+            </div>
+            <div id="chopping-selection-grid"></div>
+            <div id="chopping-selection-footer">
+                <span>Click a wood type to start chopping</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chopping Popup -->
+    <div id="chopping-popup">
+        <div id="chopping-popup-content">
+            <div id="chopping-popup-header">
+                <span id="chopping-popup-title">Chopping!</span>
+                <span id="chopping-popup-hint">Press SPACE to swing!</span>
+            </div>
+            <div id="chopping-game-area">
+                <!-- Timer Display -->
+                <div id="chopping-timer-display">
+                    <span id="chopping-time-remaining">20</span>
+                    <span id="chopping-time-label">seconds</span>
+                </div>
+                <!-- Timing Bar -->
+                <div id="chopping-timing-container">
+                    <div id="chopping-timing-bar">
+                        <div id="chopping-sweet-spot"></div>
+                        <div id="chopping-indicator"></div>
+                    </div>
+                    <div id="chopping-feedback"></div>
+                </div>
+                <!-- Score Area -->
+                <div id="chopping-score-area">
+                    <div id="chopping-wood-count">
+                        <span id="chopping-wood-icon">🪓</span>
+                        <span id="chopping-wood-value">0</span>
+                    </div>
+                    <div id="chopping-combo">
+                        <span id="chopping-combo-label">Combo</span>
+                        <span id="chopping-combo-value">0</span>
+                    </div>
+                    <div id="chopping-score">
+                        <span id="chopping-score-label">Score</span>
+                        <span id="chopping-score-value">0</span>
+                    </div>
+                </div>
+            </div>
+            <div id="chopping-popup-footer">
+                <span id="chopping-status-text">Swing your axe!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chopping Message -->
+    <div id="chopping-message"></div>
+
+    <!-- Crafting Prompt -->
+    <div id="crafting-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Craft</span>
+    </div>
+
+    <!-- Crafting Selection Popup -->
+    <div id="crafting-selection">
+        <div id="crafting-selection-content">
+            <div id="crafting-selection-header">
+                <span id="crafting-selection-title">Crafting Bench</span>
+                <button id="crafting-selection-close">X</button>
+            </div>
+            <div id="crafting-recipe-list"></div>
+            <div id="crafting-selection-footer">
+                <span>Click a recipe to craft</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crafting Progress Popup -->
+    <div id="crafting-popup">
+        <div id="crafting-popup-content">
+            <div id="crafting-popup-header">
+                <span id="crafting-popup-title">Crafting...</span>
+            </div>
+            <div id="crafting-game-area">
+                <div id="crafting-item-display">
+                    <span id="crafting-item-icon"></span>
+                    <span id="crafting-item-name"></span>
+                </div>
+                <div id="crafting-progress">
+                    <div id="crafting-progress-bar">
+                        <div id="crafting-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="crafting-popup-footer">
+                <span id="crafting-status-text">Creating item...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crafting Message -->
+    <div id="crafting-message"></div>
+
     <script type="importmap">
     {
         "imports": {

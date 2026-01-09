@@ -2224,3 +2224,966 @@ body {
     font-size: 14px;
     color: #ccaaee;
 }
+
+/* ============================================= */
+/* CHOPPING SYSTEM STYLES                        */
+/* ============================================= */
+
+/* Chopping Prompt */
+#chopping-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50px);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(30, 40, 25, 0.9);
+    border: 2px solid #558844;
+    border-radius: 8px;
+    padding: 10px 20px;
+    z-index: 200;
+}
+
+#chopping-prompt.visible {
+    display: flex;
+}
+
+#chopping-prompt .prompt-key {
+    background: linear-gradient(145deg, #558844, #446633);
+    border-color: #66aa55;
+}
+
+#chopping-prompt .prompt-text {
+    color: #aaddaa;
+}
+
+/* Chopping Selection Popup */
+#chopping-selection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 600;
+}
+
+#chopping-selection.visible {
+    display: flex;
+}
+
+#chopping-selection-content {
+    background: linear-gradient(180deg, #1a2515, #0f180a);
+    border: 3px solid #558844;
+    border-radius: 16px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 0 40px rgba(80, 130, 60, 0.4);
+}
+
+#chopping-selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+#chopping-selection-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #aaddaa;
+    text-shadow: 0 0 10px rgba(150, 200, 140, 0.5);
+}
+
+#chopping-selection-close {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 100, 100, 0.2);
+    border: 2px solid #aa4444;
+    border-radius: 4px;
+    color: #ff6666;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+#chopping-selection-close:hover {
+    background: rgba(255, 100, 100, 0.4);
+    border-color: #dd6666;
+}
+
+#chopping-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 70px);
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.chopping-wood-option {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(145deg, #2a3a1a, #1a2510);
+    border: 2px solid #445533;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.chopping-wood-option:hover {
+    border-color: #668855;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(100, 140, 80, 0.5);
+}
+
+.chopping-wood-option .wood-icon {
+    font-size: 28px;
+}
+
+.chopping-wood-option .wood-name {
+    font-size: 10px;
+    color: #88aa77;
+    margin-top: 2px;
+}
+
+.chopping-wood-option.rarity-common { border-color: #aaaaaa; }
+.chopping-wood-option.rarity-uncommon { border-color: #44ff44; }
+.chopping-wood-option.rarity-rare { border-color: #4488ff; }
+
+#chopping-selection-footer {
+    text-align: center;
+    color: #667755;
+    font-size: 12px;
+}
+
+/* Chopping Popup */
+#chopping-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 550;
+}
+
+#chopping-popup.visible {
+    display: flex;
+}
+
+#chopping-popup-content {
+    background: linear-gradient(180deg, #1a2515, #0f180a);
+    border: 3px solid #558844;
+    border-radius: 16px;
+    padding: 20px 30px;
+    box-shadow: 0 0 40px rgba(80, 130, 60, 0.4);
+    min-width: 300px;
+}
+
+#chopping-popup-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#chopping-popup-title {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaddaa;
+    text-shadow: 0 0 15px rgba(150, 200, 140, 0.6);
+    margin-bottom: 5px;
+}
+
+#chopping-popup-hint {
+    font-size: 12px;
+    color: #667755;
+}
+
+#chopping-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+/* Chopping Timer */
+#chopping-timer-display {
+    text-align: center;
+}
+
+#chopping-time-remaining {
+    font-size: 42px;
+    font-weight: bold;
+    color: #aaddaa;
+    text-shadow: 0 0 15px rgba(150, 200, 140, 0.5);
+}
+
+#chopping-time-remaining.warning {
+    color: #ffaa44;
+    text-shadow: 0 0 15px rgba(255, 170, 68, 0.5);
+}
+
+#chopping-time-remaining.danger {
+    color: #ff4444;
+    text-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+    animation: pulse-danger 0.5s infinite;
+}
+
+#chopping-time-label {
+    display: block;
+    font-size: 11px;
+    color: #667755;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Chopping Timing Bar */
+#chopping-timing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#chopping-timing-bar {
+    width: 300px;
+    height: 40px;
+    background: linear-gradient(180deg, #1a2515, #0f180a);
+    border: 3px solid #445533;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 15px rgba(0, 30, 15, 0.5);
+}
+
+#chopping-sweet-spot {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    background: linear-gradient(180deg, rgba(68, 200, 120, 0.5), rgba(50, 180, 100, 0.3));
+    border: 2px solid #44cc88;
+    border-radius: 16px;
+    box-shadow: 0 0 10px rgba(68, 200, 120, 0.3);
+}
+
+#chopping-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    left: 10%;
+    width: 12px;
+    height: 28px;
+    background: linear-gradient(180deg, #8b4513, #654321);
+    border: 2px solid #a0522d;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(139, 69, 19, 0.6);
+    transition: left 0.016s linear;
+}
+
+#chopping-feedback {
+    height: 24px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#chopping-feedback.perfect {
+    color: #ffdd44;
+    text-shadow: 0 0 10px #ffdd44;
+}
+
+#chopping-feedback.great {
+    color: #44ff88;
+}
+
+#chopping-feedback.good {
+    color: #88ddff;
+}
+
+#chopping-feedback.miss {
+    color: #ff4444;
+}
+
+/* Chopping Score Area */
+#chopping-score-area {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 30px;
+}
+
+#chopping-wood-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#chopping-wood-icon {
+    font-size: 28px;
+}
+
+#chopping-wood-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #aaddaa;
+    text-shadow: 0 0 10px rgba(150, 200, 140, 0.5);
+}
+
+#chopping-combo, #chopping-score {
+    text-align: center;
+}
+
+#chopping-combo-label, #chopping-score-label {
+    display: block;
+    font-size: 11px;
+    color: #667755;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#chopping-combo-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffaa44;
+    text-shadow: 0 0 10px rgba(255, 170, 68, 0.5);
+}
+
+#chopping-combo-value.high {
+    color: #ff6644;
+    animation: pulse-combo 0.5s infinite;
+}
+
+#chopping-score-value {
+    font-size: 22px;
+    font-weight: bold;
+    color: #88ddff;
+}
+
+#chopping-popup-footer {
+    text-align: center;
+    margin-top: 15px;
+}
+
+#chopping-status-text {
+    font-size: 14px;
+    color: #667755;
+}
+
+/* Chopping Message */
+#chopping-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(25, 35, 20, 0.95);
+    border: 2px solid #558844;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    color: #aaddaa;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 600;
+    pointer-events: none;
+}
+
+#chopping-message.visible {
+    opacity: 1;
+}
+
+/* ==================== SMELTING SYSTEM ==================== */
+
+/* Smelting Prompt */
+#smelting-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50px);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(40, 25, 15, 0.95);
+    border: 2px solid #ff6622;
+    border-radius: 8px;
+    padding: 10px 20px;
+    z-index: 200;
+}
+
+#smelting-prompt.visible {
+    display: flex;
+}
+
+/* Smelting Selection Popup */
+#smelting-selection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+}
+
+#smelting-selection.visible {
+    display: flex;
+}
+
+#smelting-selection-content {
+    background: linear-gradient(180deg, #3a2515, #1a0a05);
+    border: 3px solid #ff6622;
+    border-radius: 16px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+#smelting-selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #552211;
+}
+
+#smelting-selection-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ff9944;
+    text-shadow: 0 0 10px rgba(255, 100, 0, 0.4);
+}
+
+#smelting-selection-close {
+    background: #552211;
+    color: #ff6644;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#smelting-selection-close:hover {
+    background: #ff3311;
+    color: #fff;
+}
+
+#smelting-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.smelting-ore-item {
+    background: linear-gradient(145deg, #4a2a15, #2a1505);
+    border: 2px solid #663322;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.smelting-ore-item:hover {
+    border-color: #ff6622;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 100, 0, 0.3);
+}
+
+.smelting-ore-icon {
+    font-size: 32px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.smelting-ore-name {
+    font-size: 12px;
+    color: #ffaa66;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.smelting-ore-count {
+    font-size: 11px;
+    color: #886644;
+}
+
+#smelting-selection-footer {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #552211;
+    color: #886644;
+    font-size: 12px;
+}
+
+/* Smelting Progress Popup */
+#smelting-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+}
+
+#smelting-popup.visible {
+    display: flex;
+}
+
+#smelting-popup-content {
+    background: linear-gradient(180deg, #3a2515, #1a0a05);
+    border: 3px solid #ff6622;
+    border-radius: 16px;
+    padding: 20px 30px;
+    box-shadow: 0 0 40px rgba(255, 100, 0, 0.4);
+    min-width: 280px;
+}
+
+#smelting-popup-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#smelting-popup-title {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff9944;
+    text-shadow: 0 0 10px rgba(255, 100, 0, 0.5);
+}
+
+#smelting-game-area {
+    padding: 15px 0;
+}
+
+#smelting-score-area {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#smelting-bars {
+    text-align: center;
+}
+
+#smelting-bars-label {
+    display: block;
+    font-size: 12px;
+    color: #886644;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+#smelting-bars-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffaa44;
+    text-shadow: 0 0 10px rgba(255, 170, 68, 0.5);
+}
+
+#smelting-progress {
+    text-align: center;
+}
+
+#smelting-progress-label {
+    display: block;
+    font-size: 12px;
+    color: #886644;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+#smelting-progress-bar {
+    width: 100%;
+    height: 20px;
+    background: #1a0a05;
+    border: 2px solid #552211;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#smelting-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff4411, #ff8844);
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(255, 100, 0, 0.5);
+}
+
+#smelting-rating {
+    text-align: center;
+}
+
+#smelting-rating-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffcc88;
+}
+
+#smelting-popup-footer {
+    text-align: center;
+    margin-top: 15px;
+}
+
+#smelting-status-text {
+    font-size: 14px;
+    color: #886644;
+}
+
+/* Smelting Message */
+#smelting-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(40, 20, 10, 0.95);
+    border: 2px solid #ff6622;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffaa66;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 600;
+    pointer-events: none;
+}
+
+#smelting-message.visible {
+    opacity: 1;
+}
+
+/* ==================== CRAFTING SYSTEM ==================== */
+
+/* Crafting Prompt */
+#crafting-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50px);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(45, 35, 25, 0.95);
+    border: 2px solid #aa8855;
+    border-radius: 8px;
+    padding: 10px 20px;
+    z-index: 200;
+}
+
+#crafting-prompt.visible {
+    display: flex;
+}
+
+#crafting-prompt .prompt-key {
+    background: linear-gradient(145deg, #aa8855, #886633);
+    border-color: #ccaa77;
+    color: #fff;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+
+#crafting-prompt .prompt-text {
+    color: #ddcc99;
+}
+
+/* Crafting Selection Popup */
+#crafting-selection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+}
+
+#crafting-selection.visible {
+    display: flex;
+}
+
+#crafting-selection-content {
+    background: linear-gradient(180deg, #3a2a1a, #1a1208);
+    border: 3px solid #aa8855;
+    border-radius: 16px;
+    padding: 20px;
+    min-width: 350px;
+    max-width: 450px;
+}
+
+#crafting-selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #554422;
+}
+
+#crafting-selection-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #ddcc88;
+    text-shadow: 0 0 10px rgba(200, 180, 100, 0.4);
+}
+
+#crafting-selection-close {
+    background: #554422;
+    color: #ddaa66;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#crafting-selection-close:hover {
+    background: #aa6633;
+    color: #fff;
+}
+
+#crafting-recipe-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.crafting-recipe {
+    background: linear-gradient(145deg, #4a3a2a, #2a1a0a);
+    border: 2px solid #665533;
+    border-radius: 10px;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.crafting-recipe:hover {
+    border-color: #aa8855;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(170, 136, 85, 0.3);
+}
+
+.crafting-recipe.cannot-craft {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.crafting-recipe.cannot-craft:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #665533;
+}
+
+.recipe-icon {
+    font-size: 36px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.recipe-info {
+    flex: 1;
+}
+
+.recipe-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #eeddaa;
+    margin-bottom: 4px;
+}
+
+.recipe-materials {
+    font-size: 12px;
+    color: #aa9966;
+}
+
+.recipe-materials .has-material {
+    color: #88dd88;
+}
+
+.recipe-materials .missing-material {
+    color: #dd6666;
+}
+
+.recipe-stats {
+    font-size: 11px;
+    color: #88aacc;
+    margin-top: 4px;
+}
+
+#crafting-selection-footer {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #554422;
+    color: #887755;
+    font-size: 12px;
+}
+
+/* Crafting Progress Popup */
+#crafting-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+}
+
+#crafting-popup.visible {
+    display: flex;
+}
+
+#crafting-popup-content {
+    background: linear-gradient(180deg, #3a2a1a, #1a1208);
+    border: 3px solid #aa8855;
+    border-radius: 16px;
+    padding: 20px 30px;
+    box-shadow: 0 0 40px rgba(170, 136, 85, 0.4);
+    min-width: 280px;
+}
+
+#crafting-popup-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#crafting-popup-title {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ddcc88;
+    text-shadow: 0 0 10px rgba(200, 180, 100, 0.5);
+}
+
+#crafting-game-area {
+    padding: 15px 0;
+}
+
+#crafting-item-display {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#crafting-item-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+#crafting-item-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #eeddaa;
+}
+
+#crafting-progress {
+    text-align: center;
+}
+
+#crafting-progress-bar {
+    width: 100%;
+    height: 24px;
+    background: #1a0a05;
+    border: 2px solid #554422;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#crafting-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #aa8855, #ddcc88);
+    transition: width 0.05s linear;
+    box-shadow: 0 0 10px rgba(170, 136, 85, 0.5);
+}
+
+#crafting-popup-footer {
+    text-align: center;
+    margin-top: 15px;
+}
+
+#crafting-status-text {
+    font-size: 14px;
+    color: #887755;
+}
+
+/* Crafting Message */
+#crafting-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(45, 35, 25, 0.95);
+    border: 2px solid #aa8855;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    color: #ddcc88;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 600;
+    pointer-events: none;
+}
+
+#crafting-message.visible {
+    opacity: 1;
+}

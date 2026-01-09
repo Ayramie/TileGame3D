@@ -274,6 +274,35 @@ export const ITEMS = {
         classRestriction: ['hunter']
     },
 
+    // === CRAFTED WEAPONS ===
+    oak_shortbow: {
+        id: 'oak_shortbow',
+        name: 'Oak Shortbow',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.COMMON,
+        icon: 'bow_oak',
+        description: 'A sturdy bow crafted from oak wood',
+        stackable: false,
+        value: 75,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 6, attackSpeed: 8 },
+        classRestriction: ['hunter']
+    },
+
+    short_staff: {
+        id: 'short_staff',
+        name: 'Short Staff',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.COMMON,
+        icon: 'staff_short',
+        description: 'A simple oak staff for apprentice mages',
+        stackable: false,
+        value: 75,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 8, magicPower: 15 },
+        classRestriction: ['mage']
+    },
+
     // === ARMOR - HELMETS ===
     leather_cap: {
         id: 'leather_cap',
@@ -704,6 +733,43 @@ export const ITEMS = {
         value: 25
     },
 
+    // === METAL BARS ===
+    bar_copper: {
+        id: 'bar_copper',
+        name: 'Copper Bar',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.COMMON,
+        icon: 'bar_copper',
+        description: 'A refined copper bar. Used for crafting.',
+        stackable: true,
+        maxStack: 99,
+        value: 15
+    },
+
+    bar_iron: {
+        id: 'bar_iron',
+        name: 'Iron Bar',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'bar_iron',
+        description: 'A refined iron bar. Used for crafting.',
+        stackable: true,
+        maxStack: 99,
+        value: 30
+    },
+
+    bar_gold: {
+        id: 'bar_gold',
+        name: 'Gold Bar',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.RARE,
+        icon: 'bar_gold',
+        description: 'A refined gold bar. Used for crafting.',
+        stackable: true,
+        maxStack: 99,
+        value: 75
+    },
+
     // === WOOD ===
     wood_oak: {
         id: 'wood_oak',
@@ -828,10 +894,19 @@ export function getItemIcon(item) {
         'ore_iron': '⚫',
         'ore_gold': '🟡',
 
+        // Metal Bars
+        'bar_copper': '🟧',
+        'bar_iron': '⬛',
+        'bar_gold': '🟨',
+
         // Wood
         'wood_oak': '🪵',
         'wood_birch': '🪵',
         'wood_mahogany': '🪵',
+
+        // Crafted Weapons
+        'bow_oak': '🏹',
+        'staff_short': '🪄',
 
         // Quest
         'quest_crown': '👑'
