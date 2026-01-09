@@ -148,10 +148,10 @@ export class Inventory {
         const item = stack.definition;
         const slot = item.equipSlot;
 
-        // Check class restriction
+        // Check class restriction (adventurer can equip anything)
         if (item.classRestriction && player) {
             const playerClass = player.className || 'warrior';
-            if (!item.classRestriction.includes(playerClass.toLowerCase())) {
+            if (playerClass !== 'adventurer' && !item.classRestriction.includes(playerClass.toLowerCase())) {
                 return false;  // Can't equip this class's item
             }
         }

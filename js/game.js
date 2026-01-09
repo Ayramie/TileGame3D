@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Player } from './player.js';
 import { Mage } from './mage.js';
 import { Hunter } from './hunter.js';
+import { Adventurer } from './adventurer.js';
 import { ThirdPersonCamera } from './camera.js';
 import { InputManager } from './input.js';
 import { SkeletonEnemy, createSkeletonEnemy } from './skeletonEnemy.js';
@@ -1025,8 +1026,10 @@ export class Game {
     }
 
     setupPlayer() {
-        // Create player based on selected class
-        if (this.selectedClass === 'mage') {
+        // In adventure mode, use classless Adventurer for tutorial
+        if (this.gameMode === 'adventure') {
+            this.player = new Adventurer(this.scene, this);
+        } else if (this.selectedClass === 'mage') {
             this.player = new Mage(this.scene, this);
         } else if (this.selectedClass === 'hunter') {
             this.player = new Hunter(this.scene, this);
