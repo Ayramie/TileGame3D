@@ -118,6 +118,12 @@ export class InputManager {
                     }
                 } else if (this.game.selectedClass === 'adventurer') {
                     const weaponType = this.game.player.currentWeaponType;
+                    console.log('Adventurer Q pressed:', {
+                        weaponType,
+                        blizzardCD: this.game.player.abilities.blizzard?.cooldownRemaining,
+                        arrowWaveCD: this.game.player.abilities.arrowWave?.cooldownRemaining,
+                        cleaveCD: this.game.player.abilities.cleave?.cooldownRemaining
+                    });
                     if (weaponType === 'staff' && this.game.player.abilities.blizzard?.cooldownRemaining <= 0) {
                         this.aimingAbility = 'q';
                     } else if (weaponType === 'bow' && this.game.player.abilities.arrowWave?.cooldownRemaining <= 0) {
