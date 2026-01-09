@@ -67,14 +67,18 @@ export class Adventurer {
     }
 
     async loadCharacter() {
+        console.log('Adventurer: Starting character load...');
         try {
             const success = await this.character.load('adventurers', 'barbarian');
+            console.log('Adventurer: load() returned:', success);
             if (success) {
                 this.useAnimatedCharacter = true;
-                console.log('Adventurer: Using KayKit Barbarian character model');
+                console.log('Adventurer: Model loaded successfully, useAnimatedCharacter =', this.useAnimatedCharacter);
+            } else {
+                console.warn('Adventurer: load() returned false');
             }
         } catch (error) {
-            console.warn('Failed to load Adventurer character:', error);
+            console.error('Adventurer: Failed to load character:', error);
         }
     }
 

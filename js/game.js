@@ -4080,26 +4080,24 @@ export class Game {
 
     // Update minimap each frame
     updateMinimap() {
-        if (!this.minimapCtx || !this.minimapCanvas) return;
+        if (!this.minimapCtx || !this.minimapCanvas || !this.player) return;
 
         const ctx = this.minimapCtx;
         const canvas = this.minimapCanvas;
-        const bounds = this.minimapBounds;
 
         // Clear
         ctx.fillStyle = 'rgba(20, 20, 35, 0.9)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Calculate scale
-        const worldWidth = bounds.maxX - bounds.minX;
-        const worldHeight = bounds.maxZ - bounds.minZ;
-        const scale = Math.min(canvas.width / worldWidth, canvas.height / worldHeight) * 0.9;
+        // Player-centered minimap with fixed viewport size
+        const viewportSize = 50; // World units visible in each direction
+        const scale = (canvas.width / 2) / viewportSize;
         const offsetX = canvas.width / 2;
         const offsetY = canvas.height / 2;
-        const centerX = (bounds.minX + bounds.maxX) / 2;
-        const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+        const centerX = this.player.position.x;
+        const centerZ = this.player.position.z;
 
-        // Helper to convert world coords to minimap coords
+        // Helper to convert world coords to minimap coords (centered on player)
         const toMinimap = (x, z) => ({
             x: offsetX + (x - centerX) * scale,
             y: offsetY + (z - centerZ) * scale
