@@ -4106,15 +4106,45 @@ export class Game {
         // Draw floor areas (simplified rectangles)
         ctx.fillStyle = 'rgba(60, 60, 80, 0.5)';
         if (this.gameMode === 'adventure') {
-            // Draw grassy starting zone
+            // Draw full grassy terrain (100x100 centered at origin)
             ctx.fillStyle = 'rgba(61, 107, 61, 0.6)';
-            const groundPos = toMinimap(-30, -10);
-            ctx.fillRect(groundPos.x, groundPos.y, 60 * scale, 50 * scale);
+            const groundPos = toMinimap(-50, -50);
+            ctx.fillRect(groundPos.x, groundPos.y, 100 * scale, 100 * scale);
 
-            // Draw dirt path
+            // Draw main dirt path (north from spawn)
             ctx.fillStyle = 'rgba(107, 90, 61, 0.7)';
             const pathPos = toMinimap(-2, -5);
-            ctx.fillRect(pathPos.x, pathPos.y, 4 * scale, 30 * scale);
+            ctx.fillRect(pathPos.x, pathPos.y, 4 * scale, 25 * scale);
+
+            // Draw path to mine area (northeast diagonal)
+            ctx.save();
+            const minePathPos = toMinimap(15, 20);
+            ctx.translate(minePathPos.x, minePathPos.y);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-2 * scale, -7.5 * scale, 4 * scale, 15 * scale);
+            ctx.restore();
+
+            // Draw path to woodworking area (southwest)
+            ctx.save();
+            const woodPathPos = toMinimap(-15, -15);
+            ctx.translate(woodPathPos.x, woodPathPos.y);
+            ctx.rotate(Math.PI / 6);
+            ctx.fillRect(-2 * scale, -12.5 * scale, 4 * scale, 25 * scale);
+            ctx.restore();
+
+            // Draw mine rock area
+            if (this.mine) {
+                ctx.fillStyle = 'rgba(85, 85, 85, 0.5)';
+                const mineAreaPos = toMinimap(this.mine.position.x - 8, this.mine.position.z - 8);
+                ctx.fillRect(mineAreaPos.x, mineAreaPos.y, 16 * scale, 16 * scale);
+            }
+
+            // Draw forest area around trees
+            if (this.trees) {
+                ctx.fillStyle = 'rgba(34, 70, 34, 0.6)';
+                const forestPos = toMinimap(this.trees.position.x - 12, this.trees.position.z - 12);
+                ctx.fillRect(forestPos.x, forestPos.y, 24 * scale, 24 * scale);
+            }
 
             // Draw NPCs (yellow dots)
             ctx.fillStyle = '#ffcc00';

@@ -140,7 +140,7 @@ export class Adventurer {
         // Update character animation
         if (this.useAnimatedCharacter) {
             this.character.update(deltaTime);
-            this.character.setPosition(this.position);
+            this.character.setPosition(this.position.x, this.position.y, this.position.z);
             this.character.setRotation(this.rotation);
         }
 
