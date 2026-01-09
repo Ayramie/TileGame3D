@@ -704,6 +704,43 @@ export const ITEMS = {
         value: 25
     },
 
+    // === WOOD ===
+    wood_oak: {
+        id: 'wood_oak',
+        name: 'Oak Wood',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.COMMON,
+        icon: 'wood_oak',
+        description: 'Sturdy oak wood. Good for basic crafting.',
+        stackable: true,
+        maxStack: 99,
+        value: 5
+    },
+
+    wood_birch: {
+        id: 'wood_birch',
+        name: 'Birch Wood',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'wood_birch',
+        description: 'Light and flexible birch wood.',
+        stackable: true,
+        maxStack: 99,
+        value: 10
+    },
+
+    wood_mahogany: {
+        id: 'wood_mahogany',
+        name: 'Mahogany Wood',
+        type: ItemType.MATERIAL,
+        rarity: ItemRarity.RARE,
+        icon: 'wood_mahogany',
+        description: 'Rich, dark mahogany. Prized for fine crafting.',
+        stackable: true,
+        maxStack: 99,
+        value: 25
+    },
+
     // === QUEST ITEMS ===
     boss_trophy: {
         id: 'boss_trophy',
@@ -790,6 +827,11 @@ export function getItemIcon(item) {
         'ore_copper': '🟤',
         'ore_iron': '⚫',
         'ore_gold': '🟡',
+
+        // Wood
+        'wood_oak': '🪵',
+        'wood_birch': '🪵',
+        'wood_mahogany': '🪵',
 
         // Quest
         'quest_crown': '👑'

@@ -44,6 +44,12 @@ export class Game {
         this.campfire = null; // Campfire position and state
         this.mine = null; // Mining area position and state
 
+        // Adventure mode - NPCs and Quests
+        this.npcs = [];
+        this.quests = {};
+        this.activeQuests = [];
+        this.nearbyNPC = null; // NPC player is near for interaction
+
         // Dungeon builder
         this.dungeonBuilder = null;
 
@@ -174,12 +180,12 @@ export class Game {
                 <div class="class-buttons">
                     <button class="class-btn selected" data-class="warrior">Warrior</button>
                     <button class="class-btn" data-class="mage">Mage</button>
+                    <button class="class-btn" data-class="hunter">Hunter</button>
                 </div>
             </div>
             <div class="menu-options">
+                <button class="menu-btn" data-mode="adventure">Adventure</button>
                 <button class="menu-btn" data-mode="horde">Skeleton Horde</button>
-                <button class="menu-btn" data-mode="dungeon">Dungeon</button>
-                <button class="menu-btn" data-mode="boss">Skeleton Boss</button>
             </div>
         `;
         document.getElementById('ui').style.display = 'block';
@@ -228,6 +234,9 @@ export class Game {
         document.getElementById('return-menu-btn').style.display = 'none';
         document.getElementById('target-frame').style.display = 'none';
         document.getElementById('minimap').style.display = 'none';
+        document.getElementById('quest-tracker').style.display = 'none';
+        document.getElementById('npc-dialog').style.display = 'none';
+        document.getElementById('npc-prompt').style.display = 'none';
 
         // Clear the scene
         this.clearScene();
@@ -259,6 +268,12 @@ export class Game {
         this.groundHazards = [];
         this.respawnQueue = [];
 
+        // Clear NPCs and quests
+        this.npcs = [];
+        this.quests = {};
+        this.activeQuests = [];
+        this.nearbyNPC = null;
+
         // Clean up world items
         if (this.worldItems) {
             this.worldItems.dispose();
@@ -267,7 +282,98 @@ export class Game {
     }
 
     async setupScene() {
-        if (this.gameMode === 'horde') {
+        if (this.gameMode === 'adventure') {
+            // Adventure mode - outdoor starting zone
+            this.scene.background = new THREE.Color(0x87ceeb);
+            this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.008);
+
+            const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x3d6b3d });
+            const pathMaterial = new THREE.MeshLambertMaterial({ color: 0x6b5a3d });
+            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x555555 });
+
+            // Main grassy area
+            const groundGeo = new THREE.PlaneGeometry(60, 60);
+            const ground = new THREE.Mesh(groundGeo, grassMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.set(0, 0, 0);
+            ground.receiveShadow = true;
+            this.scene.add(ground);
+
+            // Dirt path from spawn to NPC area
+            const pathGeo = new THREE.PlaneGeometry(4, 20);
+            const path = new THREE.Mesh(pathGeo, pathMaterial);
+            path.rotation.x = -Math.PI / 2;
+            path.position.set(0, 0.01, 5);
+            path.receiveShadow = true;
+            this.scene.add(path);
+
+            // Path to mine area
+            const minePathGeo = new THREE.PlaneGeometry(4, 15);
+            const minePath = new THREE.Mesh(minePathGeo, pathMaterial);
+            minePath.rotation.x = -Math.PI / 2;
+            minePath.position.set(15, 0.01, 20);
+            minePath.rotation.z = Math.PI / 4;
+            minePath.receiveShadow = true;
+            this.scene.add(minePath);
+
+            // Add some decorative rocks
+            for (let i = 0; i < 8; i++) {
+                const rockGeo = new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.5, 0);
+                const rock = new THREE.Mesh(rockGeo, rockMaterial);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 15 + Math.random() * 10;
+                rock.position.set(Math.cos(angle) * dist, 0.3, Math.sin(angle) * dist);
+                rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, 0);
+                rock.castShadow = true;
+                this.scene.add(rock);
+            }
+
+            // Create NPC - Miner Tom
+            this.createNPC({
+                id: 'miner_tom',
+                name: 'Miner Tom',
+                position: { x: 0, z: 12 },
+                color: 0x8b4513,
+                dialog: {
+                    default: "Hello adventurer! I'm in need of some copper ore. Would you be willing to help?",
+                    questAvailable: "I need 10 copper ore to repair my tools. There's a copper vein just up the hill. Bring me 10 ore and I'll make it worth your while!",
+                    questInProgress: "How's the mining going? I need 10 copper ore total.",
+                    questComplete: "Excellent work! That's all the copper I need. Here's your reward!"
+                },
+                quest: {
+                    id: 'gather_copper',
+                    name: 'Copper for Tom',
+                    description: 'Gather 10 copper ore for Miner Tom',
+                    objectives: [
+                        { type: 'collect', itemId: 'ore_copper', target: 10, current: 0 }
+                    ],
+                    rewards: {
+                        gold: 50,
+                        items: []
+                    }
+                }
+            });
+
+            // Create copper ore node
+            this.createOreNode({
+                position: { x: 20, z: 25 },
+                type: 'copper',
+                respawnTime: 30
+            });
+
+            // Add a few trees (simple cylinders + cones)
+            this.addTree(-15, 10);
+            this.addTree(-18, 15);
+            this.addTree(-12, 18);
+            this.addTree(18, -5);
+            this.addTree(22, -8);
+
+            this.isOutdoorMap = true;
+
+            // Show quest tracker for adventure mode
+            document.getElementById('quest-tracker').style.display = 'block';
+
+        } else if (this.gameMode === 'horde') {
             // Winding dungeon hallway horde mode
             this.scene.background = new THREE.Color(0x1a1a2e);
             this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.006);
@@ -605,6 +711,11 @@ export class Game {
     }
 
     spawnEnemies() {
+        // No enemies in adventure mode (peaceful starting zone)
+        if (this.gameMode === 'adventure') {
+            return;
+        }
+
         if (this.gameMode === 'boss') {
             // Skeleton Boss fight - elite warrior with minion guards
             const boss = createSkeletonEnemy(this.scene, 0, 10, 'warrior');
@@ -1018,6 +1129,12 @@ export class Game {
 
         // Update mine interaction
         this.updateMine(deltaTime);
+
+        // Update NPC proximity (adventure mode)
+        if (this.gameMode === 'adventure') {
+            this.updateNPCProximity();
+            this.updateQuestTrackerUI();
+        }
 
         // Update UI
         this.updateUI();
@@ -2388,7 +2505,10 @@ export class Game {
         this.minimapCtx = this.minimapCanvas.getContext('2d');
 
         // Minimap settings based on game mode
-        if (this.gameMode === 'horde') {
+        if (this.gameMode === 'adventure') {
+            // Adventure mode starting zone
+            this.minimapBounds = { minX: -35, maxX: 35, minZ: -15, maxZ: 40 };
+        } else if (this.gameMode === 'horde') {
             // Winding dungeon bounds (extended for fishing lake and mine)
             this.minimapBounds = { minX: -50, maxX: 110, minZ: -55, maxZ: 150 };
         } else {
@@ -2426,7 +2546,44 @@ export class Game {
 
         // Draw floor areas (simplified rectangles)
         ctx.fillStyle = 'rgba(60, 60, 80, 0.5)';
-        if (this.gameMode === 'horde') {
+        if (this.gameMode === 'adventure') {
+            // Draw grassy starting zone
+            ctx.fillStyle = 'rgba(61, 107, 61, 0.6)';
+            const groundPos = toMinimap(-30, -10);
+            ctx.fillRect(groundPos.x, groundPos.y, 60 * scale, 50 * scale);
+
+            // Draw dirt path
+            ctx.fillStyle = 'rgba(107, 90, 61, 0.7)';
+            const pathPos = toMinimap(-2, -5);
+            ctx.fillRect(pathPos.x, pathPos.y, 4 * scale, 30 * scale);
+
+            // Draw NPCs (yellow dots)
+            ctx.fillStyle = '#ffcc00';
+            for (const npc of this.npcs) {
+                const npcPos = toMinimap(npc.position.x, npc.position.z);
+                ctx.beginPath();
+                ctx.arc(npcPos.x, npcPos.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                // Quest indicator
+                const quest = this.quests[npc.quest?.id];
+                if (quest && (quest.status === 'available' || (quest.status === 'active' && this.isQuestComplete(quest)))) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('!', npcPos.x, npcPos.y - 8);
+                }
+            }
+
+            // Draw ore node
+            if (this.mine) {
+                ctx.fillStyle = '#b87333'; // Copper color
+                const orePos = toMinimap(this.mine.position.x, this.mine.position.z);
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⛏', orePos.x, orePos.y);
+            }
+        } else if (this.gameMode === 'horde') {
             // Draw approximate floor areas
             const floors = [
                 { x: 0, z: -5, w: 25, h: 20 },
@@ -2926,6 +3083,401 @@ export class Game {
             }
         }
     }
+
+    // ==================== ADVENTURE MODE - NPC & QUEST SYSTEM ====================
+
+    // Create NPC with visual mesh and dialog
+    createNPC(config) {
+        const npc = {
+            id: config.id,
+            name: config.name,
+            position: new THREE.Vector3(config.position.x, 0, config.position.z),
+            dialog: config.dialog,
+            quest: config.quest,
+            interactionRange: 4,
+            mesh: null
+        };
+
+        // Create NPC visual - simple humanoid figure
+        const npcGroup = new THREE.Group();
+        npcGroup.position.set(config.position.x, 0, config.position.z);
+
+        // Body
+        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.5, 1.2, 8);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: config.color || 0x8b4513 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1;
+        body.castShadow = true;
+        npcGroup.add(body);
+
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+        const headMat = new THREE.MeshLambertMaterial({ color: 0xd4a574 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.9;
+        head.castShadow = true;
+        npcGroup.add(head);
+
+        // Hat (mining helmet)
+        const hatGeo = new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8);
+        const hatMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+        const hat = new THREE.Mesh(hatGeo, hatMat);
+        hat.position.y = 2.2;
+        hat.castShadow = true;
+        npcGroup.add(hat);
+
+        // Quest indicator (yellow ! or ? above head)
+        const indicatorGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        const indicatorMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
+        indicator.position.y = 2.8;
+        indicator.name = 'questIndicator';
+        npcGroup.add(indicator);
+
+        this.scene.add(npcGroup);
+        npc.mesh = npcGroup;
+        npc.indicator = indicator;
+
+        this.npcs.push(npc);
+
+        // Register the quest
+        if (config.quest) {
+            this.quests[config.quest.id] = {
+                ...config.quest,
+                status: 'available', // available, active, completed, turned_in
+                npcId: config.id
+            };
+        }
+
+        return npc;
+    }
+
+    // Add a simple tree
+    addTree(x, z) {
+        const treeGroup = new THREE.Group();
+        treeGroup.position.set(x, 0, z);
+
+        // Trunk
+        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a3525 });
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 1;
+        trunk.castShadow = true;
+        treeGroup.add(trunk);
+
+        // Leaves (cone)
+        const leavesGeo = new THREE.ConeGeometry(1.5, 3, 8);
+        const leavesMat = new THREE.MeshLambertMaterial({ color: 0x228b22 });
+        const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+        leaves.position.y = 3.5;
+        leaves.castShadow = true;
+        treeGroup.add(leaves);
+
+        this.scene.add(treeGroup);
+    }
+
+    // Create ore node for mining in adventure mode
+    createOreNode(config) {
+        const oreColors = {
+            copper: 0xb87333,
+            iron: 0x808080,
+            gold: 0xffd700
+        };
+
+        const oreGroup = new THREE.Group();
+        oreGroup.position.set(config.position.x, 0, config.position.z);
+
+        // Rock base
+        const rockGeo = new THREE.DodecahedronGeometry(1.5, 0);
+        const rockMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const rock = new THREE.Mesh(rockGeo, rockMat);
+        rock.position.y = 1;
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        rock.scale.set(1.2, 0.9, 1.1);
+        rock.castShadow = true;
+        oreGroup.add(rock);
+
+        // Ore veins
+        const veinGeo = new THREE.DodecahedronGeometry(0.5, 0);
+        const veinMat = new THREE.MeshStandardMaterial({
+            color: oreColors[config.type],
+            roughness: 0.3,
+            metalness: 0.7,
+            emissive: oreColors[config.type],
+            emissiveIntensity: 0.15
+        });
+
+        for (let i = 0; i < 4; i++) {
+            const vein = new THREE.Mesh(veinGeo, veinMat);
+            vein.position.set(
+                (Math.random() - 0.5) * 2,
+                0.5 + Math.random() * 1,
+                (Math.random() - 0.5) * 2
+            );
+            vein.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            vein.scale.setScalar(0.4 + Math.random() * 0.4);
+            oreGroup.add(vein);
+        }
+
+        this.scene.add(oreGroup);
+
+        // Set up mine data for this node
+        this.mine = {
+            position: { x: config.position.x, z: config.position.z },
+            mesh: oreGroup,
+            interactionRange: 5,
+            isMining: false,
+            ores: {
+                [config.type]: 99
+            }
+        };
+
+        return oreGroup;
+    }
+
+    // Check if player is near an NPC
+    updateNPCProximity() {
+        if (!this.player || this.npcs.length === 0) return;
+
+        const playerPos = this.player.position;
+        let closestNPC = null;
+        let closestDist = Infinity;
+
+        for (const npc of this.npcs) {
+            const dx = playerPos.x - npc.position.x;
+            const dz = playerPos.z - npc.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+
+            if (dist < npc.interactionRange && dist < closestDist) {
+                closestDist = dist;
+                closestNPC = npc;
+            }
+        }
+
+        // Update nearby NPC and show/hide prompt
+        const npcPrompt = document.getElementById('npc-prompt');
+        if (closestNPC && !this.isDialogOpen()) {
+            this.nearbyNPC = closestNPC;
+            npcPrompt.style.display = 'block';
+        } else {
+            this.nearbyNPC = null;
+            npcPrompt.style.display = 'none';
+        }
+
+        // Update quest indicators
+        this.updateQuestIndicators();
+    }
+
+    // Update NPC quest indicators (! for available, ? for turn-in ready)
+    updateQuestIndicators() {
+        for (const npc of this.npcs) {
+            if (!npc.indicator) continue;
+
+            const quest = this.quests[npc.quest?.id];
+            if (!quest) {
+                npc.indicator.visible = false;
+                continue;
+            }
+
+            if (quest.status === 'available') {
+                npc.indicator.visible = true;
+                npc.indicator.material.color.setHex(0xffff00); // Yellow !
+            } else if (quest.status === 'active' && this.isQuestComplete(quest)) {
+                npc.indicator.visible = true;
+                npc.indicator.material.color.setHex(0xffff00); // Yellow ?
+            } else {
+                npc.indicator.visible = false;
+            }
+
+            // Bobbing animation
+            if (npc.indicator.visible) {
+                npc.indicator.position.y = 2.8 + Math.sin(Date.now() * 0.005) * 0.1;
+            }
+        }
+    }
+
+    // Check if NPC dialog is currently open
+    isDialogOpen() {
+        const dialog = document.getElementById('npc-dialog');
+        return dialog && dialog.style.display === 'block';
+    }
+
+    // Open dialog with NPC
+    openNPCDialog(npc) {
+        const dialog = document.getElementById('npc-dialog');
+        const nameEl = document.getElementById('npc-name');
+        const textEl = document.getElementById('npc-dialog-text');
+        const optionsEl = document.getElementById('npc-dialog-options');
+
+        nameEl.textContent = npc.name;
+
+        const quest = this.quests[npc.quest?.id];
+
+        // Determine dialog text and options
+        let dialogText = npc.dialog.default;
+        let options = [];
+
+        if (quest) {
+            if (quest.status === 'available') {
+                dialogText = npc.dialog.questAvailable;
+                options.push({ text: 'Accept Quest', action: () => this.acceptQuest(quest.id) });
+                options.push({ text: 'Not now', action: () => this.closeNPCDialog() });
+            } else if (quest.status === 'active') {
+                if (this.isQuestComplete(quest)) {
+                    dialogText = npc.dialog.questComplete;
+                    options.push({ text: 'Complete Quest', action: () => this.turnInQuest(quest.id) });
+                } else {
+                    dialogText = npc.dialog.questInProgress;
+                    const obj = quest.objectives[0];
+                    dialogText += ` (${obj.current}/${obj.target})`;
+                    options.push({ text: 'Okay', action: () => this.closeNPCDialog() });
+                }
+            } else {
+                dialogText = "Thanks for your help!";
+                options.push({ text: 'Goodbye', action: () => this.closeNPCDialog() });
+            }
+        }
+
+        textEl.textContent = dialogText;
+
+        // Clear and add options
+        optionsEl.innerHTML = '';
+        for (const opt of options) {
+            const btn = document.createElement('button');
+            btn.className = 'dialog-option';
+            btn.textContent = opt.text;
+            btn.onclick = opt.action;
+            optionsEl.appendChild(btn);
+        }
+
+        dialog.style.display = 'block';
+
+        // Close button
+        document.getElementById('npc-dialog-close').onclick = () => this.closeNPCDialog();
+    }
+
+    // Close NPC dialog
+    closeNPCDialog() {
+        document.getElementById('npc-dialog').style.display = 'none';
+    }
+
+    // Accept a quest
+    acceptQuest(questId) {
+        const quest = this.quests[questId];
+        if (!quest || quest.status !== 'available') return;
+
+        quest.status = 'active';
+        this.activeQuests.push(questId);
+
+        // Update quest tracker UI
+        this.updateQuestTrackerUI();
+
+        this.closeNPCDialog();
+    }
+
+    // Check if quest objectives are complete
+    isQuestComplete(quest) {
+        if (!quest || !quest.objectives) return false;
+
+        for (const obj of quest.objectives) {
+            if (obj.type === 'collect') {
+                const count = this.player?.inventory?.getItemCount(obj.itemId) || 0;
+                obj.current = count;
+                if (count < obj.target) return false;
+            }
+        }
+        return true;
+    }
+
+    // Turn in a completed quest
+    turnInQuest(questId) {
+        const quest = this.quests[questId];
+        if (!quest || quest.status !== 'active') return;
+        if (!this.isQuestComplete(quest)) return;
+
+        // Remove required items
+        for (const obj of quest.objectives) {
+            if (obj.type === 'collect') {
+                this.player.inventory.removeItemById(obj.itemId, obj.target);
+            }
+        }
+
+        // Give rewards
+        if (quest.rewards) {
+            if (quest.rewards.gold) {
+                this.player.inventory.addGold(quest.rewards.gold);
+            }
+            for (const itemId of (quest.rewards.items || [])) {
+                this.player.inventory.addItemById(itemId, 1);
+            }
+        }
+
+        quest.status = 'turned_in';
+        this.activeQuests = this.activeQuests.filter(id => id !== questId);
+
+        // Update UI
+        this.updateQuestTrackerUI();
+
+        this.closeNPCDialog();
+    }
+
+    // Update quest tracker UI
+    updateQuestTrackerUI() {
+        const listEl = document.getElementById('quest-tracker-list');
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+
+        for (const questId of this.activeQuests) {
+            const quest = this.quests[questId];
+            if (!quest) continue;
+
+            const questEl = document.createElement('div');
+            questEl.className = 'quest-item';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'quest-name';
+            nameEl.textContent = quest.name;
+            questEl.appendChild(nameEl);
+
+            for (const obj of quest.objectives) {
+                const objEl = document.createElement('div');
+                objEl.className = 'quest-objective';
+
+                if (obj.type === 'collect') {
+                    const count = this.player?.inventory?.getItemCount(obj.itemId) || 0;
+                    obj.current = count;
+                    const complete = count >= obj.target;
+                    objEl.textContent = `- Collect ${obj.itemId.replace('ore_', '')}: ${count}/${obj.target}`;
+                    if (complete) {
+                        objEl.style.color = '#4ade80';
+                        objEl.textContent += ' ✓';
+                    }
+                }
+
+                questEl.appendChild(objEl);
+            }
+
+            listEl.appendChild(questEl);
+        }
+
+        // Show/hide tracker based on active quests
+        const tracker = document.getElementById('quest-tracker');
+        if (tracker) {
+            tracker.style.display = this.activeQuests.length > 0 || this.gameMode === 'adventure' ? 'block' : 'none';
+        }
+    }
+
+    // Interact with NPC (called from input.js)
+    interactWithNPC() {
+        if (this.nearbyNPC && !this.isDialogOpen()) {
+            this.openNPCDialog(this.nearbyNPC);
+            return true;
+        }
+        return false;
+    }
+
+    // ==================== END ADVENTURE MODE ====================
 
     start() {
         const gameLoop = () => {

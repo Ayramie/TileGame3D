@@ -23,10 +23,33 @@
             </div>
         </div>
         <div class="menu-options">
+            <button class="menu-btn" data-mode="adventure">Adventure</button>
             <button class="menu-btn" data-mode="horde">Skeleton Horde</button>
-            <button class="menu-btn" data-mode="dungeon">Dungeon</button>
-            <button class="menu-btn" data-mode="boss">Skeleton Boss</button>
         </div>
+    </div>
+
+    <!-- Quest Tracker UI -->
+    <div id="quest-tracker">
+        <div id="quest-tracker-header">Quests</div>
+        <div id="quest-tracker-list"></div>
+    </div>
+
+    <!-- NPC Dialog -->
+    <div id="npc-dialog">
+        <div id="npc-dialog-content">
+            <div id="npc-dialog-header">
+                <span id="npc-name">NPC Name</span>
+                <button id="npc-dialog-close">X</button>
+            </div>
+            <div id="npc-dialog-text"></div>
+            <div id="npc-dialog-options"></div>
+        </div>
+    </div>
+
+    <!-- NPC Interaction Prompt -->
+    <div id="npc-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Talk</span>
     </div>
 
     <div id="ui">

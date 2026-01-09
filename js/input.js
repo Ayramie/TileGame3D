@@ -120,6 +120,12 @@ export class InputManager {
                 break;
 
             case 'f':
+                // Check for NPC interaction first (adventure mode)
+                if (this.game.nearbyNPC && !this.game.isDialogOpen()) {
+                    this.game.interactWithNPC();
+                    break;
+                }
+
                 // Check for fishing interactions first
                 if (this.game.fishingLake?.isNearLake && !this.game.fishingLake?.isFishing) {
                     // Start fishing
