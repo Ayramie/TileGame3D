@@ -144,12 +144,32 @@ export class Adventurer {
             if (weaponType === 'sword' || weaponType === 'dagger') {
                 this.abilities = this.getWarriorAbilities();
                 console.log('Adventurer: Equipped melee weapon - Warrior abilities unlocked!');
+                console.log('Warrior ability cooldowns:', {
+                    cleave: this.abilities.cleave?.cooldownRemaining,
+                    whirlwind: this.abilities.whirlwind?.cooldownRemaining,
+                    parry: this.abilities.parry?.cooldownRemaining,
+                    heroicLeap: this.abilities.heroicLeap?.cooldownRemaining
+                });
             } else if (weaponType === 'staff') {
                 this.abilities = this.getMageAbilities();
                 console.log('Adventurer: Equipped staff - Mage abilities unlocked!');
+                console.log('Mage ability cooldowns:', {
+                    blizzard: this.abilities.blizzard?.cooldownRemaining,
+                    flameWave: this.abilities.flameWave?.cooldownRemaining,
+                    frostNova: this.abilities.frostNova?.cooldownRemaining,
+                    backstep: this.abilities.backstep?.cooldownRemaining,
+                    frozenOrb: this.abilities.frozenOrb?.cooldownRemaining
+                });
             } else if (weaponType === 'bow') {
                 this.abilities = this.getHunterAbilities();
                 console.log('Adventurer: Equipped bow - Hunter abilities unlocked!');
+                console.log('Hunter ability cooldowns:', {
+                    arrowWave: this.abilities.arrowWave?.cooldownRemaining,
+                    spinDash: this.abilities.spinDash?.cooldownRemaining,
+                    shotgun: this.abilities.shotgun?.cooldownRemaining,
+                    trap: this.abilities.trap?.cooldownRemaining,
+                    giantArrow: this.abilities.giantArrow?.cooldownRemaining
+                });
             }
             // Notify game to update UI
             if (this.game && this.game.updateAbilityUI) {
