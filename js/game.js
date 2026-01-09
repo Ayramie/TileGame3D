@@ -14,6 +14,7 @@ import { WorldItemManager } from './worldItem.js';
 import { InventoryUI } from './inventoryUI.js';
 import { ITEMS, getItemIcon } from './itemDatabase.js';
 import { SoundManager } from './sound.js';
+import { KayKitCharacter } from './kayKitCharacter.js';
 
 export class Game {
     constructor(canvas) {
@@ -428,7 +429,8 @@ export class Game {
                 name: 'Miner Tom',
                 position: { x: 0, z: 12 },
                 color: 0x8b4513,
-                modelPath: 'assets/kaykit/characters/adventurers/Barbarian.glb',
+                characterType: 'adventurers',
+                characterName: 'barbarian',
                 dialog: {
                     default: "Thanks for your help, adventurer!",
                     questAvailable: "I need 10 copper ore to repair my tools. There's a copper vein just up the hill!",
@@ -512,7 +514,8 @@ export class Game {
                 name: 'Woodworker Wendy',
                 position: { x: -20, z: -20 },
                 color: 0x228b22,
-                modelPath: 'assets/kaykit/characters/adventurers/Rogue.glb',
+                characterType: 'adventurers',
+                characterName: 'rogue',
                 dialog: {
                     default: "Thanks for your help! The forest provides.",
                     questAvailable: "Hello there! I need 10 oak logs to finish my latest project. The grove is just over there!",
@@ -1493,6 +1496,14 @@ export class Game {
         if (this.gameMode === 'adventure') {
             this.updateNPCProximity();
             this.updateQuestTrackerUI();
+            // Update NPC animations
+            for (const npc of this.npcs) {
+                if (npc.useKayKit && npc.character) {
+                    npc.character.update(deltaTime);
+                } else if (npc.mixer) {
+                    npc.mixer.update(deltaTime);
+                }
+            }
         }
 
         // Update UI
@@ -4833,8 +4844,25 @@ export class Game {
         const npcGroup = new THREE.Group();
         npcGroup.position.set(config.position.x, 0, config.position.z);
 
-        // Try to load 3D model if path provided
-        if (config.modelPath) {
+        // Try to load 3D model using KayKitCharacter for proper animations
+        if (config.characterType && config.characterName) {
+            try {
+                npc.character = new KayKitCharacter(this.scene);
+                const success = await npc.character.load(config.characterType, config.characterName);
+                if (success) {
+                    npc.character.setPosition(config.position.x, 0, config.position.z);
+                    npc.character.playAnimation('idle');
+                    npc.useKayKit = true;
+                    // Don't add to npcGroup since KayKitCharacter adds to scene directly
+                } else {
+                    this.createBasicNPCMesh(npcGroup, config.color);
+                }
+            } catch (e) {
+                console.warn(`Failed to load NPC KayKit character:`, e);
+                this.createBasicNPCMesh(npcGroup, config.color);
+            }
+        } else if (config.modelPath) {
+            // Fallback to direct GLTF loading (no animations)
             try {
                 const loader = new GLTFLoader();
                 const gltf = await new Promise((resolve, reject) => {
@@ -4851,7 +4879,6 @@ export class Game {
                 npcGroup.add(model);
             } catch (e) {
                 console.warn(`Failed to load NPC model: ${config.modelPath}`, e);
-                // Fallback to basic geometry
                 this.createBasicNPCMesh(npcGroup, config.color);
             }
         } else {
