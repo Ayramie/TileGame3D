@@ -123,40 +123,105 @@ export class Player {
     }
 
     createAbilityIndicators() {
-        // Cleave cone indicator - use CircleGeometry with theta offset like TileGame-3D
+        // Cleave cone indicator - enhanced with gradient rings and animated edge
         const ability = this.abilities.cleave;
         const group = new THREE.Group();
-
-        // Offset by -90 degrees so the cone points forward (+Z) when rotation.y = 0
         const angleOffset = -Math.PI / 2;
-        const geometry = new THREE.CircleGeometry(ability.range, 32, -ability.angle / 2 + angleOffset, ability.angle);
-        const material = new THREE.MeshBasicMaterial({
-            color: 0xff6600,
-            transparent: true,
-            opacity: 0.35,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-        const cone = new THREE.Mesh(geometry, material);
-        cone.rotation.x = -Math.PI / 2;
-        cone.position.y = 0.1;
-        group.add(cone);
 
-        // Edge highlight
-        const edgeGeo = new THREE.RingGeometry(ability.range - 0.15, ability.range, 32, 1, -ability.angle / 2 + angleOffset, ability.angle);
+        // Inner gradient rings (lighter in center, darker at edges)
+        const ringColors = [0xff8833, 0xff6600, 0xee5500, 0xcc4400];
+        const ringRanges = [0.25, 0.5, 0.75, 1.0];
+
+        for (let i = 0; i < ringRanges.length; i++) {
+            const innerR = i === 0 ? 0 : ability.range * ringRanges[i - 1];
+            const outerR = ability.range * ringRanges[i];
+            const ringGeo = new THREE.RingGeometry(innerR, outerR, 32, 1, -ability.angle / 2 + angleOffset, ability.angle);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: ringColors[i],
+                transparent: true,
+                opacity: 0.25 - i * 0.04,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.08 + i * 0.01;
+            group.add(ring);
+        }
+
+        // Animated outer edge glow (thick)
+        const edgeGeo = new THREE.RingGeometry(ability.range - 0.25, ability.range, 48, 1, -ability.angle / 2 + angleOffset, ability.angle);
         const edgeMat = new THREE.MeshBasicMaterial({
-            color: 0xffaa00,
+            color: 0xffcc44,
             transparent: true,
-            opacity: 0.7,
+            opacity: 0.8,
             side: THREE.DoubleSide,
             depthWrite: false
         });
         const edge = new THREE.Mesh(edgeGeo, edgeMat);
         edge.rotation.x = -Math.PI / 2;
-        edge.position.y = 0.12;
+        edge.position.y = 0.14;
+        edge.userData.isPulsingEdge = true;
         group.add(edge);
 
+        // Inner bright edge
+        const innerEdgeGeo = new THREE.RingGeometry(ability.range - 0.12, ability.range - 0.08, 48, 1, -ability.angle / 2 + angleOffset, ability.angle);
+        const innerEdgeMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const innerEdge = new THREE.Mesh(innerEdgeGeo, innerEdgeMat);
+        innerEdge.rotation.x = -Math.PI / 2;
+        innerEdge.position.y = 0.15;
+        group.add(innerEdge);
+
+        // Arc end lines (sides of cone)
+        const lineLength = ability.range;
+        for (let side = -1; side <= 1; side += 2) {
+            const lineGeo = new THREE.PlaneGeometry(0.08, lineLength);
+            const lineMat = new THREE.MeshBasicMaterial({
+                color: 0xffdd66,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            const sideAngle = side * ability.angle / 2 + angleOffset;
+            line.position.x = Math.cos(sideAngle) * lineLength / 2;
+            line.position.z = -Math.sin(sideAngle) * lineLength / 2;
+            line.position.y = 0.13;
+            line.rotation.x = -Math.PI / 2;
+            line.rotation.z = -sideAngle;
+            group.add(line);
+        }
+
+        // Tick marks around the arc
+        const tickCount = 8;
+        for (let i = 0; i <= tickCount; i++) {
+            const tickAngle = -ability.angle / 2 + (i / tickCount) * ability.angle + angleOffset;
+            const tickGeo = new THREE.PlaneGeometry(0.04, 0.4);
+            const tickMat = new THREE.MeshBasicMaterial({
+                color: 0xffeeaa,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const tick = new THREE.Mesh(tickGeo, tickMat);
+            tick.position.x = Math.cos(tickAngle) * (ability.range - 0.2);
+            tick.position.z = -Math.sin(tickAngle) * (ability.range - 0.2);
+            tick.position.y = 0.12;
+            tick.rotation.x = -Math.PI / 2;
+            tick.rotation.z = -tickAngle;
+            group.add(tick);
+        }
+
         group.visible = false;
+        group.userData.animTime = 0;
         this.cleaveIndicator = group;
         this.scene.add(this.cleaveIndicator);
 
@@ -168,54 +233,125 @@ export class Player {
         const ability = this.abilities.sunder;
         const range = ability.range;
         const startWidth = 0.5;
-        const endWidth = ability.width * 2; // Gets wider at the end
+        const endWidth = ability.width * 2;
 
         const group = new THREE.Group();
 
-        // Create trapezoid shape pointing +Y in 2D, will rotate mesh to lay flat
-        const shape = new THREE.Shape();
-        shape.moveTo(-startWidth / 2, 0);
-        shape.lineTo(-endWidth / 2, range);
-        shape.lineTo(endWidth / 2, range);
-        shape.lineTo(startWidth / 2, 0);
-        shape.lineTo(-startWidth / 2, 0);
+        // Create multiple gradient layers
+        const layerColors = [0xaa7744, 0x996633, 0x885522, 0x774411];
+        for (let i = 0; i < 4; i++) {
+            const layerStart = startWidth * (1 - i * 0.15);
+            const layerEnd = endWidth * (1 - i * 0.15);
+            const layerRange = range * (1 - i * 0.05);
 
-        const geometry = new THREE.ShapeGeometry(shape);
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x886644,
-            transparent: true,
-            opacity: 0.35,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
+            const shape = new THREE.Shape();
+            shape.moveTo(-layerStart / 2, 0);
+            shape.lineTo(-layerEnd / 2, layerRange);
+            shape.lineTo(layerEnd / 2, layerRange);
+            shape.lineTo(layerStart / 2, 0);
+            shape.lineTo(-layerStart / 2, 0);
 
-        const trapezoid = new THREE.Mesh(geometry, material);
-        trapezoid.rotation.x = Math.PI / 2; // Lay flat, +Y becomes +Z (forward)
-        trapezoid.position.y = 0.1;
-        group.add(trapezoid);
+            const geometry = new THREE.ShapeGeometry(shape);
+            const material = new THREE.MeshBasicMaterial({
+                color: layerColors[i],
+                transparent: true,
+                opacity: 0.2 - i * 0.03,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
 
-        // Edge outline
-        const edgeShape = new THREE.Shape();
-        edgeShape.moveTo(-startWidth / 2, 0);
-        edgeShape.lineTo(-endWidth / 2, range);
-        edgeShape.lineTo(endWidth / 2, range);
-        edgeShape.lineTo(startWidth / 2, 0);
-        edgeShape.lineTo(-startWidth / 2, 0);
-        const edgeGeo = new THREE.ShapeGeometry(edgeShape);
-        const edgeMat = new THREE.MeshBasicMaterial({
-            color: 0xaa8866,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-            wireframe: true
-        });
-        const edge = new THREE.Mesh(edgeGeo, edgeMat);
-        edge.rotation.x = Math.PI / 2;
-        edge.position.y = 0.12;
-        group.add(edge);
+            const trapezoid = new THREE.Mesh(geometry, material);
+            trapezoid.rotation.x = Math.PI / 2;
+            trapezoid.position.y = 0.08 + i * 0.01;
+            group.add(trapezoid);
+        }
+
+        // Glowing edge outline with thick border
+        const edgePoints = [];
+        edgePoints.push(new THREE.Vector3(-startWidth / 2, 0, 0));
+        edgePoints.push(new THREE.Vector3(-endWidth / 2, 0, range));
+        edgePoints.push(new THREE.Vector3(endWidth / 2, 0, range));
+        edgePoints.push(new THREE.Vector3(startWidth / 2, 0, 0));
+
+        // Draw edge lines with planes
+        const edgePairs = [
+            [edgePoints[0], edgePoints[1]], // left side
+            [edgePoints[1], edgePoints[2]], // far end
+            [edgePoints[2], edgePoints[3]]  // right side
+        ];
+
+        for (const [p1, p2] of edgePairs) {
+            const length = p1.distanceTo(p2);
+            const midPoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+            const angle = Math.atan2(p2.z - p1.z, p2.x - p1.x);
+
+            const lineGeo = new THREE.PlaneGeometry(length, 0.15);
+            const lineMat = new THREE.MeshBasicMaterial({
+                color: 0xddaa66,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.position.set(midPoint.x, 0.14, midPoint.z);
+            line.rotation.x = -Math.PI / 2;
+            line.rotation.z = -angle;
+            line.userData.isPulsingEdge = true;
+            group.add(line);
+        }
+
+        // Inner bright edge
+        for (const [p1, p2] of edgePairs) {
+            const length = p1.distanceTo(p2);
+            const midPoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+            const angle = Math.atan2(p2.z - p1.z, p2.x - p1.x);
+
+            const lineGeo = new THREE.PlaneGeometry(length, 0.05);
+            const lineMat = new THREE.MeshBasicMaterial({
+                color: 0xffeedd,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.position.set(midPoint.x, 0.15, midPoint.z);
+            line.rotation.x = -Math.PI / 2;
+            line.rotation.z = -angle;
+            group.add(line);
+        }
+
+        // Spike marks along the path
+        const spikeCount = 6;
+        for (let i = 1; i <= spikeCount; i++) {
+            const t = i / (spikeCount + 1);
+            const widthAtT = startWidth + (endWidth - startWidth) * t;
+            const zPos = range * t;
+
+            // Small triangular spike markers
+            const spikeGeo = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                0, 0, 0,
+                -0.15, 0, 0.3,
+                0.15, 0, 0.3
+            ]);
+            spikeGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            const spikeMat = new THREE.MeshBasicMaterial({
+                color: 0xccaa77,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const spike = new THREE.Mesh(spikeGeo, spikeMat);
+            spike.position.set(0, 0.12, zPos);
+            spike.rotation.x = -Math.PI / 2;
+            group.add(spike);
+        }
 
         group.visible = false;
+        group.userData.animTime = 0;
         this.sunderIndicator = group;
         this.scene.add(this.sunderIndicator);
 
@@ -226,50 +362,157 @@ export class Player {
     createHeroicLeapIndicator() {
         const ability = this.abilities.heroicLeap;
 
-        // Range circle (shows max jump range)
-        const rangeGeometry = new THREE.RingGeometry(ability.range - 0.2, ability.range, 48);
-        const rangeMaterial = new THREE.MeshBasicMaterial({
-            color: 0x4488ff,
-            transparent: true,
-            opacity: 0.2,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-        this.leapRangeIndicator = new THREE.Mesh(rangeGeometry, rangeMaterial);
-        this.leapRangeIndicator.rotation.x = -Math.PI / 2;
-        this.leapRangeIndicator.position.y = 0.1;
-        this.leapRangeIndicator.visible = false;
-        this.scene.add(this.leapRangeIndicator);
+        // Create range indicator group for animation
+        this.leapRangeGroup = new THREE.Group();
 
-        // Target circle (shows where you'll land and AoE radius)
-        const targetGeometry = new THREE.RingGeometry(ability.aoeRadius - 0.2, ability.aoeRadius, 32);
-        const targetMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff4444,
-            transparent: true,
-            opacity: 0.4,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-        this.leapTargetIndicator = new THREE.Mesh(targetGeometry, targetMaterial);
-        this.leapTargetIndicator.rotation.x = -Math.PI / 2;
-        this.leapTargetIndicator.position.y = 0.12;
-        this.leapTargetIndicator.visible = false;
-        this.scene.add(this.leapTargetIndicator);
+        // Range circle gradient rings
+        const rangeRingCount = 4;
+        for (let i = 0; i < rangeRingCount; i++) {
+            const innerR = ability.range * (0.85 + i * 0.04);
+            const outerR = ability.range * (0.89 + i * 0.04);
+            const rangeRingGeo = new THREE.RingGeometry(innerR, outerR, 64);
+            const rangeRingMat = new THREE.MeshBasicMaterial({
+                color: i === 0 ? 0x6699ff : 0x4488ff,
+                transparent: true,
+                opacity: 0.15 + i * 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const rangeRing = new THREE.Mesh(rangeRingGeo, rangeRingMat);
+            rangeRing.rotation.x = -Math.PI / 2;
+            rangeRing.position.y = 0.08 + i * 0.01;
+            this.leapRangeGroup.add(rangeRing);
+        }
 
-        // Inner target circle (landing spot)
-        const innerGeometry = new THREE.CircleGeometry(0.8, 16);
-        const innerMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffaa00,
+        // Dashed tick marks around range circle
+        const tickCount = 24;
+        for (let i = 0; i < tickCount; i++) {
+            const angle = (i / tickCount) * Math.PI * 2;
+            const tickGeo = new THREE.PlaneGeometry(0.05, 0.6);
+            const tickMat = new THREE.MeshBasicMaterial({
+                color: 0x88bbff,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const tick = new THREE.Mesh(tickGeo, tickMat);
+            tick.position.x = Math.cos(angle) * (ability.range - 0.3);
+            tick.position.z = Math.sin(angle) * (ability.range - 0.3);
+            tick.position.y = 0.12;
+            tick.rotation.x = -Math.PI / 2;
+            tick.rotation.z = -angle + Math.PI / 2;
+            this.leapRangeGroup.add(tick);
+        }
+
+        this.leapRangeGroup.visible = false;
+        this.leapRangeGroup.userData.animTime = 0;
+        this.scene.add(this.leapRangeGroup);
+        this.leapRangeIndicator = this.leapRangeGroup;
+
+        // Create target indicator group
+        this.leapTargetGroup = new THREE.Group();
+
+        // AoE radius gradient circles
+        const aoeColors = [0xff6666, 0xff4444, 0xee3333, 0xcc2222];
+        for (let i = 0; i < 4; i++) {
+            const innerR = ability.aoeRadius * (i * 0.25);
+            const outerR = ability.aoeRadius * ((i + 1) * 0.25);
+            const aoeRingGeo = new THREE.RingGeometry(innerR, outerR, 32);
+            const aoeRingMat = new THREE.MeshBasicMaterial({
+                color: aoeColors[i],
+                transparent: true,
+                opacity: 0.25 - i * 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const aoeRing = new THREE.Mesh(aoeRingGeo, aoeRingMat);
+            aoeRing.rotation.x = -Math.PI / 2;
+            aoeRing.position.y = 0.09 + i * 0.01;
+            this.leapTargetGroup.add(aoeRing);
+        }
+
+        // Outer glowing edge
+        const targetEdgeGeo = new THREE.RingGeometry(ability.aoeRadius - 0.15, ability.aoeRadius, 48);
+        const targetEdgeMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa44,
             transparent: true,
-            opacity: 0.5,
+            opacity: 0.85,
             side: THREE.DoubleSide,
             depthWrite: false
         });
-        this.leapInnerIndicator = new THREE.Mesh(innerGeometry, innerMaterial);
-        this.leapInnerIndicator.rotation.x = -Math.PI / 2;
-        this.leapInnerIndicator.position.y = 0.13;
-        this.leapInnerIndicator.visible = false;
-        this.scene.add(this.leapInnerIndicator);
+        const targetEdge = new THREE.Mesh(targetEdgeGeo, targetEdgeMat);
+        targetEdge.rotation.x = -Math.PI / 2;
+        targetEdge.position.y = 0.14;
+        targetEdge.userData.isPulsingEdge = true;
+        this.leapTargetGroup.add(targetEdge);
+
+        // Inner bright edge
+        const innerEdgeGeo = new THREE.RingGeometry(ability.aoeRadius - 0.08, ability.aoeRadius - 0.05, 48);
+        const innerEdgeMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const innerEdge = new THREE.Mesh(innerEdgeGeo, innerEdgeMat);
+        innerEdge.rotation.x = -Math.PI / 2;
+        innerEdge.position.y = 0.15;
+        this.leapTargetGroup.add(innerEdge);
+
+        // Cross-hair at center
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const crossGeo = new THREE.PlaneGeometry(0.08, 1.2);
+            const crossMat = new THREE.MeshBasicMaterial({
+                color: 0xffdd88,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const cross = new THREE.Mesh(crossGeo, crossMat);
+            cross.rotation.x = -Math.PI / 2;
+            cross.rotation.z = angle;
+            cross.position.y = 0.13;
+            this.leapTargetGroup.add(cross);
+        }
+
+        // Central landing circle (pulsing)
+        const centerGeo = new THREE.CircleGeometry(0.5, 16);
+        const centerMat = new THREE.MeshBasicMaterial({
+            color: 0xffcc00,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const center = new THREE.Mesh(centerGeo, centerMat);
+        center.rotation.x = -Math.PI / 2;
+        center.position.y = 0.16;
+        center.userData.isPulsingCenter = true;
+        this.leapTargetGroup.add(center);
+
+        // Outer center ring
+        const centerRingGeo = new THREE.RingGeometry(0.45, 0.55, 16);
+        const centerRingMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const centerRing = new THREE.Mesh(centerRingGeo, centerRingMat);
+        centerRing.rotation.x = -Math.PI / 2;
+        centerRing.position.y = 0.17;
+        this.leapTargetGroup.add(centerRing);
+
+        this.leapTargetGroup.visible = false;
+        this.leapTargetGroup.userData.animTime = 0;
+        this.scene.add(this.leapTargetGroup);
+        this.leapTargetIndicator = this.leapTargetGroup;
+        this.leapInnerIndicator = this.leapTargetGroup; // Combined into target group
     }
 
     showSunderIndicator(show) {
@@ -285,10 +528,10 @@ export class Player {
         this.sunderIndicator.position.x = this.position.x;
         this.sunderIndicator.position.z = this.position.z;
 
-        // Point toward mouse
+        // Point toward mouse - the shape is created pointing +Z after rotation.x
         const dx = mouseWorldPos.x - this.position.x;
         const dz = mouseWorldPos.z - this.position.z;
-        this.sunderIndicator.rotation.y = -Math.atan2(dx, dz) + Math.PI;
+        this.sunderIndicator.rotation.y = Math.atan2(dx, dz);
     }
 
     showHeroicLeapIndicator(show) {
@@ -607,6 +850,9 @@ export class Player {
 
         // Process abilities
         this.updateAbilities(deltaTime);
+
+        // Animate ability indicators
+        this.updateIndicatorAnimations(deltaTime);
 
         // Auto-attack cooldown
         if (this.autoAttackCooldown > 0) {

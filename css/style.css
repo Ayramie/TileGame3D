@@ -3187,3 +3187,264 @@ body {
 #crafting-message.visible {
     opacity: 1;
 }
+
+/* ==================== ANVIL SYSTEM ==================== */
+
+/* Anvil Prompt */
+#anvil-prompt {
+    background: linear-gradient(145deg, rgba(80, 60, 40, 0.95), rgba(50, 35, 25, 0.95));
+    border-color: #cc6600;
+}
+
+#anvil-prompt .prompt-key {
+    background: linear-gradient(145deg, #cc6600, #ff8822);
+    box-shadow: 0 0 10px rgba(204, 102, 0, 0.5);
+}
+
+/* Anvil Selection Popup */
+#anvil-selection {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(145deg, rgba(60, 45, 30, 0.98), rgba(40, 30, 20, 0.98));
+    border: 3px solid #cc6600;
+    border-radius: 15px;
+    padding: 20px;
+    z-index: 510;
+    display: none;
+    min-width: 350px;
+    box-shadow: 0 0 30px rgba(204, 102, 0, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+#anvil-selection.visible {
+    display: block;
+}
+
+#anvil-selection-content {
+    display: flex;
+    flex-direction: column;
+}
+
+#anvil-selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #cc6600;
+}
+
+#anvil-selection-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffaa44;
+    text-shadow: 0 0 10px rgba(255, 170, 68, 0.5);
+}
+
+#anvil-selection-close {
+    background: #662200;
+    border: 2px solid #cc6600;
+    color: #ffaa44;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+#anvil-selection-close:hover {
+    background: #cc6600;
+    color: #fff;
+}
+
+/* Anvil Recipe List */
+#anvil-recipe-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.anvil-recipe-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: rgba(80, 50, 30, 0.6);
+    border: 2px solid #884400;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.anvil-recipe-item:hover {
+    background: rgba(100, 65, 40, 0.8);
+    border-color: #cc6600;
+    transform: translateX(5px);
+}
+
+.anvil-recipe-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.anvil-recipe-item.disabled:hover {
+    transform: none;
+    border-color: #884400;
+}
+
+.anvil-recipe-icon {
+    font-size: 28px;
+    margin-right: 15px;
+    width: 40px;
+    text-align: center;
+}
+
+.anvil-recipe-info {
+    flex: 1;
+}
+
+.anvil-recipe-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffcc88;
+}
+
+.anvil-recipe-cost {
+    font-size: 12px;
+    color: #aa8866;
+    margin-top: 3px;
+}
+
+.anvil-recipe-cost.missing {
+    color: #ff6666;
+}
+
+#anvil-selection-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #884400;
+    text-align: center;
+    color: #aa8866;
+    font-size: 12px;
+}
+
+/* Anvil Progress Popup */
+#anvil-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 520;
+    display: none;
+}
+
+#anvil-popup.visible {
+    display: block;
+}
+
+#anvil-popup-content {
+    background: linear-gradient(145deg, rgba(60, 45, 30, 0.98), rgba(40, 30, 20, 0.98));
+    border: 3px solid #cc6600;
+    border-radius: 15px;
+    padding: 25px;
+    min-width: 280px;
+    box-shadow: 0 0 40px rgba(204, 102, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+#anvil-popup-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#anvil-popup-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffaa44;
+    text-shadow: 0 0 15px rgba(255, 170, 68, 0.6);
+}
+
+#anvil-game-area {
+    padding: 15px;
+}
+
+#anvil-item-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#anvil-item-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    animation: anvil-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes anvil-glow {
+    from { filter: drop-shadow(0 0 5px rgba(255, 170, 68, 0.5)); }
+    to { filter: drop-shadow(0 0 15px rgba(255, 170, 68, 0.8)); }
+}
+
+#anvil-item-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffcc88;
+}
+
+#anvil-progress {
+    margin-top: 15px;
+}
+
+#anvil-progress-bar {
+    width: 100%;
+    height: 20px;
+    background: rgba(40, 25, 15, 0.8);
+    border: 2px solid #884400;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#anvil-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #cc6600, #ff8822);
+    transition: width 0.05s linear;
+    box-shadow: 0 0 10px rgba(204, 102, 0, 0.5);
+}
+
+#anvil-popup-footer {
+    text-align: center;
+    margin-top: 15px;
+}
+
+#anvil-status-text {
+    font-size: 14px;
+    color: #aa8866;
+}
+
+/* Anvil Message */
+#anvil-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(60, 45, 30, 0.95);
+    border: 2px solid #cc6600;
+    border-radius: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffaa44;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 600;
+    pointer-events: none;
+}
+
+#anvil-message.visible {
+    opacity: 1;
+}

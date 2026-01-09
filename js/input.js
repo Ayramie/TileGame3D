@@ -192,6 +192,15 @@ export class InputManager {
                     break;
                 }
 
+                // Check for anvil interaction
+                if (this.game.anvil?.isNearAnvil && !this.game.anvil?.isForging) {
+                    this.game.startAnvilCrafting();
+                    break;
+                } else if (this.game.anvil?.isForging) {
+                    // Ignore F during forging
+                    break;
+                }
+
                 // F ability - Whirlwind (Warrior) / Flame Wave (Mage) / Spin Dash (Hunter)
                 if (this.game.selectedClass === 'mage') {
                     this.aimingAbility = 'f';

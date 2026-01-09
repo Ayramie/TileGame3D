@@ -12,6 +12,7 @@ import { DungeonBuilder } from './dungeonBuilder.js';
 import { WorldItemManager } from './worldItem.js';
 import { InventoryUI } from './inventoryUI.js';
 import { ITEMS, getItemIcon } from './itemDatabase.js';
+import { SoundManager } from './sound.js';
 
 export class Game {
     constructor(canvas) {
@@ -47,7 +48,36 @@ export class Game {
         this.mine = null; // Mining area position and state
         this.trees = null; // Chopping area position and state
         this.smelter = null; // Smelter forge station
+        this.anvil = null; // Blacksmith anvil station
         this.craftingBench = null; // Crafting station position and state
+
+        // Anvil recipes (metal crafting)
+        this.anvilRecipes = [
+            {
+                id: 'copper_shortsword',
+                name: 'Copper Shortsword',
+                materials: [{ itemId: 'bar_copper', amount: 3 }],
+                craftTime: 4.0
+            },
+            {
+                id: 'copper_dagger',
+                name: 'Copper Dagger',
+                materials: [{ itemId: 'bar_copper', amount: 2 }],
+                craftTime: 3.0
+            },
+            {
+                id: 'iron_longsword',
+                name: 'Iron Longsword',
+                materials: [{ itemId: 'bar_iron', amount: 5 }],
+                craftTime: 5.0
+            },
+            {
+                id: 'gold_scepter',
+                name: 'Gold Scepter',
+                materials: [{ itemId: 'bar_gold', amount: 4 }],
+                craftTime: 6.0
+            }
+        ];
 
         // Crafting recipes
         this.craftingRecipes = [
@@ -76,6 +106,9 @@ export class Game {
 
         // Effects manager
         this.effects = new EffectsManager(this.scene);
+
+        // Sound manager
+        this.sound = new SoundManager();
 
         // Setup menu handlers
         this.setupMenu();
@@ -114,6 +147,9 @@ export class Game {
     async startGame(mode) {
         this.gameMode = mode;
         this.gameState = 'loading';
+
+        // Initialize sound manager (requires user interaction)
+        await this.sound.init();
 
         // Hide menu, show loading screen with spinner
         const menu = document.getElementById('main-menu');
@@ -385,7 +421,22 @@ export class Game {
                         objectives: [
                             { type: 'collect', itemId: 'bar_copper', target: 5, current: 0 }
                         ],
-                        rewards: { gold: 75, items: [] }
+                        rewards: { gold: 75, items: [] },
+                        nextQuestId: 'forge_sword'
+                    },
+                    {
+                        id: 'forge_sword',
+                        name: 'Forge a Weapon',
+                        description: 'Craft a copper shortsword at the anvil',
+                        dialog: {
+                            questAvailable: "Now you're getting the hang of it! The next step is to forge a weapon. Use the anvil to craft a Copper Shortsword.",
+                            questInProgress: "Use the anvil near the forge to craft a Copper Shortsword. You'll need 3 copper bars.",
+                            questComplete: "A fine blade! You've learned the basics of smithing. Keep that sword - you've earned it!"
+                        },
+                        objectives: [
+                            { type: 'collect', itemId: 'copper_shortsword', target: 1, current: 0 }
+                        ],
+                        rewards: { gold: 100, items: [] }
                     }
                 ]
             });
@@ -400,6 +451,11 @@ export class Game {
             // Create smelting forge
             this.createSmelter({
                 position: { x: -15, z: 18 }
+            });
+
+            // Create blacksmith anvil
+            this.createAnvil({
+                position: { x: -10, z: 22 }
             });
 
             // Add a few trees (simple cylinders + cones)
@@ -1316,6 +1372,9 @@ export class Game {
 
         // Update crafting bench interaction
         this.updateCraftingBench(deltaTime);
+
+        // Update anvil interaction
+        this.updateAnvil(deltaTime);
 
         // Update NPC proximity (adventure mode)
         if (this.gameMode === 'adventure') {
@@ -2671,8 +2730,6 @@ export class Game {
                 const barId = barMap[as.oreId];
                 if (barId) {
                     this.player.inventory.addItemById(barId, 1);
-                    // Update quest progress for copper bars
-                    this.updateQuestProgress('collect', barId, 1);
                 }
             }
 
@@ -2726,6 +2783,303 @@ export class Game {
 
     showSmeltingMessage(message, rarity = 'common') {
         const msgEl = document.getElementById('smelting-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+            msgEl.className = `rarity-${rarity}`;
+            msgEl.classList.add('visible');
+            setTimeout(() => msgEl.classList.remove('visible'), 2500);
+        }
+    }
+
+    // ==================== ANVIL SYSTEM ====================
+
+    createAnvil(config) {
+        const { position } = config;
+        const anvilGroup = new THREE.Group();
+        anvilGroup.position.set(position.x, 0, position.z);
+
+        // Anvil base (block)
+        const baseGeo = new THREE.BoxGeometry(1.2, 0.6, 0.8);
+        const anvilMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        const base = new THREE.Mesh(baseGeo, anvilMat);
+        base.position.y = 0.3;
+        base.castShadow = true;
+        base.receiveShadow = true;
+        anvilGroup.add(base);
+
+        // Anvil top (wider working surface)
+        const topGeo = new THREE.BoxGeometry(1.8, 0.4, 1.0);
+        const top = new THREE.Mesh(topGeo, anvilMat);
+        top.position.y = 0.8;
+        top.castShadow = true;
+        anvilGroup.add(top);
+
+        // Anvil horn (pointy end)
+        const hornGeo = new THREE.ConeGeometry(0.3, 0.8, 8);
+        const horn = new THREE.Mesh(hornGeo, anvilMat);
+        horn.rotation.z = Math.PI / 2;
+        horn.position.set(1.2, 0.8, 0);
+        horn.castShadow = true;
+        anvilGroup.add(horn);
+
+        // Workbench/table
+        const tableLegGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15);
+        const tableMat = new THREE.MeshLambertMaterial({ color: 0x4a3520 });
+        const positions = [[-0.8, -0.6], [0.8, -0.6], [-0.8, 0.6], [0.8, 0.6]];
+        for (const [x, z] of positions) {
+            const leg = new THREE.Mesh(tableLegGeo, tableMat);
+            leg.position.set(x + 2.5, 0.4, z);
+            anvilGroup.add(leg);
+        }
+        const tableTopGeo = new THREE.BoxGeometry(2.0, 0.15, 1.5);
+        const tableTop = new THREE.Mesh(tableTopGeo, tableMat);
+        tableTop.position.set(2.5, 0.85, 0);
+        tableTop.castShadow = true;
+        anvilGroup.add(tableTop);
+
+        // Hammer on table
+        const hammerHeadGeo = new THREE.BoxGeometry(0.25, 0.2, 0.4);
+        const hammerMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const hammerHead = new THREE.Mesh(hammerHeadGeo, hammerMat);
+        hammerHead.position.set(2.2, 1.0, 0.3);
+        anvilGroup.add(hammerHead);
+
+        const hammerHandleGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 8);
+        const handleMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
+        const hammerHandle = new THREE.Mesh(hammerHandleGeo, handleMat);
+        hammerHandle.rotation.z = Math.PI / 2;
+        hammerHandle.position.set(2.5, 1.0, 0.3);
+        anvilGroup.add(hammerHandle);
+
+        this.scene.add(anvilGroup);
+
+        // Store anvil info
+        this.anvil = {
+            position: position,
+            mesh: anvilGroup,
+            interactionRange: 5,
+            isForging: false,
+            forgeState: null,
+            playerStartPos: null
+        };
+    }
+
+    updateAnvil(deltaTime) {
+        if (!this.anvil || !this.player) return;
+
+        const dx = this.player.position.x - this.anvil.position.x;
+        const dz = this.player.position.z - this.anvil.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if near anvil
+        this.anvil.isNearAnvil = distance < this.anvil.interactionRange;
+
+        // Cancel forging if player moves away
+        if (this.anvil.isForging) {
+            const startPos = this.anvil.playerStartPos;
+            const movedDistance = Math.sqrt(
+                Math.pow(this.player.position.x - startPos.x, 2) +
+                Math.pow(this.player.position.z - startPos.z, 2)
+            );
+            if (movedDistance > 1.5) {
+                this.stopAnvilForging('Moved away from anvil');
+            }
+        }
+
+        // Show/hide prompt
+        const anvilPrompt = document.getElementById('anvil-prompt');
+        const anvilPopup = document.getElementById('anvil-popup');
+
+        if (this.anvil.isForging) {
+            anvilPrompt?.classList.remove('visible');
+            // Update forging progress
+            this.updateAnvilForging(deltaTime);
+        } else if (this.anvil.isNearAnvil) {
+            anvilPrompt?.classList.add('visible');
+            anvilPopup?.classList.remove('visible');
+        } else {
+            anvilPrompt?.classList.remove('visible');
+            anvilPopup?.classList.remove('visible');
+        }
+    }
+
+    startAnvilCrafting() {
+        if (!this.anvil || this.anvil.isForging) return;
+
+        // Show recipe selection popup
+        this.showAnvilSelection();
+    }
+
+    showAnvilSelection() {
+        const selectionPopup = document.getElementById('anvil-selection');
+        const recipeList = document.getElementById('anvil-recipe-list');
+        const closeBtn = document.getElementById('anvil-selection-close');
+        if (!selectionPopup || !recipeList) return;
+
+        // Clear existing
+        recipeList.innerHTML = '';
+
+        // Get icons from itemDatabase
+        const recipeIcons = {
+            'copper_shortsword': '🗡️',
+            'copper_dagger': '🔪',
+            'iron_longsword': '⚔️',
+            'gold_scepter': '🏆'
+        };
+
+        // Add recipes
+        for (const recipe of this.anvilRecipes) {
+            const div = document.createElement('div');
+            const canCraft = this.canCraftAnvilRecipe(recipe);
+            div.className = `anvil-recipe-item ${canCraft ? '' : 'disabled'}`;
+
+            // Build materials string
+            const matStrings = recipe.materials.map(m => {
+                const item = ITEMS[m.itemId];
+                const have = this.player.inventory?.getItemCount(m.itemId) || 0;
+                const need = m.amount;
+                const hasEnough = have >= need;
+                return `<span class="${hasEnough ? '' : 'missing'}">${item?.name || m.itemId}: ${have}/${need}</span>`;
+            });
+
+            div.innerHTML = `
+                <span class="anvil-recipe-icon">${recipeIcons[recipe.id] || '⚔️'}</span>
+                <div class="anvil-recipe-info">
+                    <div class="anvil-recipe-name">${recipe.name}</div>
+                    <div class="anvil-recipe-cost">${matStrings.join(', ')}</div>
+                </div>
+            `;
+
+            if (canCraft) {
+                div.onclick = () => this.selectAnvilRecipe(recipe);
+            }
+            recipeList.appendChild(div);
+        }
+
+        // Setup close button
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                selectionPopup.classList.remove('visible');
+            };
+        }
+
+        selectionPopup.classList.add('visible');
+    }
+
+    canCraftAnvilRecipe(recipe) {
+        if (!this.player.inventory) return false;
+        for (const mat of recipe.materials) {
+            const have = this.player.inventory.getItemCount(mat.itemId);
+            if (have < mat.amount) return false;
+        }
+        return true;
+    }
+
+    selectAnvilRecipe(recipe) {
+        if (!this.canCraftAnvilRecipe(recipe)) return;
+
+        // Hide selection popup
+        const selectionPopup = document.getElementById('anvil-selection');
+        selectionPopup?.classList.remove('visible');
+
+        // Remove materials
+        for (const mat of recipe.materials) {
+            this.player.inventory.removeItemById(mat.itemId, mat.amount);
+        }
+
+        // Start forging
+        this.anvil.isForging = true;
+        this.anvil.playerStartPos = {
+            x: this.player.position.x,
+            z: this.player.position.z
+        };
+        this.anvil.forgeState = {
+            recipe: recipe,
+            timer: 0,
+            craftTime: recipe.craftTime
+        };
+
+        // Face the anvil
+        const dx = this.anvil.position.x - this.player.position.x;
+        const dz = this.anvil.position.z - this.player.position.z;
+        this.player.rotation = Math.atan2(dx, dz);
+
+        // Show forging popup
+        const anvilPopup = document.getElementById('anvil-popup');
+        const itemIcon = document.getElementById('anvil-item-icon');
+        const itemName = document.getElementById('anvil-item-name');
+
+        const recipeIcons = {
+            'copper_shortsword': '🗡️',
+            'copper_dagger': '🔪',
+            'iron_longsword': '⚔️',
+            'gold_scepter': '🏆'
+        };
+
+        if (itemIcon) itemIcon.textContent = recipeIcons[recipe.id] || '⚔️';
+        if (itemName) itemName.textContent = recipe.name;
+
+        anvilPopup?.classList.add('visible');
+    }
+
+    updateAnvilForging(deltaTime) {
+        const state = this.anvil?.forgeState;
+        if (!state) return;
+
+        state.timer += deltaTime;
+
+        // Update progress bar
+        const progress = state.timer / state.craftTime;
+        const progressFill = document.getElementById('anvil-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = `${Math.min(progress * 100, 100)}%`;
+        }
+
+        // Update status text
+        const statusText = document.getElementById('anvil-status-text');
+        if (statusText) {
+            const remaining = Math.ceil(state.craftTime - state.timer);
+            statusText.textContent = `Forging... ${remaining}s remaining`;
+        }
+
+        // Check if done
+        if (state.timer >= state.craftTime) {
+            // Add crafted item
+            if (this.player?.inventory) {
+                this.player.inventory.addItemById(state.recipe.id, 1);
+            }
+
+            this.stopAnvilForging();
+            this.showAnvilMessage(`Forged ${state.recipe.name}!`, 'uncommon');
+        }
+    }
+
+    stopAnvilForging(message = null) {
+        if (!this.anvil) return;
+
+        this.anvil.isForging = false;
+        this.anvil.forgeState = null;
+        this.anvil.playerStartPos = null;
+
+        // Hide popups
+        const anvilPopup = document.getElementById('anvil-popup');
+        const selectionPopup = document.getElementById('anvil-selection');
+        anvilPopup?.classList.remove('visible');
+        selectionPopup?.classList.remove('visible');
+
+        // Reset progress bar
+        const progressFill = document.getElementById('anvil-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '0%';
+        }
+
+        if (message) {
+            this.showAnvilMessage(message);
+        }
+    }
+
+    showAnvilMessage(message, rarity = 'common') {
+        const msgEl = document.getElementById('anvil-message');
         if (msgEl) {
             msgEl.textContent = message;
             msgEl.className = `rarity-${rarity}`;
@@ -3750,6 +4104,22 @@ export class Game {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('🔶', smelterIconPos.x, smelterIconPos.y);
+            }
+
+            // Draw anvil on minimap
+            if (this.anvil) {
+                // Draw anvil area
+                ctx.fillStyle = 'rgba(50, 50, 60, 0.6)';
+                const anvilAreaPos = toMinimap(this.anvil.position.x - 4, this.anvil.position.z - 4);
+                ctx.fillRect(anvilAreaPos.x, anvilAreaPos.y, 8 * scale, 8 * scale);
+
+                // Draw anvil icon
+                ctx.fillStyle = '#888899';
+                const anvilIconPos = toMinimap(this.anvil.position.x, this.anvil.position.z);
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⚒️', anvilIconPos.x, anvilIconPos.y);
             }
         } else {
             // Simple square for other modes

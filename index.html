@@ -543,6 +543,52 @@
     <!-- Crafting Message -->
     <div id="crafting-message"></div>
 
+    <!-- Anvil Prompt -->
+    <div id="anvil-prompt" class="interaction-prompt">
+        <span class="prompt-key">F</span>
+        <span class="prompt-text">Forge</span>
+    </div>
+
+    <!-- Anvil Selection Popup -->
+    <div id="anvil-selection">
+        <div id="anvil-selection-content">
+            <div id="anvil-selection-header">
+                <span id="anvil-selection-title">Blacksmith Anvil</span>
+                <button id="anvil-selection-close">X</button>
+            </div>
+            <div id="anvil-recipe-list"></div>
+            <div id="anvil-selection-footer">
+                <span>Click a recipe to forge</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anvil Progress Popup -->
+    <div id="anvil-popup">
+        <div id="anvil-popup-content">
+            <div id="anvil-popup-header">
+                <span id="anvil-popup-title">Forging...</span>
+            </div>
+            <div id="anvil-game-area">
+                <div id="anvil-item-display">
+                    <span id="anvil-item-icon"></span>
+                    <span id="anvil-item-name"></span>
+                </div>
+                <div id="anvil-progress">
+                    <div id="anvil-progress-bar">
+                        <div id="anvil-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="anvil-popup-footer">
+                <span id="anvil-status-text">Hammering metal...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anvil Message -->
+    <div id="anvil-message"></div>
+
     <script type="importmap">
     {
         "imports": {

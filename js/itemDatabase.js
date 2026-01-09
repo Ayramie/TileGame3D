@@ -303,6 +303,63 @@ export const ITEMS = {
         classRestriction: ['mage']
     },
 
+    // === ANVIL CRAFTED WEAPONS ===
+    copper_shortsword: {
+        id: 'copper_shortsword',
+        name: 'Copper Shortsword',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.COMMON,
+        icon: 'sword_copper',
+        description: 'A short blade forged from copper. Light and quick.',
+        stackable: false,
+        value: 60,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 7, attackSpeed: 8 },
+        classRestriction: ['warrior']
+    },
+
+    copper_dagger: {
+        id: 'copper_dagger',
+        name: 'Copper Dagger',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.COMMON,
+        icon: 'dagger_copper',
+        description: 'A swift copper dagger for quick strikes.',
+        stackable: false,
+        value: 45,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 4, attackSpeed: 15 },
+        classRestriction: ['hunter']
+    },
+
+    iron_longsword: {
+        id: 'iron_longsword',
+        name: 'Iron Longsword',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.UNCOMMON,
+        icon: 'sword_iron_long',
+        description: 'A well-forged iron blade with good reach.',
+        stackable: false,
+        value: 120,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 12, attackSpeed: 5 },
+        classRestriction: ['warrior']
+    },
+
+    gold_scepter: {
+        id: 'gold_scepter',
+        name: 'Gold Scepter',
+        type: ItemType.WEAPON,
+        rarity: ItemRarity.RARE,
+        icon: 'scepter_gold',
+        description: 'A magnificent golden scepter humming with power.',
+        stackable: false,
+        value: 300,
+        equipSlot: EquipSlot.WEAPON,
+        stats: { damage: 10, magicPower: 30 },
+        classRestriction: ['mage']
+    },
+
     // === ARMOR - HELMETS ===
     leather_cap: {
         id: 'leather_cap',
@@ -907,6 +964,12 @@ export function getItemIcon(item) {
         // Crafted Weapons
         'bow_oak': '🏹',
         'staff_short': '🪄',
+
+        // Anvil Crafted Weapons
+        'sword_copper': '🗡️',
+        'dagger_copper': '🔪',
+        'sword_iron_long': '⚔️',
+        'scepter_gold': '🏆',
 
         // Quest
         'quest_crown': '👑'
