@@ -91,32 +91,43 @@ export class Adventurer {
 
         if (equipped) {
             const weaponDef = equipped.definition;
-            const iconLower = (weaponDef.icon || '').toLowerCase();
-            const idLower = (weaponDef.id || '').toLowerCase();
-            const nameLower = (weaponDef.name || '').toLowerCase();
 
-            // Determine weapon type from icon/id/name - check most specific first
+            // Determine weapon type from classRestriction first (most reliable)
             let weaponType = 'sword'; // default
-            if (iconLower.includes('bow') || idLower.includes('bow') ||
-                iconLower.includes('crossbow') || idLower.includes('crossbow') ||
-                nameLower.includes('bow') || nameLower.includes('crossbow')) {
+            const classRestriction = weaponDef.classRestriction;
+
+            if (classRestriction && classRestriction.includes('hunter')) {
                 weaponType = 'bow';
                 this.attackRange = 12; // Ranged
-            } else if (iconLower.includes('staff') || idLower.includes('staff') ||
-                       iconLower.includes('scepter') || idLower.includes('scepter') ||
-                       iconLower.includes('wand') || idLower.includes('wand') ||
-                       nameLower.includes('staff') || nameLower.includes('scepter') || nameLower.includes('wand')) {
+            } else if (classRestriction && classRestriction.includes('mage')) {
                 weaponType = 'staff';
                 this.attackRange = 10; // Ranged magic
-            } else if (iconLower.includes('dagger') || idLower.includes('dagger') || nameLower.includes('dagger')) {
-                weaponType = 'dagger';
-                this.attackRange = 2.0; // Short melee
-            } else {
+            } else if (classRestriction && classRestriction.includes('warrior')) {
                 weaponType = 'sword';
                 this.attackRange = 2.5; // Standard melee
+            } else {
+                // Fallback to name/id matching for unrestricted weapons
+                const iconLower = (weaponDef.icon || '').toLowerCase();
+                const idLower = (weaponDef.id || '').toLowerCase();
+                const nameLower = (weaponDef.name || '').toLowerCase();
+
+                if (iconLower.includes('bow') || idLower.includes('bow') ||
+                    iconLower.includes('crossbow') || idLower.includes('crossbow') ||
+                    nameLower.includes('bow') || nameLower.includes('crossbow')) {
+                    weaponType = 'bow';
+                    this.attackRange = 12;
+                } else if (iconLower.includes('staff') || idLower.includes('staff') ||
+                           iconLower.includes('scepter') || idLower.includes('scepter') ||
+                           nameLower.includes('staff') || nameLower.includes('scepter')) {
+                    weaponType = 'staff';
+                    this.attackRange = 10;
+                } else if (iconLower.includes('dagger') || idLower.includes('dagger') || nameLower.includes('dagger')) {
+                    weaponType = 'dagger';
+                    this.attackRange = 2.0;
+                }
             }
 
-            console.log('Adventurer weapon detection:', { icon: iconLower, id: idLower, name: nameLower, detected: weaponType });
+            console.log('Adventurer weapon detection:', { classRestriction, detected: weaponType });
 
             this.weaponMesh = WeaponFactory.createWeapon(weaponType);
             if (this.weaponMesh && this.useAnimatedCharacter) {
@@ -128,35 +139,31 @@ export class Adventurer {
             const weaponDamage = weaponDef.stats?.damage || 0;
             this.autoAttackDamage = baseDamage + weaponDamage;
 
-            // Set abilities based on weapon type
-            if (weaponType !== this.currentWeaponType) {
-                this.currentWeaponType = weaponType;
-                if (weaponType === 'sword' || weaponType === 'dagger') {
-                    this.abilities = this.getWarriorAbilities();
-                    console.log('Adventurer: Equipped melee weapon - Warrior abilities unlocked!');
-                } else if (weaponType === 'staff') {
-                    this.abilities = this.getMageAbilities();
-                    console.log('Adventurer: Equipped staff - Mage abilities unlocked!');
-                } else if (weaponType === 'bow') {
-                    this.abilities = this.getHunterAbilities();
-                    console.log('Adventurer: Equipped bow - Hunter abilities unlocked!');
-                }
-                // Notify game to update UI
-                if (this.game && this.game.updateAbilityUI) {
-                    this.game.updateAbilityUI();
-                }
+            // Always set abilities based on weapon type (not just when type changes)
+            this.currentWeaponType = weaponType;
+            if (weaponType === 'sword' || weaponType === 'dagger') {
+                this.abilities = this.getWarriorAbilities();
+                console.log('Adventurer: Equipped melee weapon - Warrior abilities unlocked!');
+            } else if (weaponType === 'staff') {
+                this.abilities = this.getMageAbilities();
+                console.log('Adventurer: Equipped staff - Mage abilities unlocked!');
+            } else if (weaponType === 'bow') {
+                this.abilities = this.getHunterAbilities();
+                console.log('Adventurer: Equipped bow - Hunter abilities unlocked!');
+            }
+            // Notify game to update UI
+            if (this.game && this.game.updateAbilityUI) {
+                this.game.updateAbilityUI();
             }
         } else {
             this.attackRange = 2.5;
             this.autoAttackDamage = 20;
             // No weapon - disable all abilities
-            if (this.currentWeaponType !== null) {
-                this.currentWeaponType = null;
-                this.abilities = this.getDisabledAbilities();
-                console.log('Adventurer: Unequipped weapon - Abilities disabled');
-                if (this.game && this.game.updateAbilityUI) {
-                    this.game.updateAbilityUI();
-                }
+            this.currentWeaponType = null;
+            this.abilities = this.getDisabledAbilities();
+            console.log('Adventurer: Unequipped weapon - Abilities disabled');
+            if (this.game && this.game.updateAbilityUI) {
+                this.game.updateAbilityUI();
             }
         }
     }
