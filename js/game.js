@@ -4000,6 +4000,28 @@ export class Game {
             this.updateAbilityCooldown('r', this.player.abilities.trap);
             this.updateAbilityCooldown('c', this.player.abilities.giantArrow);
             this.updateAbilityCooldown('1', this.player.abilities.potion);
+        } else if (this.selectedClass === 'adventurer') {
+            // Adventurer abilities depend on equipped weapon type
+            const weaponType = this.player.currentWeaponType;
+            if (weaponType === 'staff') {
+                this.updateAbilityCooldown('q', this.player.abilities.blizzard);
+                this.updateAbilityCooldown('f', this.player.abilities.flameWave);
+                this.updateAbilityCooldown('e', this.player.abilities.frostNova);
+                this.updateAbilityCooldown('r', this.player.abilities.blink);
+                this.updateAbilityCooldown('c', this.player.abilities.frozenOrb);
+            } else if (weaponType === 'bow') {
+                this.updateAbilityCooldown('q', this.player.abilities.arrowWave);
+                this.updateAbilityCooldown('f', this.player.abilities.spinDash);
+                this.updateAbilityCooldown('e', this.player.abilities.shotgun);
+                this.updateAbilityCooldown('r', this.player.abilities.trap);
+                this.updateAbilityCooldown('c', this.player.abilities.giantArrow);
+            } else if (weaponType === 'sword' || weaponType === 'dagger') {
+                this.updateAbilityCooldown('q', this.player.abilities.cleave);
+                this.updateAbilityCooldown('f', this.player.abilities.whirlwind);
+                this.updateAbilityCooldown('e', this.player.abilities.parry);
+                this.updateAbilityCooldown('r', this.player.abilities.heroicLeap);
+                this.updateAbilityCooldown('c', this.player.abilities.cleave); // No 5th warrior ability, reuse cleave
+            }
         } else {
             this.updateAbilityCooldown('q', this.player.abilities.cleave);
             this.updateAbilityCooldown('f', this.player.abilities.whirlwind);

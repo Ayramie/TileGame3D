@@ -116,6 +116,15 @@ export class InputManager {
                             this.game.player.showArrowWaveIndicator(true);
                         }
                     }
+                } else if (this.game.selectedClass === 'adventurer') {
+                    const weaponType = this.game.player.currentWeaponType;
+                    if (weaponType === 'staff' && this.game.player.abilities.blizzard?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                    } else if (weaponType === 'bow' && this.game.player.abilities.arrowWave?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                    } else if ((weaponType === 'sword' || weaponType === 'dagger') && this.game.player.abilities.cleave?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'q';
+                    }
                 } else {
                     if (this.game.player.abilities.cleave.cooldownRemaining <= 0) {
                         this.aimingAbility = 'q';
@@ -214,6 +223,19 @@ export class InputManager {
                         z: this.mouseWorldPos.z - this.game.player.position.z
                     };
                     this.game.player.useSpinDash(direction);
+                } else if (this.game.selectedClass === 'adventurer') {
+                    const weaponType = this.game.player.currentWeaponType;
+                    const direction = {
+                        x: this.mouseWorldPos.x - this.game.player.position.x,
+                        z: this.mouseWorldPos.z - this.game.player.position.z
+                    };
+                    if (weaponType === 'staff') {
+                        this.aimingAbility = 'f';
+                    } else if (weaponType === 'bow') {
+                        this.game.player.useSpinDash(direction);
+                    } else if (weaponType === 'sword' || weaponType === 'dagger') {
+                        this.game.player.useWhirlwind(direction);
+                    }
                 } else {
                     const direction = {
                         x: this.mouseWorldPos.x - this.game.player.position.x,
@@ -234,6 +256,15 @@ export class InputManager {
                             this.game.player.showShotgunIndicator(true);
                         }
                     }
+                } else if (this.game.selectedClass === 'adventurer') {
+                    const weaponType = this.game.player.currentWeaponType;
+                    if (weaponType === 'staff') {
+                        this.game.player.useFrostNova();
+                    } else if (weaponType === 'bow' && this.game.player.abilities.shotgun?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'e';
+                    } else if (weaponType === 'sword' || weaponType === 'dagger') {
+                        this.game.player.useParry();
+                    }
                 } else {
                     this.game.player.useParry();
                 }
@@ -250,6 +281,19 @@ export class InputManager {
                 } else if (this.game.selectedClass === 'hunter') {
                     // Throw trap instantly to mouse position
                     this.game.player.useTrap(this.mouseWorldPos.clone());
+                } else if (this.game.selectedClass === 'adventurer') {
+                    const weaponType = this.game.player.currentWeaponType;
+                    if (weaponType === 'staff') {
+                        const direction = {
+                            x: this.mouseWorldPos.x - this.game.player.position.x,
+                            z: this.mouseWorldPos.z - this.game.player.position.z
+                        };
+                        this.game.player.useBackstep(direction);
+                    } else if (weaponType === 'bow') {
+                        this.game.player.useTrap(this.mouseWorldPos.clone());
+                    } else if ((weaponType === 'sword' || weaponType === 'dagger') && this.game.player.abilities.heroicLeap?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'r';
+                    }
                 } else {
                     if (this.game.player.abilities.heroicLeap.cooldownRemaining <= 0) {
                         this.aimingAbility = 'r';
@@ -277,6 +321,18 @@ export class InputManager {
                             this.game.player.showGiantArrowIndicator(true);
                         }
                     }
+                } else if (this.game.selectedClass === 'adventurer') {
+                    const weaponType = this.game.player.currentWeaponType;
+                    if (weaponType === 'staff' && this.game.player.abilities.frozenOrb?.cooldownRemaining <= 0) {
+                        const direction = {
+                            x: this.mouseWorldPos.x - this.game.player.position.x,
+                            z: this.mouseWorldPos.z - this.game.player.position.z
+                        };
+                        this.game.player.useFrozenOrb(direction);
+                    } else if (weaponType === 'bow' && this.game.player.abilities.giantArrow?.cooldownRemaining <= 0) {
+                        this.aimingAbility = 'c';
+                    }
+                    // Sword/dagger has no 5th ability for Adventurer
                 } else {
                     if (this.game.player.abilities.sunder.cooldownRemaining <= 0) {
                         this.aimingAbility = 'c';
@@ -331,19 +387,23 @@ export class InputManager {
             z: this.mouseWorldPos.z - this.game.player.position.z
         };
 
+        // For adventurer, get weapon type to determine which ability to use
+        const isAdventurer = this.game.selectedClass === 'adventurer';
+        const weaponType = isAdventurer ? this.game.player.currentWeaponType : null;
+
         switch (key) {
             case 'q':
-                if (this.game.selectedClass === 'mage') {
+                if (this.game.selectedClass === 'mage' || (isAdventurer && weaponType === 'staff')) {
                     if (this.game.player.showBlizzardIndicator) {
                         this.game.player.showBlizzardIndicator(false);
                     }
                     this.game.player.useBlizzard(this.mouseWorldPos.clone());
-                } else if (this.game.selectedClass === 'hunter') {
+                } else if (this.game.selectedClass === 'hunter' || (isAdventurer && weaponType === 'bow')) {
                     if (this.game.player.showArrowWaveIndicator) {
                         this.game.player.showArrowWaveIndicator(false);
                     }
                     this.game.player.useArrowWave(direction);
-                } else {
+                } else if (!isAdventurer || weaponType === 'sword' || weaponType === 'dagger') {
                     if (this.game.player.showCleaveIndicator) {
                         this.game.player.showCleaveIndicator(false);
                     }
@@ -352,7 +412,7 @@ export class InputManager {
                 break;
 
             case 'f':
-                if (this.game.selectedClass === 'mage') {
+                if (this.game.selectedClass === 'mage' || (isAdventurer && weaponType === 'staff')) {
                     if (this.game.player.showFlameWaveIndicator) {
                         this.game.player.showFlameWaveIndicator(false);
                     }
@@ -361,7 +421,7 @@ export class InputManager {
                 break;
 
             case 'e':
-                if (this.game.selectedClass === 'hunter') {
+                if (this.game.selectedClass === 'hunter' || (isAdventurer && weaponType === 'bow')) {
                     if (this.game.player.showShotgunIndicator) {
                         this.game.player.showShotgunIndicator(false);
                     }
@@ -370,7 +430,7 @@ export class InputManager {
                 break;
 
             case 'r':
-                if (this.game.selectedClass === 'warrior') {
+                if (this.game.selectedClass === 'warrior' || (isAdventurer && (weaponType === 'sword' || weaponType === 'dagger'))) {
                     if (this.game.player.showHeroicLeapIndicator) {
                         this.game.player.showHeroicLeapIndicator(false);
                     }
@@ -379,7 +439,7 @@ export class InputManager {
                 break;
 
             case 'c':
-                if (this.game.selectedClass === 'hunter') {
+                if (this.game.selectedClass === 'hunter' || (isAdventurer && weaponType === 'bow')) {
                     if (this.game.player.showGiantArrowIndicator) {
                         this.game.player.showGiantArrowIndicator(false);
                     }
