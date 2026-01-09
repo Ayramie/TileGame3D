@@ -416,6 +416,7 @@ export class Game {
                             { type: 'collect', itemId: 'ore_copper', target: 10, current: 0 }
                         ],
                         rewards: { gold: 50, items: [] },
+                        keepItems: true,
                         nextQuestId: 'smelt_copper'
                     },
                     {
@@ -431,6 +432,7 @@ export class Game {
                             { type: 'collect', itemId: 'bar_copper', target: 5, current: 0 }
                         ],
                         rewards: { gold: 75, items: [] },
+                        keepItems: true,
                         nextQuestId: 'forge_sword'
                     },
                     {
@@ -445,7 +447,8 @@ export class Game {
                         objectives: [
                             { type: 'collect', itemId: 'copper_shortsword', target: 1, current: 0 }
                         ],
-                        rewards: { gold: 100, items: [] }
+                        rewards: { gold: 100, items: [] },
+                        keepItems: true
                     }
                 ]
             });
@@ -2303,6 +2306,7 @@ export class Game {
             points = 200;
             mg.combo++;
             mg.hitsForOre += 2; // Perfect counts as 2 hits
+            console.log('[Mining] Perfect hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'perfect';
@@ -2313,6 +2317,7 @@ export class Game {
             points = 150;
             mg.combo++;
             mg.hitsForOre += 1.5;
+            console.log('[Mining] Great hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'great';
@@ -2323,6 +2328,7 @@ export class Game {
             points = 100;
             mg.combo++;
             mg.hitsForOre += 1;
+            console.log('[Mining] Good hit! hitsForOre:', mg.hitsForOre);
             if (feedback) {
                 feedback.textContent = rating;
                 feedback.className = 'good';
@@ -2356,8 +2362,12 @@ export class Game {
                 'gold': 'ore_gold'
             };
             const oreItemId = oreItemMap[mg.oreId];
+            console.log('[Mining] Earned ore:', oreItemId, 'oreId:', mg.oreId);
             if (oreItemId && this.player.inventory) {
-                this.player.inventory.addItemById(oreItemId, 1);
+                const overflow = this.player.inventory.addItemById(oreItemId, 1);
+                console.log('[Mining] Added to inventory, overflow:', overflow);
+            } else {
+                console.warn('[Mining] Failed to add ore - oreItemId:', oreItemId, 'inventory:', !!this.player.inventory);
             }
 
             // Decrease mine ore count
@@ -5031,10 +5041,12 @@ export class Game {
         if (!quest || quest.status !== 'active') return;
         if (!this.isQuestComplete(quest)) return;
 
-        // Remove required items
-        for (const obj of quest.objectives) {
-            if (obj.type === 'collect') {
-                this.player.inventory.removeItemById(obj.itemId, obj.target);
+        // Remove required items (unless quest has keepItems flag)
+        if (!quest.keepItems) {
+            for (const obj of quest.objectives) {
+                if (obj.type === 'collect') {
+                    this.player.inventory.removeItemById(obj.itemId, obj.target);
+                }
             }
         }
 
